@@ -31,6 +31,6 @@ services:
 x-casaos:
   title:
     custom: Home Tools HTTPS
-  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/web/apps/fitness/public/apple-touch-icon.png
+  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/deploy/icons/https.png
   main: caddy
   index: /
