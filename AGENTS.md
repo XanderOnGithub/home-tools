@@ -98,6 +98,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 17 | Exercise `equipment: []Equipment` (enum, empty = none) for UI filtering; enums validated against `All*` lists | ✅ | 2026-10-07. Final value lists will be aligned with the chosen exercise data source (#11). |
 | 18 | `Muscle` enum = free-exercise-db's 17 names (snake_case); Exercise gains `category`, `level`, `instructions`, `images`, `source` | ✅ | 2026-10-07. Lossless import; diagram mapping lives in the frontend. |
 | 19 | Exercise photos copied to `data/fitness/images/<path>` (~100 MB), served by the Go binary | ✅ | 2026-10-07. Works offline on the LAN. |
+| 20 | API request bodies decoded strictly: unknown fields, trailing data, >1 MiB → 400 | ✅ | 2026-10-08. A typo'd key (`weigth_kg`) must fail, not silently save a set without weight. Frontend sends exactly the model's fields. `httpx.DecodeJSON`. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -144,7 +145,13 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   than API input: each must pass `Validate`, `id` must match its filename,
   session `user_id` must match its folder, and catalog refs must resolve;
   any failure aborts startup with the file's path. Known gap: no User model yet. Exercise catalog import works
-  (876 exercises, 1,746 photos, ~30 s, idempotent). Next: HTTP layer + server
+  (876 exercises, 1,746 photos, ~30 s, idempotent).
+- 2026-10-08: `internal/httpx` (WriteJSON, WriteError, ServerError, strict
+  DecodeJSON: unknown fields/trailing data/>1 MiB rejected). Server starts
+  in `cmd/home-tools` (flags `-addr`, `-data`; slog; graceful shutdown on
+  SIGINT/SIGTERM; `GET /healthz`). No host routing yet: one mux.
+  Handlers take a concrete `*fitness.Store` (no interface until a second
+  implementation exists). Next: fitness handlers + `Register`
   (handlers: `errors.Is(err, ErrInvalid)` → 400 with err's message as
   `{"error": ...}`; anything else → 500 with a generic message, real error
   logged server-side only).
