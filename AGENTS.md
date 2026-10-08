@@ -240,12 +240,15 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   where supported); Leave keeps it in progress (home shows Resume),
   Finish sets `ended_at`. Screen Wake Lock while open (HTTPS/localhost
   only, see #8). HTTPS decided (#8, #9): `deploy/` has the Caddy
-  image, Caddyfile, compose file and setup steps; not yet run on ZimaOS.
+  image, Caddyfile, compose file and setup steps.
   Profile cookie gets `secure` on HTTPS. Docker image (#31): UI embedded
   (`httpx.SPA`: index.html fallback for client routes, hashed assets
   cached forever; unknown `/api/` paths stay a JSON 404). CI publishes
-  images to GHCR (#32); `deploy/zimaos-*.yaml` are the paste-in apps. Not yet
-  run on ZimaOS.
+  images to GHCR (#32); `deploy/zimaos-*.yaml` are the paste-in apps.
+  Live at `https://fitness.<domain>`. Favicon + iPhone home-screen icon
+  = the blob for seed "gym" in light green (bigger eyes for 16 px),
+  generated from the avatar code: `pnpm --filter @home-tools/fitness
+  favicon` (`scripts/favicon/`, needs Chrome for the PNG).
 
 
 ## 8. Improvements (later, not urgent)
