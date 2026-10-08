@@ -19,6 +19,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/XanderOnGithub/home-tools/internal/users"
 	"github.com/XanderOnGithub/home-tools/tools/fitness"
 )
 
@@ -32,15 +33,16 @@ var client = &http.Client{Timeout: 30 * time.Second}
 
 func main() {
 	dataDir := flag.String("data", "data/fitness", "fitness data folder")
+	usersDir := flag.String("users", "data/users", "shared profiles folder (fitness checks its data against it)")
 	withImages := flag.Bool("images", true, "download exercise photos")
 	flag.Parse()
 
-	if err := run(*dataDir, *withImages); err != nil {
+	if err := run(*dataDir, *usersDir, *withImages); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(dataDir string, withImages bool) error {
+func run(dataDir, usersDir string, withImages bool) error {
 	body, err := fetch(datasetURL)
 	if err != nil {
 		return err
@@ -50,7 +52,11 @@ func run(dataDir string, withImages bool) error {
 		return err
 	}
 
-	store, err := fitness.Open(dataDir)
+	us, err := users.Open(usersDir)
+	if err != nil {
+		return err
+	}
+	store, err := fitness.Open(dataDir, us)
 	if err != nil {
 		return err
 	}

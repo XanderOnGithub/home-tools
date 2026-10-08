@@ -196,39 +196,3 @@ type Set struct {
 	DurationSec int     `json:"duration_sec,omitempty"`
 	DistanceM   float64 `json:"distance_m,omitempty"`
 }
-
-type Units string
-
-const (
-	UnitsMetric   Units = "metric"
-	UnitsImperial Units = "imperial"
-)
-
-// AllUnits lists every valid Units value (for validation and UI options).
-var AllUnits = []Units{UnitsMetric, UnitsImperial}
-
-// ProfileColor is a user's color: their avatar circle and the UI accent
-// while they're signed in. Each value maps to a hand-tuned, contrast-checked
-// palette in the web app's tokens.css; there are no free-form colors.
-type ProfileColor string
-
-const (
-	ColorGreen  ProfileColor = "green"
-	ColorBlue   ProfileColor = "blue"
-	ColorOrange ProfileColor = "orange"
-	ColorPurple ProfileColor = "purple"
-)
-
-// AllProfileColors lists every valid ProfileColor (for validation and UI options).
-var AllProfileColors = []ProfileColor{ColorGreen, ColorBlue, ColorOrange, ColorPurple}
-
-type User struct {
-	ID          string       `json:"id"`
-	Name        string       `json:"name"`
-	Birthday    time.Time    `json:"birthday"`
-	HeightM     float64      `json:"height_m"`
-	Units       Units        `json:"units"` // "metric" or "imperial"
-	Color       ProfileColor `json:"color"`
-	AvatarEmoji string       `json:"avatar_emoji"`
-	Archived    bool         `json:"archived,omitempty"`
-}

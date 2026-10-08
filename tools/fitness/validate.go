@@ -4,29 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"strings"
-	"time"
+
+	"github.com/XanderOnGithub/home-tools/internal/jsonfile"
 )
 
 // ErrInvalid marks data that breaks a model rule. Callers check it with
 // errors.Is (e.g. to answer HTTP 400 instead of 500).
 var ErrInvalid = errors.New("invalid")
-
-// validID reports whether id is safe to use as a file or folder name:
-// non-empty, only letters, digits, '-' and '_'. This blocks path tricks
-// like "../" since IDs become paths on disk.
-func validID(id string) bool {
-	if id == "" {
-		return false
-	}
-	for _, c := range id {
-		ok := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_'
-		if !ok {
-			return false
-		}
-	}
-	return true
-}
 
 // Validate checks s against the metrics ex tracks:
 //   - no value may be negative
@@ -71,7 +55,7 @@ func (s Set) Validate(ex Exercise) error {
 //   - metrics, muscles, equipment, category and level are known values
 //     (category and level may be empty)
 func (e Exercise) Validate() error {
-	if !validID(e.ID) {
+	if !jsonfile.ValidID(e.ID) {
 		return fmt.Errorf("%w exercise: bad ID %q", ErrInvalid, e.ID)
 	}
 	if e.Name == "" {
@@ -118,7 +102,7 @@ func (e Exercise) Validate() error {
 // Whether each ExerciseID exists in the catalog is checked by the store,
 // which has the catalog; Validate only sees the routine itself.
 func (r Routine) Validate() error {
-	if !validID(r.ID) {
+	if !jsonfile.ValidID(r.ID) {
 		return fmt.Errorf("%w routine: bad ID %q", ErrInvalid, r.ID)
 	}
 	if r.Name == "" {
@@ -141,35 +125,6 @@ func (r Routine) Validate() error {
 	return nil
 }
 
-// Validate checks u's own rules:
-//   - ID is a valid ID (it becomes the user's folder name)
-//   - Name is not blank
-//   - Units is a known value (required: the UI always sends one)
-//   - HeightM is not negative (0 means not set)
-//   - Birthday, if set, is not in the future
-//   - Color is a known ProfileColor
-func (u User) Validate() error {
-	if !validID(u.ID) {
-		return fmt.Errorf("%w user: bad ID %q", ErrInvalid, u.ID)
-	}
-	if strings.TrimSpace(u.Name) == "" {
-		return fmt.Errorf("%w user %s: missing name", ErrInvalid, u.ID)
-	}
-	if !slices.Contains(AllUnits, u.Units) {
-		return fmt.Errorf("%w user %s: unknown units %q", ErrInvalid, u.ID, u.Units)
-	}
-	if u.HeightM < 0 {
-		return fmt.Errorf("%w user %s: negative height_m", ErrInvalid, u.ID)
-	}
-	if u.Birthday.After(time.Now()) {
-		return fmt.Errorf("%w user %s: birthday is in the future", ErrInvalid, u.ID)
-	}
-	if !slices.Contains(AllProfileColors, u.Color) {
-		return fmt.Errorf("%w user %s: unknown color %q", ErrInvalid, u.ID, u.Color)
-	}
-	return nil
-}
-
 // Validate checks s's own rules:
 //   - ID and UserID are valid IDs (they become paths on disk)
 //   - StartedAt is set; EndedAt, if set, is not before it
@@ -179,10 +134,10 @@ func (u User) Validate() error {
 // Checking entries against the exercise catalog (and each Set against its
 // exercise) is done by the store, which has the catalog.
 func (s Session) Validate() error {
-	if !validID(s.ID) {
+	if !jsonfile.ValidID(s.ID) {
 		return fmt.Errorf("%w session: bad ID %q", ErrInvalid, s.ID)
 	}
-	if !validID(s.UserID) {
+	if !jsonfile.ValidID(s.UserID) {
 		return fmt.Errorf("%w session %s: bad user_id %q", ErrInvalid, s.ID, s.UserID)
 	}
 	if s.StartedAt.IsZero() {

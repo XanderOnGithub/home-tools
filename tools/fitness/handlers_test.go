@@ -140,50 +140,6 @@ func TestRoutineHandlers(t *testing.T) {
 	}
 }
 
-func TestUserHandlers(t *testing.T) {
-	const alice = `{"id":"alice","name":"Alice","units":"imperial","color":"green","avatar_emoji":"🏃"}`
-	tests := []struct {
-		name       string
-		path       string
-		body       string
-		wantStatus int
-	}{
-		{"create", "/api/users/alice", alice, http.StatusOK},
-		{"update existing", "/api/users/xander",
-			`{"id":"xander","name":"Xander H","units":"metric","color":"green"}`, http.StatusOK},
-		{"id mismatch", "/api/users/bob", alice, http.StatusBadRequest},
-		{"fails validation", "/api/users/alice",
-			`{"id":"alice","name":"Alice","units":"metric","color":"red"}`, http.StatusBadRequest},
-		{"unknown field", "/api/users/alice",
-			`{"id":"alice","name":"Alice","units":"metric","color":"green","weight_kg":60}`, http.StatusBadRequest},
-		{"path trick", "/api/users/..%2Froot",
-			`{"id":"../root","name":"Root","units":"metric","color":"green"}`, http.StatusBadRequest},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			srv := newTestServer(t)
-			rec := httptest.NewRecorder()
-			srv.ServeHTTP(rec, httptest.NewRequest("PUT", tt.path, strings.NewReader(tt.body)))
-			if rec.Code != tt.wantStatus {
-				t.Fatalf("status = %d, want %d; body %s", rec.Code, tt.wantStatus, rec.Body)
-			}
-		})
-	}
-
-	// The list includes a newly created profile, sorted by name.
-	srv := newTestServer(t)
-	srv.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("PUT", "/api/users/alice", strings.NewReader(alice)))
-	rec := httptest.NewRecorder()
-	srv.ServeHTTP(rec, httptest.NewRequest("GET", "/api/users", nil))
-	var users []User
-	if err := json.Unmarshal(rec.Body.Bytes(), &users); err != nil {
-		t.Fatal(err)
-	}
-	if len(users) != 2 || users[0].ID != "alice" || users[1].ID != "xander" {
-		t.Errorf("GET /api/users = %+v, want [alice xander]", users)
-	}
-}
-
 func TestSessionHandlers(t *testing.T) {
 	const start = `{"user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`
 	srv := newTestServer(t)

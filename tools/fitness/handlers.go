@@ -31,8 +31,7 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	mux.HandleFunc("PUT /api/exercises/{id}", h.putExercise)
 	mux.HandleFunc("GET /api/routines", h.getRoutines)
 	mux.HandleFunc("PUT /api/routines/{id}", h.putRoutine)
-	mux.HandleFunc("GET /api/users", h.getUsers)
-	mux.HandleFunc("PUT /api/users/{id}", h.putUser)
+	// Profiles themselves (GET/PUT /api/users) come from internal/users.
 	mux.HandleFunc("GET /api/users/{user}/sessions", h.getSessions)
 	mux.HandleFunc("POST /api/users/{user}/sessions", h.postSession)
 	mux.HandleFunc("PUT /api/users/{user}/sessions/{id}", h.putSession)
@@ -139,40 +138,11 @@ func (h *handlers) putRoutine(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, rt)
 }
 
-// getUsers returns every profile sorted by name, archived included; the
-// profile picker hides archived ones. Empty (fresh install) is 200 with [].
-func (h *handlers) getUsers(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, h.store.Users())
-}
-
-// putUser creates or replaces the profile at /api/users/{id}. Creating a
-// profile is just the first PUT; archiving is a PUT with "archived": true.
-func (h *handlers) putUser(w http.ResponseWriter, r *http.Request) {
-	var u User
-	if err := httpx.DecodeJSON(w, r, &u); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if id := r.PathValue("id"); u.ID != id {
-		httpx.WriteError(w, http.StatusBadRequest, "body id "+u.ID+" does not match URL id "+id)
-		return
-	}
-	if err := h.store.SaveUser(u); err != nil {
-		if errors.Is(err, ErrInvalid) {
-			httpx.WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		httpx.ServerError(w, r, h.log, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, u)
-}
-
 // getSessions returns the user's most recent non-archived sessions, newest
 // first. ?limit=n picks how many (default 20, max 100).
 func (h *handlers) getSessions(w http.ResponseWriter, r *http.Request) {
 	user := r.PathValue("user")
-	if _, ok := h.store.User(user); !ok {
+	if _, ok := h.store.users.User(user); !ok {
 		httpx.WriteError(w, http.StatusNotFound, "user "+user+" not found")
 		return
 	}

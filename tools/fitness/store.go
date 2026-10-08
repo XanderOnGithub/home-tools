@@ -12,32 +12,35 @@ import (
 	"time"
 
 	"github.com/XanderOnGithub/home-tools/internal/jsonfile"
+	"github.com/XanderOnGithub/home-tools/internal/users"
 )
 
 // Store holds all fitness data in memory and writes changes through to
 // JSON files under dir. Safe for concurrent use; always use it via *Store
 // (a copied mutex protects nothing).
 type Store struct {
-	dir string
+	dir   string
+	users *users.Store // shared profiles; sessions and routines must name one
 
 	mu        sync.RWMutex
 	exercises map[string]Exercise  // by ID
 	routines  map[string]Routine   // by ID
-	users     map[string]User      // by ID
 	sessions  map[string][]Session // by user ID, sorted oldest → newest
 }
 
 // Open loads all fitness data under dir into memory. Missing folders mean
 // no data yet; any unreadable or invalid file fails the whole open.
-func Open(dir string) (*Store, error) {
+// us is the shared profile store: every users/<id>/ folder, session and
+// routine creator must name a profile in it.
+func Open(dir string, us *users.Store) (*Store, error) {
 	// Load Exercises
-	exercises, err := loadDir(filepath.Join(dir, "exercises"), func(e Exercise) string { return e.ID })
+	exercises, err := jsonfile.LoadDir(filepath.Join(dir, "exercises"), func(e Exercise) string { return e.ID })
 	if err != nil {
 		return nil, err
 	}
 
 	// Load Routines
-	routines, err := loadDir(filepath.Join(dir, "routines"), func(r Routine) string { return r.ID })
+	routines, err := jsonfile.LoadDir(filepath.Join(dir, "routines"), func(r Routine) string { return r.ID })
 	if err != nil {
 		return nil, err
 	}
@@ -51,26 +54,16 @@ func Open(dir string) (*Store, error) {
 	// Build the store
 	s := &Store{
 		dir:       dir,
+		users:     us,
 		exercises: make(map[string]Exercise, len(exercises)),
 		routines:  make(map[string]Routine, len(routines)),
-		users:     make(map[string]User, len(userDirs)),
 		sessions:  make(map[string][]Session, len(userDirs)),
 	}
 
-	// Fill the maps in dependency order: exercises and users first, since
-	// routines and sessions are checked against them.
+	// Fill the maps in dependency order: exercises first, since routines
+	// and sessions are checked against them (and against us).
 	for _, ex := range exercises {
 		s.exercises[ex.ID] = ex
-	}
-	for _, u := range userDirs {
-		if !u.IsDir() {
-			continue
-		}
-		user, err := loadUser(filepath.Join(dir, "users", u.Name(), "user.json"), u.Name())
-		if err != nil {
-			return nil, err
-		}
-		s.users[user.ID] = user
 	}
 	for _, r := range routines {
 		if err := s.checkRoutineRefs(r); err != nil {
@@ -84,8 +77,13 @@ func Open(dir string) (*Store, error) {
 		if !u.IsDir() {
 			continue
 		}
+		// A folder for a profile that doesn't exist means its data
+		// belongs to nobody: likely a typo or a deleted profile file.
+		if _, ok := us.User(u.Name()); !ok {
+			return nil, fmt.Errorf("load %s: no profile %q in the users store", filepath.Join(dir, "users", u.Name()), u.Name())
+		}
 		sessDir := filepath.Join(dir, "users", u.Name(), "sessions")
-		sessions, err := loadDir(sessDir, func(s Session) string { return s.ID })
+		sessions, err := jsonfile.LoadDir(sessDir, func(s Session) string { return s.ID })
 		if err != nil {
 			return nil, err
 		}
@@ -230,44 +228,12 @@ func (s *Store) SaveRoutine(r Routine) error {
 	return nil
 }
 
-// Users returns every profile sorted by name, archived included (old
-// routines still name their creator); the UI hides archived ones.
-func (s *Store) Users() []User {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	return sortedByName(s.users, func(u User) string { return u.Name })
-}
-
-// User returns the user with id, and whether it exists.
-func (s *Store) User(id string) (User, bool) {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-	u, ok := s.users[id]
-	return u, ok
-}
-
-// SaveUser validates u and writes it to users/<id>/user.json, then to
-// memory. Creating a user is just the first save: the folder appears with it.
-func (s *Store) SaveUser(u User) error {
-	if err := u.Validate(); err != nil {
-		return err
-	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	if err := jsonfile.Write(filepath.Join(s.dir, "users", u.ID, "user.json"), u); err != nil {
-		return err
-	}
-	s.users[u.ID] = u
-	return nil
-}
-
 // checkSessionRefs checks sess against the rest of the store: its user
 // must exist (or a typo'd user_id would create a stray folder), each entry's
 // exercise must exist, and each set must fit the metrics it tracks.
 // Callers hold s.mu (or own s exclusively, as Open does).
 func (s *Store) checkSessionRefs(sess Session) error {
-	if _, ok := s.users[sess.UserID]; !ok {
+	if _, ok := s.users.User(sess.UserID); !ok {
 		return fmt.Errorf("%w session %s: unknown user %q", ErrInvalid, sess.ID, sess.UserID)
 	}
 	for _, e := range sess.Entries {
@@ -288,7 +254,7 @@ func (s *Store) checkSessionRefs(sess Session) error {
 // exercise it lists exists in the catalog. Same locking rule as
 // checkSessionRefs.
 func (s *Store) checkRoutineRefs(r Routine) error {
-	if _, ok := s.users[r.CreatedBy]; !ok {
+	if _, ok := s.users.User(r.CreatedBy); !ok {
 		return fmt.Errorf("%w routine %s: unknown created_by user %q", ErrInvalid, r.ID, r.CreatedBy)
 	}
 	for _, re := range r.Exercises {
@@ -309,71 +275,4 @@ func sortedByName[T any](m map[string]T, name func(T) string) []T {
 	}
 	slices.SortFunc(out, func(a, b T) int { return strings.Compare(name(a), name(b)) })
 	return out
-}
-
-// loadUser reads a user's profile from path. folder is the user's folder
-// name: the profile's id must match it, for the same reason loadDir checks
-// filenames. A user folder without user.json is an error, not "no user":
-// its sessions would belong to nobody.
-func loadUser(path, folder string) (User, error) {
-	u, err := jsonfile.Read[User](path)
-	if err != nil {
-		return User{}, fmt.Errorf("load %s: %w", path, err)
-	}
-	if u.ID != folder {
-		return User{}, fmt.Errorf("load %s: id %q does not match folder %q", path, u.ID, folder)
-	}
-	if err := u.Validate(); err != nil {
-		return User{}, fmt.Errorf("load %s: %w", path, err)
-	}
-	return u, nil
-}
-
-// validator is any model that can check itself. A Go constraint can
-// require methods but not fields, which is why loadDir also takes id.
-type validator interface {
-	Validate() error
-}
-
-// loadDir decodes every *.json file in dir, in filename order (os.ReadDir
-// sorts by name, so timestamp-named sessions come back oldest first).
-// Dotfiles are skipped: they are temp files from jsonfile.Write.
-// A missing dir means no data yet, not an error.
-//
-// Each item must pass its own Validate (the files are hand-editable, so
-// never trust them more than an API request). Catalog references are the
-// store's job, checked in Open once everything is loaded.
-//
-// Each item's id(v) must equal its filename (minus .json): saves write to
-// <id>.json, so a mismatch (e.g. a hand-copied file) would make the next
-// save overwrite a different file. Fail loudly rather than lose data.
-func loadDir[T validator](dir string, id func(T) string) ([]T, error) {
-	entries, err := os.ReadDir(dir)
-	if errors.Is(err, fs.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-
-	items := make([]T, 0, len(entries))
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || strings.HasPrefix(name, ".") || filepath.Ext(name) != ".json" {
-			continue
-		}
-		path := filepath.Join(dir, name)
-		v, err := jsonfile.Read[T](path)
-		if err != nil {
-			return nil, err
-		}
-		if want := strings.TrimSuffix(name, ".json"); id(v) != want {
-			return nil, fmt.Errorf("load %s: id %q does not match filename", path, id(v))
-		}
-		if err := v.Validate(); err != nil {
-			return nil, fmt.Errorf("load %s: %w", path, err)
-		}
-		items = append(items, v)
-	}
-	return items, nil
 }

@@ -17,6 +17,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/XanderOnGithub/home-tools/internal/users"
 	"github.com/XanderOnGithub/home-tools/tools/fitness"
 )
 
@@ -39,16 +40,22 @@ func run(addr, dataDir string, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	store, err := fitness.Open(filepath.Join(dataDir, "fitness"))
+	// Shared profiles first: tools check their data against them.
+	us, err := users.Open(filepath.Join(dataDir, "users"))
+	if err != nil {
+		return fmt.Errorf("open users store: %w", err)
+	}
+	store, err := fitness.Open(filepath.Join(dataDir, "fitness"), us)
 	if err != nil {
 		return fmt.Errorf("open fitness store: %w", err)
 	}
-	log.Info("fitness store loaded", "exercises", len(store.Exercises()), "routines", len(store.Routines()))
+	log.Info("stores loaded", "users", len(us.Users()), "exercises", len(store.Exercises()), "routines", len(store.Routines()))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("ok\n"))
 	})
+	users.Register(mux, us, log)
 	fitness.Register(mux, store, log)
 
 	srv := &http.Server{

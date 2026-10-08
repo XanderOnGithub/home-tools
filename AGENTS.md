@@ -53,7 +53,7 @@ Rules:
 
 ### Planned layout (not yet created)
     cmd/home-tools/        main.go: config load, wire tools, start server
-    internal/              shared Go: config, store, httpx (middleware), host router
+    internal/              shared Go: jsonfile, httpx, users (shared profiles), later config + host router
     tools/fitness/         Go package: domain, store, handlers
     tools/games/           Go package: docker client, RCON, log streaming
     web/packages/ui/       @home-tools/ui: shared Svelte components + styles
@@ -74,7 +74,7 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
     pnpm --dir web install | check | build   web deps, type-check, production build
     make build   → bin/home-tools
     make check   vet + test (-race) + gofmt check (run before committing)
-    go run ./cmd/fitness-import -data data/fitness   import exercises + photos (idempotent)
+    go run ./cmd/fitness-import -data data/fitness -users data/users   import exercises + photos (idempotent)
 
 ## 4. Decision Log
 Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
@@ -101,9 +101,10 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 18 | `Muscle` enum = free-exercise-db's 17 names (snake_case); Exercise gains `category`, `level`, `instructions`, `images`, `source` | ✅ | 2026-10-07. Lossless import; diagram mapping lives in the frontend. |
 | 19 | Exercise photos copied to `data/fitness/images/<path>` (~100 MB), served by the Go binary | ✅ | 2026-10-07. Works offline on the LAN. |
 | 20 | API request bodies decoded strictly: unknown fields, trailing data, >1 MiB → 400 | ✅ | 2026-10-08. A typo'd key (`weigth_kg`) must fail, not silently save a set without weight. Frontend sends exactly the model's fields. `httpx.DecodeJSON`. |
-| 21 | `User` = `users/<id>/user.json`: id (slug = folder name), name, birthday, `height_m`, `units` (metric/imperial, display only), `archived`. **No weight on User:** body weight is an optional `body_weight_kg` on `Session`; "current weight" = latest logged | ✅ | 2026-10-08. One source of truth; weight history comes free. |
-| 22 | Profile `color` enum (green, blue, orange, purple) = avatar circle **and** UI accent; optional `avatar_emoji`, initial as fallback; no photo uploads | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
+| 21 | Fitness keeps no profile data of its own: sessions live in `users/<id>/sessions/` keyed by the shared profile ID (#24). **No weight on User:** body weight is an optional `body_weight_kg` on `Session`; "current weight" = latest logged. Height/birthday dropped until a screen needs them | ✅ | 2026-10-08. One source of truth; weight history comes free. |
+| 22 | Profile `color` enum (green, blue, orange, purple) = avatar background **and** UI accent. Avatar shape: a gently irregular rounded blob (small variation, not wild), computed in the frontend from the profile ID, so it is never stored and is always the same for a person. Content: the name's initial for now; no emoji. A flat 2D avatar maker (face shape/eyes/mouth parts) is a later feature | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
 | 23 | UI foundation: CSS custom-property tokens (raw palette → semantic layer), system font stack, `rem` type scale, 4px spacing scale; light/dark via `prefers-color-scheme` + per-device override; WCAG 2.2 AA; 44px touch targets; every interactive element defines rest/hover/pressed/focus/disabled/loading | ✅ | 2026-10-08. Neutrals, type, spacing shared by all tools; only the accent varies (per profile). Red only for errors/destructive actions. Rules in `web/DESIGN.md`. |
+| 24 | Profiles are shared by all tools: `internal/users` (`User{id, name, color, units, archived}`, files `data/users/<id>.json`, `GET/PUT /api/users`). Tools key their own data by user ID and check it against this store | ✅ | 2026-10-08. Pick once, same people everywhere. Units live here (recipes need them too). Remembering the chosen profile across subdomains needs a cookie on `.starport.tech` (localStorage is per subdomain). |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -168,7 +169,10 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   at `GET /images/<path>` (no listings, can't escape the folder, 1-day
   cache). Web: pnpm workspace in `web/` (apps only, no shared `ui`
   package until a second app needs it); `web/apps/fitness` = Svelte 5 +
-  Vite + strict TS, placeholder page that calls the API. Next: fitness screens.
+  Vite + strict TS, placeholder page that calls the API. Design rules in
+  `web/DESIGN.md`, tokens in `web/apps/fitness/src/tokens.css` (#23).
+  Profiles moved to shared `internal/users` (#24); `jsonfile.LoadDir` and
+  `jsonfile.ValidID` now shared. Next: profile picker + creator UI.
 
 
 ## 8. Improvements (later, not urgent)
@@ -178,3 +182,4 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - `POST /api/users/{user}/sessions` silently overwrites an existing session
   that started in the same second (same ID). Fix: store refuses to create
   over an existing ID → 409 Conflict.
+- Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
