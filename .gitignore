@@ -1,0 +1,16 @@
+# Go
+/bin/
+
+# Runtime data (JSON stores) — back up separately, never commit
+/data/
+
+# Web
+node_modules/
+dist/
+*.local
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
