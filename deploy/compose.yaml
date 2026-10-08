@@ -1,5 +1,9 @@
+# For SSH or a local test: `docker compose up -d` pulls the published
+# images; `--build` builds them from this checkout instead. Values come
+# from .env. For the ZimaOS app form, use zimaos.yaml.
 services:
   home-tools:
+    image: ghcr.io/xanderongithub/home-tools:latest
     build: ..
     restart: unless-stopped
     volumes:
@@ -9,6 +13,7 @@ services:
     # Not published: only Caddy reaches it, over the compose network.
 
   caddy:
+    image: ghcr.io/xanderongithub/home-tools-caddy:latest
     build: .
     restart: unless-stopped
     env_file: .env
@@ -17,7 +22,6 @@ services:
     depends_on:
       - home-tools
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Certificates; keep across restarts (Let's Encrypt rate-limits).
       - caddy_data:/data
       - caddy_config:/config
