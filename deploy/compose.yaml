@@ -1,0 +1,18 @@
+services:
+  caddy:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "443:443"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Certificates; keep across restarts (Let's Encrypt rate-limits).
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,16 @@
+# HTTPS in front of home-tools (decisions #8, #9). Values come from .env.
+{
+	# Listen on 443 only: DNS-01 needs no port 80, and ZimaOS's own
+	# dashboard already uses it.
+	auto_https disable_redirects
+}
+
+*.{$DOMAIN} {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		# Check the challenge record with public DNS, not the UniFi box.
+		resolvers 1.1.1.1
+	}
+	# Caddy forwards the Host header unchanged; Go routes by it.
+	reverse_proxy {$UPSTREAM}
+}
