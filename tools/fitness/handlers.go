@@ -4,7 +4,10 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
 )
@@ -33,6 +36,27 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	mux.HandleFunc("GET /api/users/{user}/sessions", h.getSessions)
 	mux.HandleFunc("POST /api/users/{user}/sessions", h.postSession)
 	mux.HandleFunc("PUT /api/users/{user}/sessions/{id}", h.putSession)
+
+	// Exercise photos: an exercise's "images": ["Barbell_Squat/0.jpg"] is
+	// served at /images/Barbell_Squat/0.jpg.
+	mux.Handle("GET /images/", http.StripPrefix("/images/", imageServer(filepath.Join(store.dir, "images"))))
+}
+
+// imageServer serves files from dir. os.DirFS refuses paths that escape
+// dir (like "../"), so a crafted URL can't read other files. Directory
+// listings are turned off: only exact file paths work.
+func imageServer(dir string) http.Handler {
+	files := http.FileServerFS(os.DirFS(dir))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+		// Photos never change once imported, so browsers may cache them
+		// for a day instead of re-asking on every page view.
+		w.Header().Set("Cache-Control", "public, max-age=86400")
+		files.ServeHTTP(w, r)
+	})
 }
 
 // getExercise returns one exercise, or 404 if the ID is unknown.

@@ -69,7 +69,9 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 `./...` never walks node_modules.
 
 ### Commands
-    make run     go run ./cmd/home-tools
+    make run     go run ./cmd/home-tools  (API on :8080)
+    make web     fitness UI dev server on :5173 (proxies /api, /images to :8080)
+    pnpm --dir web install | check | build   web deps, type-check, production build
     make build   → bin/home-tools
     make check   vet + test (-race) + gofmt check (run before committing)
     go run ./cmd/fitness-import -data data/fitness   import exercises + photos (idempotent)
@@ -161,8 +163,12 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `SaveSession` rejects unknown users; routines' `created_by` must be a
   known user (`Open` loads users before routines). `GET /api/users`,
   `PUT /api/users/{id}`. Sessions: `GET /api/users/{user}/sessions?limit=n`,
-  `POST` (server assigns ID, 201), `PUT .../sessions/{id}`. Next: frontend.
-  pnpm workspace not yet created.
+  `POST` (server assigns ID, 201), `PUT .../sessions/{id}`. Exercise photos
+  at `GET /images/<path>` (no listings, can't escape the folder, 1-day
+  cache). Web: pnpm workspace in `web/` (apps only, no shared `ui`
+  package until a second app needs it); `web/apps/fitness` = Svelte 5 +
+  Vite + strict TS, placeholder page that calls the API. Next: fitness screens.
+
 
 ## 8. Improvements (later, not urgent)
 - Fitness handlers: `putExercise`/`putRoutine`/`putUser` are near-copies.

@@ -6,6 +6,8 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -241,6 +243,47 @@ func TestSessionHandlers(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if rec := do(tt.method, tt.path, tt.body); rec.Code != tt.wantStatus {
 				t.Errorf("status = %d, want %d; body %s", rec.Code, tt.wantStatus, rec.Body)
+			}
+		})
+	}
+}
+
+func TestImages(t *testing.T) {
+	store := newTestStore(t)
+	img := filepath.Join(store.dir, "images", "Squat", "0.jpg")
+	if err := os.MkdirAll(filepath.Dir(img), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(img, []byte("fake jpeg"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// A file outside images/ that must stay unreachable.
+	if err := os.WriteFile(filepath.Join(store.dir, "secret.txt"), []byte("secret"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	Register(mux, store, slog.New(slog.NewTextHandler(io.Discard, nil)))
+
+	tests := []struct {
+		name       string
+		path       string
+		wantStatus int
+	}{
+		{"photo", "/images/Squat/0.jpg", http.StatusOK},
+		{"missing photo", "/images/Squat/9.jpg", http.StatusNotFound},
+		{"no directory listing", "/images/Squat/", http.StatusNotFound},
+		{"no root listing", "/images/", http.StatusNotFound},
+		{"escape attempt", "/images/..%2Fsecret.txt", http.StatusNotFound},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			rec := httptest.NewRecorder()
+			mux.ServeHTTP(rec, httptest.NewRequest("GET", tt.path, nil))
+			if rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d", rec.Code, tt.wantStatus)
+			}
+			if strings.Contains(rec.Body.String(), "secret") {
+				t.Error("served a file outside images/")
 			}
 		})
 	}

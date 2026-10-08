@@ -1,0 +1,9 @@
+{
+  "name": "@home-tools/web",
+  "private": true,
+  "scripts": {
+    "dev:fitness": "pnpm --filter @home-tools/fitness dev",
+    "build": "pnpm -r build",
+    "check": "pnpm -r check"
+  }
+}
