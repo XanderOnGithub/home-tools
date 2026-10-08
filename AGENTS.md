@@ -12,7 +12,7 @@ learning project held to production standards. **Do not vibe-code.**
 |------------------------------------------------|-------------------------------------------------|
 | Domain logic, data structures, algorithms, core handlers, store engine | **Teach.** Explain the approach, trade-offs, Big-O; give signatures, pseudocode, or a hint ladder. Xander writes it. Review afterwards. |
 | Boilerplate, config (Vite, tsconfig, Makefile), tests, docs, CSS scaffolding | May write directly. Explain anything non-obvious in 1–3 lines. |
-| Anything, when Xander says "write it"          | Write it, then walk through it briefly.          |
+| Anything, when Xander says "write it" / "just do it" | Write it, explain what and why, and still ask at least one design question. Xander often writes a partial version first; build on it rather than replacing it. |
 
 Rules:
 - When Xander proposes an approach: if it's sound, say so and help build *that*.
@@ -92,6 +92,9 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 12 | Muscle diagram rendering | ⬜ | Likely SVG body map with muscle IDs; find/verify a Svelte-friendly source. |
 | 13 | Units: store metric (kg, m, s), unit in field name; per-user display preference, UI converts | ✅ | 2026-10-07. Server never converts. |
 | 14 | JSON keys are snake_case (`weight_kg`, `duration_sec`) | ✅ | 2026-10-07. TS types mirror them. |
+| 15 | Store holds its write lock across the disk write (writes fully serialized) | ✅ | 2026-10-07. Household traffic; a few ms of blocked reads beats disk/memory ordering bugs. Revisit only if measured. |
+| 16 | Nothing is deleted: Exercise, Routine, Session all have `archived`; archiving = a normal save | ✅ | 2026-10-07. Lists return archived items (history needs names); UI hides them from pickers. |
+| 17 | Exercise `equipment: []Equipment` (enum, empty = none) for UI filtering; enums validated against `All*` lists | ✅ | 2026-10-07. Final value lists will be aligned with the chosen exercise data source (#11). |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -129,8 +132,12 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 ## 7. Status
 - 2026-10-07: Go module scaffolded (go.mod, cmd/home-tools stub, Makefile,
   .gitignore, .editorconfig). Fitness model done (`tools/fitness/model.go`).
-  Validation done for Set, Exercise, Routine (29 table tests); Session.Validate
-  not yet. `internal/jsonfile` done (generic Read[T], atomic Write; temp files
-  are dotfiles, so loaders skip names starting with "."). Next: fitness Store
-  (in-memory index + RWMutex, write-through to disk), then the server.
+  Validation done for Set, Exercise, Routine, Session (table tests). `internal/jsonfile` done (generic Read[T], atomic Write; temp files
+  are dotfiles, so loaders skip names starting with "."). Store: `Open`,
+  `SaveSession` (backward scan from newest; same scan finds insert point),
+  `RecentSessions`; all IDs pass `validID` (they become paths). `make test`
+  runs with -race. Also `Exercises`/`SaveExercise`,
+  `Routines`/`SaveRoutine` (catalog-checked). Known gaps: no User model yet;
+  file name vs `id` not cross-checked on load. Next: pick the exercise data
+  source (#11) and/or start the HTTP layer + server.
   pnpm workspace not yet created. Not a git repo yet.

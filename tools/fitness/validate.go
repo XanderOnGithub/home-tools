@@ -10,6 +10,22 @@ import (
 // errors.Is (e.g. to answer HTTP 400 instead of 500).
 var ErrInvalid = errors.New("invalid")
 
+// validID reports whether id is safe to use as a file or folder name:
+// non-empty, only letters, digits, '-' and '_'. This blocks path tricks
+// like "../" since IDs become paths on disk.
+func validID(id string) bool {
+	if id == "" {
+		return false
+	}
+	for _, c := range id {
+		ok := c >= 'a' && c <= 'z' || c >= 'A' && c <= 'Z' || c >= '0' && c <= '9' || c == '-' || c == '_'
+		if !ok {
+			return false
+		}
+	}
+	return true
+}
+
 // Validate checks s against the metrics ex tracks:
 //   - no value may be negative
 //   - a tracked metric must be > 0, except weight on bodyweight exercises
@@ -50,9 +66,10 @@ func (s Set) Validate(ex Exercise) error {
 //   - ID and Name are required
 //   - at least one metric is tracked
 //   - at least one muscle activation, each in (0, 1]
+//   - metrics, muscles and equipment are known values
 func (e Exercise) Validate() error {
-	if e.ID == "" {
-		return fmt.Errorf("%w exercise: missing ID", ErrInvalid)
+	if !validID(e.ID) {
+		return fmt.Errorf("%w exercise: bad ID %q", ErrInvalid, e.ID)
 	}
 	if e.Name == "" {
 		return fmt.Errorf("%w exercise %s: missing name", ErrInvalid, e.ID)
@@ -60,10 +77,23 @@ func (e Exercise) Validate() error {
 	if len(e.Metrics) == 0 {
 		return fmt.Errorf("%w exercise %s: missing metrics", ErrInvalid, e.ID)
 	}
+	for _, m := range e.Metrics {
+		if !slices.Contains(AllMetrics, m) {
+			return fmt.Errorf("%w exercise %s: unknown metric %q", ErrInvalid, e.ID, m)
+		}
+	}
+	for _, eq := range e.Equipment {
+		if !slices.Contains(AllEquipment, eq) {
+			return fmt.Errorf("%w exercise %s: unknown equipment %q", ErrInvalid, e.ID, eq)
+		}
+	}
 	if len(e.Activation) == 0 {
 		return fmt.Errorf("%w exercise %s: missing muscle activation", ErrInvalid, e.ID)
 	}
 	for m, v := range e.Activation {
+		if !slices.Contains(AllMuscles, m) {
+			return fmt.Errorf("%w exercise %s: unknown muscle %q", ErrInvalid, e.ID, m)
+		}
 		if v <= 0 || v > 1 {
 			return fmt.Errorf("%w exercise %s: activation %s=%g not in (0, 1]", ErrInvalid, e.ID, m, v)
 		}
@@ -79,8 +109,8 @@ func (e Exercise) Validate() error {
 // Whether each ExerciseID exists in the catalog is checked by the store,
 // which has the catalog; Validate only sees the routine itself.
 func (r Routine) Validate() error {
-	if r.ID == "" {
-		return fmt.Errorf("%w routine: missing ID", ErrInvalid)
+	if !validID(r.ID) {
+		return fmt.Errorf("%w routine: bad ID %q", ErrInvalid, r.ID)
 	}
 	if r.Name == "" {
 		return fmt.Errorf("%w routine %s: missing name", ErrInvalid, r.ID)
@@ -97,6 +127,38 @@ func (r Routine) Validate() error {
 		}
 		if ex.SuggestedSets < 0 {
 			return fmt.Errorf("%w routine %s: exercise %d has negative suggested_sets", ErrInvalid, r.ID, i)
+		}
+	}
+	return nil
+}
+
+// Validate checks s's own rules:
+//   - ID and UserID are valid IDs (they become paths on disk)
+//   - StartedAt is set; EndedAt, if set, is not before it
+//   - BodyWeightKg is not negative
+//   - every entry has an ExerciseID
+//
+// Checking entries against the exercise catalog (and each Set against its
+// exercise) is done by the store, which has the catalog.
+func (s Session) Validate() error {
+	if !validID(s.ID) {
+		return fmt.Errorf("%w session: bad ID %q", ErrInvalid, s.ID)
+	}
+	if !validID(s.UserID) {
+		return fmt.Errorf("%w session %s: bad user_id %q", ErrInvalid, s.ID, s.UserID)
+	}
+	if s.StartedAt.IsZero() {
+		return fmt.Errorf("%w session %s: missing started_at", ErrInvalid, s.ID)
+	}
+	if !s.EndedAt.IsZero() && s.EndedAt.Before(s.StartedAt) {
+		return fmt.Errorf("%w session %s: ended before it started", ErrInvalid, s.ID)
+	}
+	if s.BodyWeightKg < 0 {
+		return fmt.Errorf("%w session %s: negative body_weight_kg", ErrInvalid, s.ID)
+	}
+	for i, e := range s.Entries {
+		if e.ExerciseID == "" {
+			return fmt.Errorf("%w session %s: entry %d missing exercise_id", ErrInvalid, s.ID, i)
 		}
 	}
 	return nil

@@ -69,6 +69,10 @@ func TestExerciseValidate(t *testing.T) {
 		{"activation zero", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: 0} }), true},
 		{"activation over 1", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: 1.01} }), true},
 		{"activation negative", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: -0.5} }), true},
+		{"unknown metric", with(func(e *Exercise) { e.Metrics = []Metric{"rep"} }), true},
+		{"unknown muscle", with(func(e *Exercise) { e.Activation = map[Muscle]float64{"quadz": 1} }), true},
+		{"unknown equipment", with(func(e *Exercise) { e.Equipment = []Equipment{"barbel"} }), true},
+		{"known equipment", with(func(e *Exercise) { e.Equipment = []Equipment{EquipmentBarbell, EquipmentBench} }), false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -7,6 +7,7 @@ import "time"
 
 // Exercise is a shared catalog entry. Sessions reference it by ID, so
 // exercises are archived rather than deleted to keep history resolvable.
+// (Every model is archived, never deleted: see Archived fields.)
 type Exercise struct {
 	ID   string `json:"id"`
 	Name string `json:"name"`
@@ -21,6 +22,10 @@ type Exercise struct {
 	// Metrics lists which Set fields this exercise records.
 	Metrics []Metric `json:"metrics"`
 
+	// Equipment lists everything needed; empty means none. The UI filters
+	// on it ("what can I do with what I have").
+	Equipment []Equipment `json:"equipment,omitempty"`
+
 	Archived bool `json:"archived,omitempty"`
 }
 
@@ -33,6 +38,9 @@ const (
 	MetricDistance Metric = "distance"
 	MetricDuration Metric = "duration"
 )
+
+// AllMetrics lists every valid Metric (for validation and UI options).
+var AllMetrics = []Metric{MetricReps, MetricWeight, MetricDistance, MetricDuration}
 
 // Muscle values double as element IDs in the body diagram SVG.
 type Muscle string
@@ -54,6 +62,35 @@ const (
 	MuscleCalves     Muscle = "calves"
 )
 
+// AllMuscles lists every valid Muscle (for validation and UI options).
+var AllMuscles = []Muscle{
+	MuscleChest, MuscleShoulders, MuscleBiceps, MuscleTriceps, MuscleForearms,
+	MuscleAbs, MuscleObliques, MuscleLats, MuscleTraps, MuscleLowerBack,
+	MuscleGlutes, MuscleQuads, MuscleHamstrings, MuscleCalves,
+}
+
+// Equipment is something an exercise needs.
+type Equipment string
+
+const (
+	EquipmentBarbell    Equipment = "barbell"
+	EquipmentDumbbell   Equipment = "dumbbell"
+	EquipmentKettlebell Equipment = "kettlebell"
+	EquipmentCable      Equipment = "cable"
+	EquipmentMachine    Equipment = "machine"
+	EquipmentBench      Equipment = "bench"
+	EquipmentPullUpBar  Equipment = "pull_up_bar"
+	EquipmentBand       Equipment = "band"
+	EquipmentTreadmill  Equipment = "treadmill"
+)
+
+// AllEquipment lists every valid Equipment (for validation and UI filters).
+var AllEquipment = []Equipment{
+	EquipmentBarbell, EquipmentDumbbell, EquipmentKettlebell, EquipmentCable,
+	EquipmentMachine, EquipmentBench, EquipmentPullUpBar, EquipmentBand,
+	EquipmentTreadmill,
+}
+
 // ---- Planning ----
 
 // Routine is a shared, reusable workout template, stored as
@@ -64,6 +101,7 @@ type Routine struct {
 	Name      string            `json:"name"`
 	CreatedBy string            `json:"created_by"` // user ID
 	Exercises []RoutineExercise `json:"exercises"`  // in suggested order
+	Archived  bool              `json:"archived,omitempty"`
 }
 
 // RoutineExercise is one step of a routine. SuggestedSets is a hint shown
@@ -86,6 +124,7 @@ type Session struct {
 	EndedAt      time.Time `json:"ended_at,omitzero"`
 	BodyWeightKg float64   `json:"body_weight_kg,omitempty"`
 	Entries      []Entry   `json:"entries"`
+	Archived     bool      `json:"archived,omitempty"`
 }
 
 // Entry is one exercise performed within a session. Sets may be empty
