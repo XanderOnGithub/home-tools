@@ -253,3 +253,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   instead of seconds; distance metric not shown yet; rest length per
   exercise or per goal; optional sound when rest ends (vibration is
   Android-only).
+- Profile picker → app: a smooth wipe transition in the chosen person's
+  accent color when a profile is tapped (respect reduced motion: fade or
+  instant). Likely the View Transitions API or a full-screen accent
+  overlay that sweeps across, then reveals home.
