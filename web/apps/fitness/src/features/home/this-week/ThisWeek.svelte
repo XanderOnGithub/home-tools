@@ -1,86 +1,105 @@
 <!--
-  "This week": workouts done vs. planned, and a Monday-to-Sunday row.
-  Each day shows done (filled), planned (ring), missed (faded ring: a past
-  planned day with no workout) or rest (small dot); the same state is
-  spelled out in hidden text, so it never relies on color.
+  "This week", drawn with tiny copies of the person's blob: filled = worked
+  out, outlined = planned, dashed = missed (a past planned day with no
+  workout), small dot = rest. Each day's state is also spelled out in
+  hidden text, so it never relies on shape or color alone.
 -->
 <script lang="ts">
-  import { Card } from '@/components/card'
   import { isoDate, weekDays, weekdayKey } from '@/dates'
   import type { FitnessProfile } from '@/features/fitness-profile'
+  import { blobPath } from '@/features/profiles/blob'
+  import type { Profile } from '@/features/profiles/types'
   import type { Routine } from '@/features/routines'
   import type { Session } from '@/features/sessions'
 
   let {
+    profile,
     fitness,
     sessions,
     routines,
-  }: { fitness: FitnessProfile; sessions: Session[]; routines: Routine[] } = $props()
+  }: { profile: Profile; fitness: FitnessProfile; sessions: Session[]; routines: Routine[] } = $props()
 
   const today = new Date()
   const todayISO = isoDate(today)
+
+  let blob = $derived(blobPath(profile.id))
 
   let days = $derived(
     weekDays(today).map((d) => {
       const iso = isoDate(d)
       const routineId = fitness.schedule?.[weekdayKey(d)]
+      const done = sessions.some((s) => isoDate(new Date(s.started_at)) === iso)
+      const planned = routineId ? (routines.find((r) => r.id === routineId)?.name ?? 'Workout') : null
+      const state = done ? 'done' : planned ? (iso < todayISO ? 'missed' : 'planned') : 'rest'
       return {
         iso,
+        state,
+        planned,
         name: d.toLocaleDateString(undefined, { weekday: 'long' }),
-        initial: d.toLocaleDateString(undefined, { weekday: 'narrow' }),
-        done: sessions.some((s) => isoDate(new Date(s.started_at)) === iso),
-        planned: routineId ? (routines.find((r) => r.id === routineId)?.name ?? 'Workout') : null,
+        short: d.toLocaleDateString(undefined, { weekday: 'short' }),
         isToday: iso === todayISO,
-        isPast: iso < todayISO, // "YYYY-MM-DD" strings compare like dates
       }
     }),
   )
 
-  let done = $derived(days.filter((d) => d.done).length)
+  let done = $derived(days.filter((d) => d.state === 'done').length)
   let planned = $derived(days.filter((d) => d.planned).length)
 </script>
 
-<Card title="This week">
-  <p class="summary">
-    {#if planned > 0}
-      <strong>{done}</strong> of {planned} workouts
-    {:else}
-      <strong>{done}</strong> {done === 1 ? 'workout' : 'workouts'}
-    {/if}
-  </p>
+<section class="week" aria-labelledby="week-title">
+  <div class="head">
+    <h2 id="week-title">This week</h2>
+    <p class="count">
+      {#if planned > 0}{done} of {planned} done{:else}{done} {done === 1 ? 'workout' : 'workouts'}{/if}
+    </p>
+  </div>
 
   <ol class="days">
     {#each days as day (day.iso)}
-      <li class="day" class:today={day.isToday}>
-        <span class="initial" aria-hidden="true">{day.initial}</span>
-        <span
-          class="mark"
-          class:done={day.done}
-          class:planned={!day.done && day.planned}
-          class:missed={!day.done && day.planned && day.isPast}
-          aria-hidden="true"
-        ></span>
+      <li class="day {day.state}" class:today={day.isToday}>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+          {#if day.state === 'rest'}
+            <circle cx="50" cy="50" r="9" />
+          {:else}
+            <path d={blob} />
+          {/if}
+        </svg>
+        <span class="short" aria-hidden="true">{day.short}</span>
         <span class="visually-hidden">
           {day.name}{day.isToday ? ' (today)' : ''}:
-          {#if day.done}worked out
-          {:else if day.planned && day.isPast}missed, {day.planned}
-          {:else if day.planned}planned, {day.planned}
+          {#if day.state === 'done'}worked out
+          {:else if day.state === 'missed'}missed, {day.planned}
+          {:else if day.state === 'planned'}planned, {day.planned}
           {:else}rest{/if}
         </span>
       </li>
     {/each}
   </ol>
-</Card>
+</section>
 
 <style>
-  .summary {
-    margin: 0;
-    font-size: var(--text-lg);
+  .week {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
   }
 
-  .summary strong {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+  .head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+
+  h2 {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
+  }
+
+  .count {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-weight: var(--weight-medium);
   }
 
   .days {
@@ -99,54 +118,53 @@
     gap: var(--space-2);
   }
 
-  .initial {
+  svg {
+    width: 100%;
+    max-width: 2.75rem;
+    aspect-ratio: 1;
+    overflow: visible;
+  }
+
+  /* vector-effect keeps outlines 2px however big the blob is drawn. */
+  path,
+  circle {
+    vector-effect: non-scaling-stroke;
+    stroke-width: 2px;
+  }
+
+  .done path {
+    fill: var(--color-accent);
+    stroke: var(--color-accent);
+  }
+
+  .planned path {
+    fill: none;
+    stroke: var(--color-accent);
+  }
+
+  .missed path {
+    fill: none;
+    stroke: var(--color-border-strong);
+    stroke-dasharray: 4 4;
+  }
+
+  .rest circle {
+    fill: var(--color-border);
+    stroke: none;
+  }
+
+  .short {
     color: var(--color-text-muted);
     font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
   }
 
-  .today .initial {
-    color: var(--color-text);
-  }
-
-  /* Rest: small dot. Planned: ring. Done: filled. Today: underline bar. */
-  .mark {
-    display: block;
-    width: 0.5rem;
-    height: 0.5rem;
-    margin: 0.5rem 0;
-    border-radius: var(--radius-full);
-    background: var(--color-border);
-  }
-
-  .mark.planned,
-  .mark.done {
-    width: 1.5rem;
-    height: 1.5rem;
-    margin: 0;
-  }
-
-  .mark.planned {
-    background: none;
-    border: 2px solid var(--color-accent);
-  }
-
-  .mark.done {
-    background: var(--color-accent);
-  }
-
-  /* Missed: same ring, faded and dashed, so it reads "didn't happen"
-   * without looking like an error (no red: nothing is wrong). */
-  .mark.missed {
-    border-color: var(--color-border-strong);
-    border-style: dashed;
-  }
-
-  .today::after {
-    content: '';
-    width: 1.25rem;
-    height: 3px;
+  /* Today: bold label in a pill, so it's findable without color. */
+  .today .short {
+    padding: 0 var(--space-2);
     border-radius: var(--radius-full);
     background: var(--color-text);
+    color: var(--color-bg);
+    font-weight: var(--weight-bold);
   }
 </style>

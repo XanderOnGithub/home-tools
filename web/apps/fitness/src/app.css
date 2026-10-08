@@ -67,3 +67,93 @@ textarea {
   clip-path: inset(50%);
   white-space: nowrap;
 }
+
+/* Buttons. Shared by every screen: .btn + one variant. Links styled as
+ * buttons (e.g. "New routine" navigates) use the same classes on <a>. */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: var(--touch-target);
+  padding: 0 var(--space-5);
+  border: 1px solid transparent;
+  border-radius: var(--radius-full);
+  background: none;
+  font-weight: var(--weight-semibold);
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    border-color var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
+}
+
+.btn:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.btn-primary {
+  background: var(--color-accent);
+  color: var(--color-on-accent);
+}
+
+.btn-primary:active {
+  background: var(--color-accent-pressed);
+}
+
+.btn-secondary {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+}
+
+.btn-quiet {
+  color: var(--color-text-muted);
+}
+
+.btn-danger {
+  background: var(--color-danger);
+  color: var(--color-on-danger);
+}
+
+.btn-text-danger {
+  color: var(--color-danger-text);
+}
+
+/* Square icon-only button; give it an aria-label. */
+.btn-icon {
+  width: var(--touch-target);
+  padding: 0;
+  color: var(--color-text-muted);
+}
+
+.btn-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+@media (hover: hover) {
+  .btn-primary:hover {
+    background: var(--color-accent-hover);
+  }
+  .btn-secondary:hover {
+    border-color: var(--color-text);
+  }
+  .btn-quiet:hover,
+  .btn-icon:hover {
+    color: var(--color-text);
+    background: var(--color-surface);
+  }
+}
+
+.btn-icon:disabled {
+  cursor: default;
+  opacity: 0.35;
+}

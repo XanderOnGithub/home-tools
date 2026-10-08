@@ -1,11 +1,10 @@
 <!--
-  Weekly weight check-in (decision #28). Pre-filled with the last weight,
-  so "no change" is one tap. Skip records nothing (no invented data point)
-  and just hides the card until next week.
+  Weekly weight check-in (decision #28): one slim row. Pre-filled with the
+  last weight, so "no change" is one tap. Skip records nothing (no
+  invented data point) and just hides it until next week.
 -->
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { Card } from '@/components/card'
   import { isoWeek, today } from '@/dates'
   import {
     saveFitnessProfile,
@@ -71,49 +70,46 @@
   }
 </script>
 
-<Card title="Weekly check-in">
-  <form class="form" onsubmit={save} novalidate>
-    <label class="field">
-      <span>Your weight this week</span>
-      <span class="input">
-        <input type="text" inputmode="decimal" maxlength="5" bind:value autocomplete="off" />
-        <span class="unit">{unit}</span>
-      </span>
-    </label>
-    {#if last}
-      <p class="muted">Last: {toDisplay(last.weight_kg)} {unit}</p>
-    {/if}
-    {#if error}
-      <p class="error" role="alert">{error}</p>
-    {/if}
-    <div class="actions">
-      <button type="button" class="button quiet" onclick={skip} disabled={busy}>Skip this week</button>
-      <button type="submit" class="button primary" disabled={busy}>Save</button>
-    </div>
-  </form>
-</Card>
+<form class="check-in" onsubmit={save} novalidate aria-labelledby="check-in-label">
+  <label class="label" id="check-in-label" for="check-in-weight">Weekly weight</label>
+  <!-- Input and buttons wrap as one unit, never apart. -->
+  <span class="controls">
+    <span class="input">
+      <input id="check-in-weight" type="text" inputmode="decimal" maxlength="5" bind:value autocomplete="off" />
+      <span class="unit">{unit}</span>
+    </span>
+    <button type="submit" class="button primary" disabled={busy}>Save</button>
+    <button type="button" class="button quiet" onclick={skip} disabled={busy}>Skip</button>
+  </span>
+  {#if error}
+    <p class="error" role="alert">{error}</p>
+  {/if}
+</form>
 
 <style>
-  .form {
+  .check-in {
     display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2) var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
-  .field {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-    font-weight: var(--weight-medium);
+  .label {
+    flex: 1;
+    min-width: 8rem;
+    font-weight: var(--weight-semibold);
   }
 
   .input {
     display: flex;
     align-items: center;
     gap: var(--space-2);
-    width: fit-content;
     min-height: var(--touch-target);
-    padding: 0 var(--space-4);
+    padding: 0 var(--space-3);
     border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
     background: var(--color-bg);
@@ -129,36 +125,33 @@
     padding: 0;
     border: none;
     background: none;
-    font-size: var(--text-lg);
     font-weight: var(--weight-semibold);
+    text-align: right;
   }
 
   .input input:focus-visible {
     outline: none;
   }
 
-  .unit,
-  .muted {
+  .unit {
     color: var(--color-text-muted);
   }
 
-  p {
-    margin: 0;
+  .controls {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
   }
 
   .error {
+    flex-basis: 100%;
+    margin: 0;
     color: var(--color-danger-text);
-  }
-
-  .actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: var(--space-2);
   }
 
   .button {
     min-height: var(--touch-target);
-    padding: 0 var(--space-5);
+    padding: 0 var(--space-4);
     border: none;
     border-radius: var(--radius-full);
     font-weight: var(--weight-semibold);

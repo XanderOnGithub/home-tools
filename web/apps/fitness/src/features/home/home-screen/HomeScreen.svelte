@@ -11,7 +11,7 @@
   import { ProfileAvatar } from '@/features/profiles/profile-avatar'
   import type { Profile } from '@/features/profiles/types'
   import { getRoutines, type Routine } from '@/features/routines'
-  import { getRecentSessions, type Session } from '@/features/sessions'
+  import { getRecentSessions, inProgress, type Session } from '@/features/sessions'
 
   let { profile, fitness = $bindable() }: { profile: Profile; fitness: FitnessProfile } = $props()
 
@@ -80,8 +80,10 @@
     {#if checkInDue}
       <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
     {/if}
-    <UpNext {fitness} sessions={thisWeek} {routines} />
-    <ThisWeek {fitness} sessions={thisWeek} {routines} />
+    <div class="grid">
+      <UpNext {profile} {fitness} sessions={thisWeek} {routines} active={inProgress(sessions)} />
+      <ThisWeek {profile} {fitness} sessions={thisWeek} {routines} />
+    </div>
   {/if}
 </div>
 
@@ -89,7 +91,22 @@
   .home {
     display: flex;
     flex-direction: column;
-    gap: var(--space-4);
+    gap: var(--space-5);
+  }
+
+  /* Phones: one column. Wide screens: Today (the hero) wider, the week
+   * beside it. */
+  .grid {
+    display: grid;
+    gap: var(--space-6);
+    align-items: start;
+  }
+
+  @media (min-width: 56rem) {
+    .grid {
+      grid-template-columns: 3fr 2fr;
+      gap: var(--space-7);
+    }
   }
 
   .greeting {

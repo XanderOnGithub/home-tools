@@ -6,9 +6,11 @@
   import { ProfilePicker } from '@/features/profiles/profile-picker'
   import { forgetProfile } from '@/features/profiles/remembered'
   import type { Profile } from '@/features/profiles/types'
+  import { RoutineEditor } from '@/features/routines/routine-editor'
   import { RoutinesScreen } from '@/features/routines/routines-screen'
   import { AppShell } from '@/features/shell/app-shell'
   import { NotFound } from '@/features/shell/not-found'
+  import { WorkoutMode } from '@/features/workout/workout-mode'
   import { router } from '@/router'
 
   // Gates, in order:
@@ -19,9 +21,21 @@
   let fitness = $state<FitnessProfile | null>(null)
   let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
+  // /routines/new → editor for a new routine; /routines/<id> → edit it.
+  let routineId = $derived(router.path.match(/^\/routines\/([^/]+)$/)?.[1] ?? null)
+  // /workout/<session id> → workout mode (full screen, no navigation).
+  let workoutId = $derived(router.path.match(/^\/workout\/([^/]+)$/)?.[1] ?? null)
+
   const TITLES: Record<string, string> = { '/': 'Home', '/routines': 'Routines', '/history': 'History' }
   $effect(() => {
-    document.title = `${TITLES[router.path] ?? 'Not found'} · Fitness`
+    const title = workoutId
+      ? 'Workout'
+      : routineId
+        ? routineId === 'new'
+          ? 'New routine'
+          : 'Edit routine'
+        : TITLES[router.path]
+    document.title = `${title ?? 'Not found'} · Fitness`
   })
 
   // The chosen person's color becomes the accent for the whole app.
@@ -63,12 +77,20 @@
   </main>
 {:else if status === 'ready' && !fitness}
   <OnboardingFlow {profile} oncomplete={(fp) => (fitness = fp)} />
+{:else if status === 'ready' && fitness && workoutId}
+  {#key workoutId}
+    <WorkoutMode {profile} sessionId={decodeURIComponent(workoutId)} />
+  {/key}
 {:else if status === 'ready' && fitness}
   <AppShell {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <HomeScreen {profile} bind:fitness />
     {:else if router.path === '/routines'}
-      <RoutinesScreen />
+      <RoutinesScreen bind:fitness />
+    {:else if routineId}
+      {#key routineId}
+        <RoutineEditor {profile} id={routineId === 'new' ? null : decodeURIComponent(routineId)} />
+      {/key}
     {:else if router.path === '/history'}
       <HistoryScreen {profile} />
     {:else}

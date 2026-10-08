@@ -10,3 +10,5 @@ export type Routine = {
 }
 
 export const getRoutines = () => api.get<Routine[]>('/api/routines')
+
+export const saveRoutine = (r: Routine) => api.put<Routine>(`/api/routines/${r.id}`, r)

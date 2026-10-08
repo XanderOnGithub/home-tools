@@ -115,6 +115,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 27 | Fixed weekly schedule (Mon = Upper, Wed = rest…), not a rotation. Home's "Up next" = today's routine | ✅ | 2026-10-08. Easier to understand; missed days aren't carried over. |
 | 28 | Body weight is a per-user log `users/<id>/weights.json` (`[{date, weight_kg}]`, ≤1 entry per day). Weekly check-in card on home: input pre-filled with the last weight; Skip records nothing and hides the card for that ISO week. `body_weight_kg` removed from `Session` | ✅ | 2026-10-08. Supersedes the weight part of #21: one source of truth; skipping never invents a measurement. |
 | 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
+| 30 | Routines are one shared household list of plans (anyone creates/edits); each person's weekly schedule (their `fitness.json`) picks which routine on which day. Routines page = "Your week" planner + the shared list; create/edit is its own page (`/routines/new`, `/routines/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -214,7 +215,24 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   profile-dialog` (add + edit + remove), manage mode in the picker. API
   errors from a stale server say "may need a restart". Vite dev proxy
   target is overridable with `API_URL` (for testing against scratch data).
-  Next: home (this week, up next, weight check-in).
+  Navigation: tiny History-API router (`src/router`), `AppShell` (header
+  links on wide screens, bottom tabs on phones, shared `--page-width`),
+  `ProfileMenu` (blob + caret, native Popover). Home: greeting + blob,
+  Today hero (accent panel, exercise preview), week drawn with the user's
+  blob (done/planned/missed/rest), slim weekly weight check-in. Routines
+  page is a placeholder; History lists sessions. Routines (#30): list +
+  "Your week" planner (auto-saves the schedule), editor at
+  `/routines/new` and `/routines/<id>` (name, ordered exercises with
+  optional suggested sets, up/down reorder, archive), `ExercisePicker`
+  (search + muscle/equipment filters over the cached catalog). Shared
+  `.btn` classes in app.css; shared `src/ids`. Workout mode at
+  `/workout/<session id>` (full screen, outside AppShell): one exercise
+  at a time, sets pre-filled from the last finished session with that
+  exercise, ✓ saves the whole session (PUT) and starts a rest timer
+  (default 90 s, ±15 s, skip; computed from an end timestamp; vibrates
+  where supported); Leave keeps it in progress (home shows Resume),
+  Finish sets `ended_at`. Screen Wake Lock while open (HTTPS/localhost
+  only, see #8). Next: decide TLS (#8) so wake lock works on phones.
 
 
 ## 8. Improvements (later, not urgent)
@@ -227,3 +245,11 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
 - Muscle recovery map (own screen): per-muscle fatigue computed from recent
   sessions × exercise `activation`, decaying over days; "needs rest" view.
+- Older components (picker, profile dialog, onboarding, check-in, menu) still
+  define their own button styles; move them to the shared `.btn` classes
+  in `app.css`.
+- Workout mode: discard a workout; start a workout on a rest day / from any
+  routine (today only from the schedule); duration input as min:sec
+  instead of seconds; distance metric not shown yet; rest length per
+  exercise or per goal; optional sound when rest ends (vibration is
+  Android-only).
