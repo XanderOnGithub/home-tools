@@ -30,13 +30,13 @@ type Store struct {
 // no data yet; any unreadable or invalid file fails the whole open.
 func Open(dir string) (*Store, error) {
 	// Load Exercises
-	exercises, err := loadDir[Exercise](filepath.Join(dir, "exercises"))
+	exercises, err := loadDir(filepath.Join(dir, "exercises"), func(e Exercise) string { return e.ID })
 	if err != nil {
 		return nil, err
 	}
 
 	// Load Routines
-	routines, err := loadDir[Routine](filepath.Join(dir, "routines"))
+	routines, err := loadDir(filepath.Join(dir, "routines"), func(r Routine) string { return r.ID })
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +60,9 @@ func Open(dir string) (*Store, error) {
 		s.exercises[ex.ID] = ex
 	}
 	for _, r := range routines {
+		if err := s.checkRoutineRefs(r); err != nil {
+			return nil, fmt.Errorf("load routine %s: %w", r.ID, err)
+		}
 		s.routines[r.ID] = r
 	}
 
@@ -68,9 +71,21 @@ func Open(dir string) (*Store, error) {
 		if !u.IsDir() {
 			continue
 		}
-		sessions, err := loadDir[Session](filepath.Join(dir, "users", u.Name(), "sessions"))
+		sessDir := filepath.Join(dir, "users", u.Name(), "sessions")
+		sessions, err := loadDir(sessDir, func(s Session) string { return s.ID })
 		if err != nil {
 			return nil, err
+		}
+		// Saves write to users/<UserID>/, so a mismatch would move the
+		// session to another user's folder on its next edit.
+		for _, sess := range sessions {
+			path := filepath.Join(sessDir, sess.ID+".json")
+			if sess.UserID != u.Name() {
+				return nil, fmt.Errorf("load %s: user_id %q does not match folder %q", path, sess.UserID, u.Name())
+			}
+			if err := s.checkSessionRefs(sess); err != nil {
+				return nil, fmt.Errorf("load %s: %w", path, err)
+			}
 		}
 		s.sessions[u.Name()] = sessions
 	}
@@ -101,18 +116,8 @@ func (s *Store) SaveSession(sess Session) (Session, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	// Check every entry against the catalog: the exercise must exist and
-	// each set must fit the metrics it tracks.
-	for _, e := range sess.Entries {
-		ex, ok := s.exercises[e.ExerciseID]
-		if !ok {
-			return Session{}, fmt.Errorf("%w session %s: unknown exercise %q", ErrInvalid, sess.ID, e.ExerciseID)
-		}
-		for _, set := range e.Sets {
-			if err := set.Validate(ex); err != nil {
-				return Session{}, err
-			}
-		}
+	if err := s.checkSessionRefs(sess); err != nil {
+		return Session{}, err
 	}
 
 	path := filepath.Join(s.dir, "users", sess.UserID, "sessions", sess.ID+".json")
@@ -202,15 +207,42 @@ func (s *Store) SaveRoutine(r Routine) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	for _, re := range r.Exercises {
-		if _, ok := s.exercises[re.ExerciseID]; !ok {
-			return fmt.Errorf("%w routine %s: unknown exercise %q", ErrInvalid, r.ID, re.ExerciseID)
-		}
+	if err := s.checkRoutineRefs(r); err != nil {
+		return err
 	}
 	if err := jsonfile.Write(filepath.Join(s.dir, "routines", r.ID+".json"), r); err != nil {
 		return err
 	}
 	s.routines[r.ID] = r
+	return nil
+}
+
+// checkSessionRefs checks every entry against the catalog: the exercise
+// must exist and each set must fit the metrics it tracks. Callers hold
+// s.mu (or own s exclusively, as Open does).
+func (s *Store) checkSessionRefs(sess Session) error {
+	for _, e := range sess.Entries {
+		ex, ok := s.exercises[e.ExerciseID]
+		if !ok {
+			return fmt.Errorf("%w session %s: unknown exercise %q", ErrInvalid, sess.ID, e.ExerciseID)
+		}
+		for _, set := range e.Sets {
+			if err := set.Validate(ex); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// checkRoutineRefs checks that every exercise r lists exists in the
+// catalog. Same locking rule as checkSessionRefs.
+func (s *Store) checkRoutineRefs(r Routine) error {
+	for _, re := range r.Exercises {
+		if _, ok := s.exercises[re.ExerciseID]; !ok {
+			return fmt.Errorf("%w routine %s: unknown exercise %q", ErrInvalid, r.ID, re.ExerciseID)
+		}
+	}
 	return nil
 }
 
@@ -226,11 +258,25 @@ func sortedByName[T any](m map[string]T, name func(T) string) []T {
 	return out
 }
 
+// validator is any model that can check itself. A Go constraint can
+// require methods but not fields, which is why loadDir also takes id.
+type validator interface {
+	Validate() error
+}
+
 // loadDir decodes every *.json file in dir, in filename order (os.ReadDir
 // sorts by name, so timestamp-named sessions come back oldest first).
 // Dotfiles are skipped: they are temp files from jsonfile.Write.
 // A missing dir means no data yet, not an error.
-func loadDir[T any](dir string) ([]T, error) {
+//
+// Each item must pass its own Validate (the files are hand-editable, so
+// never trust them more than an API request). Catalog references are the
+// store's job, checked in Open once everything is loaded.
+//
+// Each item's id(v) must equal its filename (minus .json): saves write to
+// <id>.json, so a mismatch (e.g. a hand-copied file) would make the next
+// save overwrite a different file. Fail loudly rather than lose data.
+func loadDir[T validator](dir string, id func(T) string) ([]T, error) {
 	entries, err := os.ReadDir(dir)
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
@@ -245,9 +291,16 @@ func loadDir[T any](dir string) ([]T, error) {
 		if e.IsDir() || strings.HasPrefix(name, ".") || filepath.Ext(name) != ".json" {
 			continue
 		}
-		v, err := jsonfile.Read[T](filepath.Join(dir, name))
+		path := filepath.Join(dir, name)
+		v, err := jsonfile.Read[T](path)
 		if err != nil {
 			return nil, err
+		}
+		if want := strings.TrimSuffix(name, ".json"); id(v) != want {
+			return nil, fmt.Errorf("load %s: id %q does not match filename", path, id(v))
+		}
+		if err := v.Validate(); err != nil {
+			return nil, fmt.Errorf("load %s: %w", path, err)
 		}
 		items = append(items, v)
 	}

@@ -140,8 +140,10 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `SaveSession` (backward scan from newest; same scan finds insert point),
   `RecentSessions`; all IDs pass `validID` (they become paths). `make test`
   runs with -race. Also `Exercises`/`SaveExercise`,
-  `Routines`/`SaveRoutine` (catalog-checked). Known gaps: no User model yet;
-  file name vs `id` not cross-checked on load. Exercise catalog import works
+  `Routines`/`SaveRoutine` (catalog-checked). `Open` trusts files no more
+  than API input: each must pass `Validate`, `id` must match its filename,
+  session `user_id` must match its folder, and catalog refs must resolve;
+  any failure aborts startup with the file's path. Known gap: no User model yet. Exercise catalog import works
   (876 exercises, 1,746 photos, ~30 s, idempotent). Next: HTTP layer + server
   (handlers: `errors.Is(err, ErrInvalid)` → 400 with err's message as
   `{"error": ...}`; anything else → 500 with a generic message, real error

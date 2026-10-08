@@ -13,9 +13,9 @@ import (
 func TestLoadDir(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
-		"b.json":          `{"reps":2}`,
-		"a.json":          `{"reps":1}`,
-		".a.json.tmp-123": `{"reps":99}`, // leftover temp file
+		"b.json":          `{"id":"b","name":"B","created_by":"xander","exercises":[{"exercise_id":"x"}]}`,
+		"a.json":          `{"id":"a","name":"A","created_by":"xander","exercises":[{"exercise_id":"x"}]}`,
+		".a.json.tmp-123": `{"id":"tmp"}`, // leftover temp file
 		"notes.txt":       `ignore me`,
 	}
 	for name, body := range files {
@@ -24,17 +24,84 @@ func TestLoadDir(t *testing.T) {
 		}
 	}
 
-	got, err := loadDir[Set](dir)
+	got, err := loadDir(dir, routineID)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 || got[0].Reps != 1 || got[1].Reps != 2 {
-		t.Errorf("loadDir() = %+v, want reps [1 2] in filename order", got)
+	if len(got) != 2 || got[0].ID != "a" || got[1].ID != "b" {
+		t.Errorf("loadDir() = %+v, want ids [a b] in filename order", got)
 	}
 }
 
+func TestLoadDirIDMismatch(t *testing.T) {
+	dir := t.TempDir()
+	// A hand-copied file: pull.json still says it's "push".
+	if err := os.WriteFile(filepath.Join(dir, "pull.json"), []byte(`{"id":"push"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := loadDir(dir, routineID); err == nil {
+		t.Error("loadDir() err = nil, want id/filename mismatch error")
+	}
+}
+
+func TestOpenRejectsBadData(t *testing.T) {
+	squat := `{"id":"squat","name":"Squat","activation":{"quadriceps":1},"metrics":["reps","weight"]}`
+	tests := []struct {
+		name  string
+		files map[string]string
+	}{
+		{"invalid exercise", map[string]string{
+			"exercises/squat.json": `{"id":"squat","name":"Squat","activation":{"quads":1},"metrics":["reps"]}`,
+		}},
+		{"routine with unknown exercise", map[string]string{
+			"routines/legs.json": `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`,
+		}},
+		{"session with unknown exercise", map[string]string{
+			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5}]}]}`,
+		}},
+		{"session set with negative weight", map[string]string{
+			"exercises/squat.json":                            squat,
+			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5,"weight_kg":-1}]}]}`,
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for rel, body := range tt.files {
+				path := filepath.Join(dir, rel)
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := Open(dir); !errors.Is(err, ErrInvalid) {
+				t.Errorf("Open() err = %v, want ErrInvalid", err)
+			}
+		})
+	}
+}
+
+func TestOpenSessionUserMismatch(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "users", "alice", "sessions", "2026-10-08T18-00-00Z.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	body := `{"id":"2026-10-08T18-00-00Z","user_id":"bob","started_at":"2026-10-08T18:00:00Z","entries":[]}`
+	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Open(dir); err == nil {
+		t.Error("Open() err = nil, want user_id/folder mismatch error")
+	}
+}
+
+func routineID(r Routine) string { return r.ID }
+
 func TestLoadDirMissing(t *testing.T) {
-	got, err := loadDir[Set](filepath.Join(t.TempDir(), "nope"))
+	got, err := loadDir(filepath.Join(t.TempDir(), "nope"), routineID)
 	if err != nil || len(got) != 0 {
 		t.Errorf("loadDir() = %v, %v; want empty, nil", got, err)
 	}
@@ -51,7 +118,7 @@ func TestOpen(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	write("exercises/squat.json", `{"id":"squat","name":"Squat","activation":{"quads":1},"metrics":["reps","weight"]}`)
+	write("exercises/squat.json", `{"id":"squat","name":"Squat","activation":{"quadriceps":1},"metrics":["reps","weight"]}`)
 	write("routines/legs.json", `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`)
 	write("users/xander/sessions/2026-10-08T18-00-00Z.json", `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`)
 	write("users/xander/sessions/2026-10-07T18-00-00Z.json", `{"id":"2026-10-07T18-00-00Z","user_id":"xander","started_at":"2026-10-07T18:00:00Z","entries":[]}`)
@@ -82,16 +149,20 @@ func TestOpenEmptyDir(t *testing.T) {
 	}
 }
 
-// newTestStore returns a store with one exercise (squat: reps + weight).
+// newTestStore returns a store with one exercise (squat: reps + weight),
+// saved to disk so a reopened store can resolve references to it.
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
 	s, err := Open(t.TempDir())
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.exercises["squat"] = Exercise{ID: "squat", Name: "Squat",
+	squat := Exercise{ID: "squat", Name: "Squat",
 		Activation: map[Muscle]float64{MuscleQuadriceps: 1},
 		Metrics:    []Metric{MetricReps, MetricWeight}}
+	if err := s.SaveExercise(squat); err != nil {
+		t.Fatal(err)
+	}
 	return s
 }
 
