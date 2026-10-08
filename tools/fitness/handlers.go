@@ -35,6 +35,10 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	mux.HandleFunc("GET /api/users/{user}/sessions", h.getSessions)
 	mux.HandleFunc("POST /api/users/{user}/sessions", h.postSession)
 	mux.HandleFunc("PUT /api/users/{user}/sessions/{id}", h.putSession)
+	mux.HandleFunc("GET /api/users/{user}/fitness", h.getProfile)
+	mux.HandleFunc("PUT /api/users/{user}/fitness", h.putProfile)
+	mux.HandleFunc("GET /api/users/{user}/weights", h.getWeights)
+	mux.HandleFunc("PUT /api/users/{user}/weights/{date}", h.putWeight)
 
 	// Exercise photos: an exercise's "images": ["Barbell_Squat/0.jpg"] is
 	// served at /images/Barbell_Squat/0.jpg.
@@ -206,4 +210,78 @@ func (h *handlers) saveSession(w http.ResponseWriter, r *http.Request, sess Sess
 		return
 	}
 	httpx.WriteJSON(w, status, saved) // saved has the server-assigned ID
+}
+
+// getProfile returns the user's fitness profile. 404 means either the
+// user doesn't exist or hasn't onboarded; the UI already knows the user
+// exists (it just picked them), so 404 = show onboarding.
+func (h *handlers) getProfile(w http.ResponseWriter, r *http.Request) {
+	user := r.PathValue("user")
+	p, ok := h.store.Profile(user)
+	if !ok {
+		httpx.WriteError(w, http.StatusNotFound, "no fitness profile for "+user)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, p)
+}
+
+// putProfile creates or replaces the user's fitness profile (onboarding,
+// schedule edits, skipping a weight check-in).
+func (h *handlers) putProfile(w http.ResponseWriter, r *http.Request) {
+	var p Profile
+	if err := httpx.DecodeJSON(w, r, &p); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if user := r.PathValue("user"); p.UserID != user {
+		httpx.WriteError(w, http.StatusBadRequest, "body user_id "+p.UserID+" does not match URL user "+user)
+		return
+	}
+	if err := h.store.SaveProfile(p); err != nil {
+		h.saveError(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, p)
+}
+
+// getWeights returns the user's weight log, oldest first ([] if empty).
+func (h *handlers) getWeights(w http.ResponseWriter, r *http.Request) {
+	user := r.PathValue("user")
+	if _, ok := h.store.users.User(user); !ok {
+		httpx.WriteError(w, http.StatusNotFound, "user "+user+" not found")
+		return
+	}
+	list := h.store.Weights(user)
+	if list == nil {
+		list = []WeightEntry{} // JSON [] instead of null
+	}
+	httpx.WriteJSON(w, http.StatusOK, list)
+}
+
+// putWeight records the weight for one date (replacing that day's entry).
+func (h *handlers) putWeight(w http.ResponseWriter, r *http.Request) {
+	var entry WeightEntry
+	if err := httpx.DecodeJSON(w, r, &entry); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if date := r.PathValue("date"); entry.Date != date {
+		httpx.WriteError(w, http.StatusBadRequest, "body date "+entry.Date+" does not match URL date "+date)
+		return
+	}
+	if err := h.store.SaveWeight(r.PathValue("user"), entry); err != nil {
+		h.saveError(w, r, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, entry)
+}
+
+// saveError maps a store save error: rule violations are the client's
+// fault (400, with the message); anything else is ours (500, logged).
+func (h *handlers) saveError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, ErrInvalid) {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	httpx.ServerError(w, r, h.log, err)
 }

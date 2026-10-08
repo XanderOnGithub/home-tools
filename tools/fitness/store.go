@@ -23,9 +23,11 @@ type Store struct {
 	users *users.Store // shared profiles; sessions and routines must name one
 
 	mu        sync.RWMutex
-	exercises map[string]Exercise  // by ID
-	routines  map[string]Routine   // by ID
-	sessions  map[string][]Session // by user ID, sorted oldest → newest
+	exercises map[string]Exercise      // by ID
+	routines  map[string]Routine       // by ID
+	sessions  map[string][]Session     // by user ID, sorted oldest → newest
+	profiles  map[string]Profile       // by user ID; missing = not onboarded
+	weights   map[string][]WeightEntry // by user ID, sorted by date
 }
 
 // Open loads all fitness data under dir into memory. Missing folders mean
@@ -58,6 +60,8 @@ func Open(dir string, us *users.Store) (*Store, error) {
 		exercises: make(map[string]Exercise, len(exercises)),
 		routines:  make(map[string]Routine, len(routines)),
 		sessions:  make(map[string][]Session, len(userDirs)),
+		profiles:  make(map[string]Profile, len(userDirs)),
+		weights:   make(map[string][]WeightEntry, len(userDirs)),
 	}
 
 	// Fill the maps in dependency order: exercises first, since routines
@@ -99,6 +103,11 @@ func Open(dir string, us *users.Store) (*Store, error) {
 			}
 		}
 		s.sessions[u.Name()] = sessions
+
+		userDir := filepath.Join(dir, "users", u.Name())
+		if err := s.loadBody(userDir, u.Name()); err != nil {
+			return nil, err
+		}
 	}
 
 	return s, nil

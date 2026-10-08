@@ -14,6 +14,11 @@ learning project held to production standards. **Do not vibe-code.**
 | Boilerplate, config (Vite, tsconfig, Makefile), tests, docs, CSS scaffolding | May write directly. Explain anything non-obvious in 1–3 lines. |
 | Anything, when Xander says "write it" / "just do it" | Write it, explain what and why, and still ask at least one design question. Xander often writes a partial version first; build on it rather than replacing it. |
 
+**Current mode (2026-10-08):** Xander is busy, so the agent writes backend
+logic and frontend directly. Xander still makes every architecture and
+design decision (propose → decide → record in §4) and reviews; explanations
+stay short. Build on any partial code of Xander's instead of replacing it.
+
 Rules:
 - When Xander proposes an approach: if it's sound, say so and help build *that*.
   If not, explain why concretely (correctness, complexity, failure mode) and offer
@@ -81,7 +86,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 
 | # | Decision | Status | Notes |
 |---|----------|--------|-------|
-| 1 | Agent code-writing policy: tiered (§1) | ✅ | |
+| 1 | Agent code-writing policy (§1) | ✅ | 2026-10-08 update: Xander makes architecture/design decisions; the agent writes backend logic and frontend. |
 | 2 | Access: LAN only, no remote/tunnel | ✅ | Gym is at home. |
 | 3 | Go + Svelte/Vite, no SSR, no meta-framework | ✅ | Learning goal. |
 | 4 | JSON-file storage, no database | ✅ | |
@@ -105,6 +110,11 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 22 | Profile `color` enum (green, blue, orange, purple) = avatar background **and** UI accent. Avatar shape: an organic SVG blob: a circle whose radius follows layered waves of 3, 4 and 5 bumps (random strength and angle), normalized to the same 30% spread so none look round or broken, smoothed with Catmull-Rom curves, computed in the frontend from the profile ID (`features/profiles/blob`), so it is never stored and is always the same for a person. Face: two plain dark oval eyes (same in light/dark mode; white eyes with pupils were rejected as creepy), per-ID placement/size/tilt and timing (`blobFace`); eyes blink, glance around as a pair, and the body leans slightly with them; with reduced motion the face stays still. No initial, no emoji. Component: `features/profiles/profile-avatar`. A flat 2D avatar maker (face shape/eyes/mouth parts) is a later feature | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
 | 23 | UI foundation: CSS custom-property tokens (raw palette → semantic layer), font Figtree (bundled via `@fontsource/figtree`, OFL, Latin subset only, weights 400–800; system font fallback; rejected: M PLUS Rounded 1c, too rounded), `rem` type scale, 4px spacing scale; light/dark via `prefers-color-scheme` + per-device override; WCAG 2.2 AA; 44px touch targets; every interactive element defines rest/hover/pressed/focus/disabled/loading | ✅ | 2026-10-08. Neutrals, type, spacing shared by all tools; only the accent varies (per profile). Red only for errors/destructive actions. Rules in `web/DESIGN.md`. |
 | 24 | Profiles are shared by all tools: `internal/users` (`User{id, name, color, units, archived}`, files `data/users/<id>.json`, `GET/PUT /api/users`). Tools key their own data by user ID and check it against this store | ✅ | 2026-10-08. Pick once, same people everywhere. Units live here (recipes need them too). Remembering the chosen profile across subdomains needs a cookie on `.starport.tech` (localStorage is per subdomain). |
+| 25 | Shared profile gains optional `birthday` (date, `omitzero`), asked in "Add profile" | ✅ | 2026-10-08. Not fitness-specific; other tools may use it. |
+| 26 | Fitness "workout profile" `users/<id>/fitness.json`: `goal` (strength / muscle / endurance / general), `height_m`, `schedule` (weekday → routine ID; missing = rest), `weight_prompt_skipped` (ISO week, e.g. `2026-W41`). Onboarding = height → current weight, both required (weight: "a rough estimate is fine"), in the profile's units (ft + in / lb, or cm / kg); schedule can be set later. "Add profile" asks units, default imperial. `goal` is optional and not asked (2026-10-08: "a tool, not a product") | ✅ | 2026-10-08. No profile file yet = show onboarding. Weekly target is derived from the schedule (count of workout days), not stored. |
+| 27 | Fixed weekly schedule (Mon = Upper, Wed = rest…), not a rotation. Home's "Up next" = today's routine | ✅ | 2026-10-08. Easier to understand; missed days aren't carried over. |
+| 28 | Body weight is a per-user log `users/<id>/weights.json` (`[{date, weight_kg}]`, ≤1 entry per day). Weekly check-in card on home: input pre-filled with the last weight; Skip records nothing and hides the card for that ISO week. `body_weight_kg` removed from `Session` | ✅ | 2026-10-08. Supersedes the weight part of #21: one source of truth; skipping never invents a measurement. |
+| 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -145,6 +155,10 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `index.svelte`) + `types.ts`/`utils.ts` only when needed. Import the
   folder via `@/...` (= `src/`; alias in vite.config + tsconfig).
 - Commits: small, imperative mood; one concern per commit.
+- Branches: `main` always works (deployable at any moment). Work happens on
+  short-lived branches named `feature/<thing>`, `fix/<thing>` or
+  `experiment/<thing>`; merge to `main` when `make check` and
+  `pnpm --dir web check` pass, then delete the branch. Days, not weeks.
 - Before writing code, read the nearest README/AGENTS.md in that directory.
   Each tool directory gets its own short AGENTS.md once it exists.
 
@@ -188,7 +202,19 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `home_tools_profile` cookie (shared across *.starport.tech; until
   "Switch profile"), sets `<html data-accent>`, and shows a placeholder
   fitness home. No router yet (App switches on the chosen profile).
-  Next: fitness home screen.
+  Backend for onboarding/home: `users.User.birthday`; fitness `Profile`
+  (`fitness.json`) + weight log (`weights.json`, upsert by date) in
+  `tools/fitness/body.go`; `GET/PUT /api/users/{user}/fitness` (404 = not
+  onboarded), `GET /api/users/{user}/weights`, `PUT .../weights/{date}`.
+  `Session.body_weight_kg` removed. Onboarding UI: one question per screen
+  (goal → height → weight; height/weight skippable), units per profile;
+  shared web helpers `src/api` (ApiError with display-safe messages),
+  `src/dates`, `src/units`, `features/fitness-profile`. "Add profile" has
+  an optional birthday. Profile management (#29): `features/profiles/
+  profile-dialog` (add + edit + remove), manage mode in the picker. API
+  errors from a stale server say "may need a restart". Vite dev proxy
+  target is overridable with `API_URL` (for testing against scratch data).
+  Next: home (this week, up next, weight check-in).
 
 
 ## 8. Improvements (later, not urgent)
@@ -199,3 +225,5 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   that started in the same second (same ID). Fix: store refuses to create
   over an existing ID → 409 Conflict.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
+- Muscle recovery map (own screen): per-muscle fatigue computed from recent
+  sessions × exercise `activation`, decaying over days; "needs rest" view.

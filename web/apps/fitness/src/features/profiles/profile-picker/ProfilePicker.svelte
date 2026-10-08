@@ -1,7 +1,8 @@
 <script lang="ts">
+  import { api } from '@/api'
   import { blobPath } from '@/features/profiles/blob'
-  import { CreateProfileDialog } from '@/features/profiles/create-profile-dialog'
   import { ProfileAvatar } from '@/features/profiles/profile-avatar'
+  import { ProfileDialog } from '@/features/profiles/profile-dialog'
   import { rememberedProfileId, rememberProfile } from '@/features/profiles/remembered'
   import type { Profile } from '@/features/profiles/types'
 
@@ -14,24 +15,26 @@
   let users = $state<Profile[]>([])
   let status = $state<'loading' | 'ready' | 'error'>('loading')
   let slow = $state(false)
-  let creating = $state(false)
+  let dialogOpen = $state(false)
+  let editing = $state<Profile | null>(null) // null = the dialog adds
+  let managing = $state(false)
+  let restoreError = $state('')
 
   // If this browser already picked someone, stay blank while loading and
   // skip straight past the picker, instead of flashing it first.
   const remembered = rememberedProfileId()
 
   // Archived profiles stay in the API (history needs their names) but
-  // never appear in the picker.
+  // never appear in the picker; manage mode lists them for restoring.
   let active = $derived(users.filter((u) => !u.archived))
+  let archived = $derived(users.filter((u) => u.archived))
 
   async function load() {
     status = 'loading'
     slow = false
     const timer = setTimeout(() => (slow = true), LOADING_DELAY_MS)
     try {
-      const res = await fetch('/api/users')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      users = await res.json()
+      users = await api.get<Profile[]>('/api/users')
       // Remembered profile still exists (and isn't archived)? Go straight in.
       const match = users.find((u) => u.id === remembered && !u.archived)
       if (match) {
@@ -52,6 +55,32 @@
     onselect(profile)
   }
 
+  function openAdd() {
+    editing = null
+    dialogOpen = true
+  }
+
+  function openEdit(profile: Profile) {
+    editing = profile
+    dialogOpen = true
+  }
+
+  /** Puts a saved profile into the list (replacing the old copy, if any). */
+  function upsert(profile: Profile) {
+    const i = users.findIndex((u) => u.id === profile.id)
+    if (i === -1) users.push(profile)
+    else users[i] = profile
+  }
+
+  async function restore(profile: Profile) {
+    restoreError = ''
+    try {
+      upsert(await api.put<Profile>(`/api/users/${profile.id}`, { ...profile, archived: false }))
+    } catch (err) {
+      restoreError = `Couldn't restore ${profile.name}. ${(err as Error).message}`
+    }
+  }
+
   load()
 </script>
 
@@ -59,10 +88,14 @@
   "Who's working out?" Each profile is one button (avatar + name inside, so
   the whole tile is the tap target and the button's accessible name is the
   person's name). The avatar is aria-hidden: the name already says it.
+
+  Manage mode: the same tiles open the edit dialog instead (each shows a
+  pencil, and its name becomes "Edit Xander"), and archived profiles are
+  listed underneath with Restore.
 -->
 <section class="profile-picker" aria-labelledby="profile-picker-title">
   <h1 id="profile-picker-title" class:hidden={remembered && status === 'loading'}>
-    Who's working out?
+    {managing ? 'Manage profiles' : "Who's working out?"}
   </h1>
 
   <!-- One live region for every status message: screen readers announce
@@ -70,6 +103,8 @@
   <div class="profile-status" role="status">
     {#if status === 'loading' && slow}
       <p>Loading profiles…</p>
+    {:else if status === 'ready' && active.length === 0 && archived.length > 0}
+      <p>Everyone's archived. Add a profile, or restore one under Manage profiles.</p>
     {:else if status === 'ready' && active.length === 0}
       <p>No profiles yet. Add one to get started.</p>
     {/if}
@@ -90,18 +125,28 @@
             type="button"
             class="profile-button"
             data-accent={user.color}
-            onclick={() => select(user)}
+            onclick={() => (managing ? openEdit(user) : select(user))}
           >
             <span class="profile-avatar">
               <ProfileAvatar id={user.id} />
+              {#if managing}
+                <span class="edit-badge" aria-hidden="true">
+                  <svg viewBox="0 0 24 24">
+                    <path d="M4 20h4L19 9l-4-4L4 16v4z M13.5 6.5l4 4" />
+                  </svg>
+                </span>
+              {/if}
             </span>
-            <span class="profile-name">{user.name}</span>
+            <span class="profile-name">
+              {#if managing}<span class="visually-hidden">Edit</span>{/if}
+              {user.name}
+            </span>
           </button>
         </li>
       {/each}
 
       <li class="profile-list-item">
-        <button type="button" class="profile-button profile-button-create" onclick={() => (creating = true)}>
+        <button type="button" class="profile-button profile-button-create" onclick={openAdd}>
           <!-- An empty blob (dashed outline) waiting for a person. Its shape
                comes from a fixed seed, so it never changes. -->
           <span class="profile-avatar" aria-hidden="true">
@@ -114,14 +159,37 @@
         </button>
       </li>
     </ul>
+
+    {#if managing && archived.length > 0}
+      <section class="archived" aria-labelledby="archived-title">
+        <h2 id="archived-title">Archived</h2>
+        <ul>
+          {#each archived as user (user.id)}
+            <li class="archived-row" data-accent={user.color}>
+              <span class="archived-avatar"><ProfileAvatar id={user.id} /></span>
+              <span class="archived-name">{user.name}</span>
+              <button type="button" class="quiet-button" onclick={() => restore(user)}>
+                Restore<span class="visually-hidden"> {user.name}</span>
+              </button>
+            </li>
+          {/each}
+        </ul>
+        {#if restoreError}
+          <p class="restore-error" role="alert">{restoreError}</p>
+        {/if}
+      </section>
+    {/if}
+
+    <!-- One button whose label flips, so keyboard focus stays on it. -->
+    {#if users.length > 0}
+      <button type="button" class="quiet-button manage-toggle" onclick={() => (managing = !managing)}>
+        {managing ? 'Done' : 'Manage profiles'}
+      </button>
+    {/if}
   {/if}
 </section>
 
-<CreateProfileDialog
-  bind:open={creating}
-  existing={users}
-  oncreated={(profile) => users.push(profile)}
-/>
+<ProfileDialog bind:open={dialogOpen} existing={users} {editing} onsaved={upsert} />
 
 <style>
   /* Centered in the viewport: this is the whole first screen. */
@@ -165,6 +233,7 @@
   }
 
   .profile-avatar {
+    position: relative;
     display: grid;
     place-items: center;
     width: 8rem;
@@ -279,6 +348,108 @@
 
   .retry-button:active {
     background: var(--color-accent-pressed);
+  }
+
+  /* Pencil in manage mode: a small badge on the avatar's lower right. */
+  .edit-badge {
+    position: absolute;
+    right: 0;
+    bottom: var(--space-1);
+    display: grid;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 3px solid var(--color-bg);
+    border-radius: var(--radius-full);
+    background: var(--color-text);
+    color: var(--color-bg);
+  }
+
+  .edit-badge svg {
+    width: 1.1rem;
+    height: 1.1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .quiet-button {
+    min-height: var(--touch-target);
+    padding: 0 var(--space-4);
+    border: none;
+    border-radius: var(--radius-full);
+    background: none;
+    color: var(--color-text-muted);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+    transition: color var(--duration-fast) var(--ease-out);
+  }
+
+  @media (hover: hover) {
+    .quiet-button:hover {
+      color: var(--color-text);
+    }
+  }
+
+  .manage-toggle {
+    font-size: var(--text-lg);
+  }
+
+  .archived {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    width: min(24rem, 100%);
+    text-align: left;
+  }
+
+  .archived h2 {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+  }
+
+  .archived ul {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .archived-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+  }
+
+  .archived-avatar {
+    flex: none;
+    width: 2.5rem;
+    height: 2.5rem;
+    opacity: 0.6; /* archived: present, but faded */
+  }
+
+  .archived-name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .restore-error {
+    margin: 0;
+    color: var(--color-danger-text);
   }
 
   /* Kept in the DOM (the section still needs its label), just not shown. */
