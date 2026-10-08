@@ -122,7 +122,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
 | 30 | Routines are one shared household list of plans (anyone creates/edits); each person's weekly schedule (their `fitness.json`) picks which routine on which day. Routines page = "Your week" planner + the shared list; create/edit is its own page (`/routines/new`, `/routines/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
 | 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
-| 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form (`deploy/zimaos.yaml`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
+| 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form as two apps (its importer keeps one service per app): `deploy/zimaos-home-tools.yaml` (publishes :8080) + `deploy/zimaos-caddy.yaml` (proxies to `host.docker.internal:8080`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -244,7 +244,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   Profile cookie gets `secure` on HTTPS. Docker image (#31): UI embedded
   (`httpx.SPA`: index.html fallback for client routes, hashed assets
   cached forever; unknown `/api/` paths stay a JSON 404). CI publishes
-  images to GHCR (#32); `deploy/zimaos.yaml` is the paste-in app. Not yet
+  images to GHCR (#32); `deploy/zimaos-*.yaml` are the paste-in apps. Not yet
   run on ZimaOS.
 
 

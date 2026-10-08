@@ -12,8 +12,10 @@ publishes to GHCR on every push to `main` (decision #32,
   proven through Cloudflare's API, and proxies to home-tools on plain HTTP.
   Nothing is exposed to the internet: no ports forwarded.
 
-Files: `zimaos.yaml` (paste into the ZimaOS app form), `compose.yaml` +
-`.env.example` (same setup over SSH or for a local test).
+Files: `zimaos-home-tools.yaml` + `zimaos-caddy.yaml` (two ZimaOS apps:
+its importer keeps only one service per app, so Caddy reaches home-tools
+through the host's :8080), `compose.yaml` + `.env.example` (one-file setup
+over SSH or for a local test).
 
 ## Setup (once)
 1. **Images public:** after the first workflow run, on GitHub → your
@@ -31,13 +33,16 @@ Files: `zimaos.yaml` (paste into the ZimaOS app form), `compose.yaml` +
          --entrypoint fitness-import ghcr.io/xanderongithub/home-tools \
          -data /data/fitness -users /data/users
 
-4. **Install:** ZimaOS → App Store → Custom Install → Import, paste
-   `zimaos.yaml` with the domain and token filled in.
+4. **Install:** ZimaOS → App Store → Custom Install → Import, once per
+   app: `zimaos-home-tools.yaml`, then `zimaos-caddy.yaml` with the domain
+   and token filled in (keep that copy as the gitignored
+   `zimaos-caddy.local.yaml`).
 5. **Local DNS (UniFi):** Policy Table → DNS Record, type Host (A):
    `fitness.<domain>` → the server's LAN IP. Give the server a fixed IP.
    One record per tool (not a wildcard, so public subdomains like game
    servers still resolve normally).
-6. **Check:** the Caddy container's log shows "certificate obtained";
+6. **Check:** `sudo docker ps` (SSH needs sudo for Docker on ZimaOS);
+   `sudo docker logs <caddy container>` shows "certificate obtained";
    open `https://fitness.<domain>` on a phone on the home Wi-Fi.
 
 ## Update
@@ -51,6 +56,5 @@ back, set the image tag to an older `sha-<commit>`.
 - Keep the Caddy data folder: deleting it means re-issuing certificates
   (Let's Encrypt has rate limits).
 - The containers run as root so they can write to the CasaOS folders.
-- If ZimaOS won't accept two services in one app: install them as two
-  apps, publish home-tools on port 8080 and set Caddy's `UPSTREAM` to
-  `<server LAN IP>:8080`.
+- home-tools is also reachable as plain HTTP on `<server IP>:8080` (LAN
+  only); handy for debugging, but phones need the HTTPS name.

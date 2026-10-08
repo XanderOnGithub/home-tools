@@ -17,3 +17,5 @@ dist/
 
 # Deploy secrets
 /deploy/.env
+# Filled-in ZimaOS app file (has the token)
+/deploy/*.local.yaml
