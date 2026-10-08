@@ -88,7 +88,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 7 | Fitness JSON layout | ✅ | Per-user dirs (`users/<id>/…`); exercises + routines shared (`created_by`); **one file per session** named by ISO start time (`users/<id>/sessions/<start>.json`). Exercise declares tracked `Metrics`; `Set` is flat numbers; muscle `Activation` is a sparse map in (0,1]. In-progress session = zero `EndedAt` + `omitzero`. `Bodyweight` exercises: weight optional (0 = BW only); negative values rejected (no assisted lifts yet). Exercises require ≥1 muscle activation (even stretches). Routines: `RoutineExercise{exercise_id, suggested_sets}` — hints only. Rules enforced in `validate.go`; catalog-reference checks belong to the store. Model: `tools/fitness/model.go`. |
 | 8 | TLS on LAN: plain HTTP vs Let's Encrypt via DNS-01 vs local CA | ⬜ | DNS-01 gives real certs with zero exposure. |
 | 9 | Reverse proxy: Go serves :443 directly vs Caddy in front | ⬜ | |
-| 10 | Auth: none (trusted LAN) vs simple user picker vs PIN | ⬜ | Family users ≠ security boundary? |
+| 10 | Auth: none; Netflix-style profile picker | ✅ | 2026-10-08. Trusted LAN; family members aren't a security boundary. UI remembers the chosen profile; API takes the user ID in the URL (`/api/users/{id}/...`). A PIN can be added later as a field. |
 | 11 | Exercise data: free-exercise-db (Unlicense, 876 exercises, 2 photos each) | ✅ | 2026-10-07. Import: `cmd/fitness-import` + `tools/fitness/fedb.go`. Primary→1.0, secondary→0.5; stretching/cardio→duration, else reps+weight; bodyweight-style equipment→weight optional. Never overwrites existing IDs. Rejected: Gym Visual dataset (media needs own license), wger (AGPL/per-entry CC). |
 | 12 | Muscle diagram: `body-highlighter` (npm, MIT, framework-agnostic, zero deps) | 🟡 | Verify when building the UI. Its region names differ from our `Muscle` values; one frontend map translates (e.g. shoulders→front+back deltoids, lats/middle_back→upper-back). |
 | 13 | Units: store metric (kg, m, s), unit in field name; per-user display preference, UI converts | ✅ | 2026-10-07. Server never converts. |
@@ -99,6 +99,8 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 18 | `Muscle` enum = free-exercise-db's 17 names (snake_case); Exercise gains `category`, `level`, `instructions`, `images`, `source` | ✅ | 2026-10-07. Lossless import; diagram mapping lives in the frontend. |
 | 19 | Exercise photos copied to `data/fitness/images/<path>` (~100 MB), served by the Go binary | ✅ | 2026-10-07. Works offline on the LAN. |
 | 20 | API request bodies decoded strictly: unknown fields, trailing data, >1 MiB → 400 | ✅ | 2026-10-08. A typo'd key (`weigth_kg`) must fail, not silently save a set without weight. Frontend sends exactly the model's fields. `httpx.DecodeJSON`. |
+| 21 | `User` = `users/<id>/user.json`: id (slug = folder name), name, birthday, `height_m`, `units` (metric/imperial, display only), `archived`. **No weight on User:** body weight is an optional `body_weight_kg` on `Session`; "current weight" = latest logged | ✅ | 2026-10-08. One source of truth; weight history comes free. |
+| 22 | Profile avatar: `avatar_color` (hex) + optional `avatar_emoji`, initial as fallback; no photo uploads | 🟡 | Proposed 2026-10-08. Photos can be added later without breaking anything. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -144,15 +146,28 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `Routines`/`SaveRoutine` (catalog-checked). `Open` trusts files no more
   than API input: each must pass `Validate`, `id` must match its filename,
   session `user_id` must match its folder, and catalog refs must resolve;
-  any failure aborts startup with the file's path. Known gap: no User model yet. Exercise catalog import works
+  any failure aborts startup with the file's path. Exercise catalog import works
   (876 exercises, 1,746 photos, ~30 s, idempotent).
 - 2026-10-08: `internal/httpx` (WriteJSON, WriteError, ServerError, strict
   DecodeJSON: unknown fields/trailing data/>1 MiB rejected). Server starts
   in `cmd/home-tools` (flags `-addr`, `-data`; slog; graceful shutdown on
   SIGINT/SIGTERM; `GET /healthz`). No host routing yet: one mux.
   Handlers take a concrete `*fitness.Store` (no interface until a second
-  implementation exists). Next: fitness handlers + `Register`
-  (handlers: `errors.Is(err, ErrInvalid)` → 400 with err's message as
-  `{"error": ...}`; anything else → 500 with a generic message, real error
-  logged server-side only).
-  pnpm workspace not yet created. Not a git repo yet.
+  implementation exists). Fitness API: `GET /api/exercises[/{id}]`,
+  `PUT /api/exercises/{id}`, `GET /api/routines`, `PUT /api/routines/{id}`
+  (`ErrInvalid` → 400 with its message; else 500, real error logged only).
+  `User` model + `Validate` + store (`Users`/`User`/`SaveUser`); `Open`
+  requires `users/<id>/user.json` in every user folder with matching id;
+  `SaveSession` rejects unknown users; routines' `created_by` must be a
+  known user (`Open` loads users before routines). `GET /api/users`,
+  `PUT /api/users/{id}`. Sessions: `GET /api/users/{user}/sessions?limit=n`,
+  `POST` (server assigns ID, 201), `PUT .../sessions/{id}`. Next: frontend.
+  pnpm workspace not yet created.
+
+## 8. Improvements (later, not urgent)
+- Fitness handlers: `putExercise`/`putRoutine`/`putUser` are near-copies.
+  Consider one generic `put[T]` helper once session handlers exist and
+  show whether the pattern really repeats.
+- `POST /api/users/{user}/sessions` silently overwrites an existing session
+  that started in the same second (same ID). Fix: store refuses to create
+  over an existing ID → 409 Conflict.

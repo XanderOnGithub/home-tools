@@ -137,3 +137,111 @@ func TestRoutineHandlers(t *testing.T) {
 		t.Errorf("list after PUT = %s, want it to contain legs", got)
 	}
 }
+
+func TestUserHandlers(t *testing.T) {
+	const alice = `{"id":"alice","name":"Alice","units":"imperial","avatar_color":"#ff8c4f","avatar_emoji":"🏃"}`
+	tests := []struct {
+		name       string
+		path       string
+		body       string
+		wantStatus int
+	}{
+		{"create", "/api/users/alice", alice, http.StatusOK},
+		{"update existing", "/api/users/xander",
+			`{"id":"xander","name":"Xander H","units":"metric","avatar_color":"#000000"}`, http.StatusOK},
+		{"id mismatch", "/api/users/bob", alice, http.StatusBadRequest},
+		{"fails validation", "/api/users/alice",
+			`{"id":"alice","name":"Alice","units":"metric","avatar_color":"red"}`, http.StatusBadRequest},
+		{"unknown field", "/api/users/alice",
+			`{"id":"alice","name":"Alice","units":"metric","avatar_color":"#ff8c4f","weight_kg":60}`, http.StatusBadRequest},
+		{"path trick", "/api/users/..%2Froot",
+			`{"id":"../root","name":"Root","units":"metric","avatar_color":"#ff8c4f"}`, http.StatusBadRequest},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := newTestServer(t)
+			rec := httptest.NewRecorder()
+			srv.ServeHTTP(rec, httptest.NewRequest("PUT", tt.path, strings.NewReader(tt.body)))
+			if rec.Code != tt.wantStatus {
+				t.Fatalf("status = %d, want %d; body %s", rec.Code, tt.wantStatus, rec.Body)
+			}
+		})
+	}
+
+	// The list includes a newly created profile, sorted by name.
+	srv := newTestServer(t)
+	srv.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("PUT", "/api/users/alice", strings.NewReader(alice)))
+	rec := httptest.NewRecorder()
+	srv.ServeHTTP(rec, httptest.NewRequest("GET", "/api/users", nil))
+	var users []User
+	if err := json.Unmarshal(rec.Body.Bytes(), &users); err != nil {
+		t.Fatal(err)
+	}
+	if len(users) != 2 || users[0].ID != "alice" || users[1].ID != "xander" {
+		t.Errorf("GET /api/users = %+v, want [alice xander]", users)
+	}
+}
+
+func TestSessionHandlers(t *testing.T) {
+	const start = `{"user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`
+	srv := newTestServer(t)
+	do := func(method, path, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		rec := httptest.NewRecorder()
+		srv.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
+		return rec
+	}
+
+	// Start a session: the server assigns the ID from started_at.
+	rec := do("POST", "/api/users/xander/sessions", start)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("POST = %d, want 201; body %s", rec.Code, rec.Body)
+	}
+	var sess Session
+	if err := json.Unmarshal(rec.Body.Bytes(), &sess); err != nil {
+		t.Fatal(err)
+	}
+	if sess.ID != "2026-10-08T18-00-00Z" {
+		t.Fatalf("assigned ID = %q", sess.ID)
+	}
+
+	// Log a set and finish it with a PUT.
+	update := `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z",` +
+		`"ended_at":"2026-10-08T19:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5,"weight_kg":100}]}]}`
+	if rec := do("PUT", "/api/users/xander/sessions/2026-10-08T18-00-00Z", update); rec.Code != http.StatusOK {
+		t.Fatalf("PUT = %d, want 200; body %s", rec.Code, rec.Body)
+	}
+
+	// The list shows the updated session.
+	rec = do("GET", "/api/users/xander/sessions?limit=5", "")
+	var list []Session
+	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list) != 1 || len(list[0].Entries) != 1 {
+		t.Errorf("GET sessions = %+v, want 1 session with 1 entry", list)
+	}
+
+	errorCases := []struct {
+		name, method, path, body string
+		wantStatus               int
+	}{
+		{"list unknown user", "GET", "/api/users/nobody/sessions", "", http.StatusNotFound},
+		{"bad limit", "GET", "/api/users/xander/sessions?limit=0", "", http.StatusBadRequest},
+		{"POST with id", "POST", "/api/users/xander/sessions",
+			`{"id":"x","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`, http.StatusBadRequest},
+		{"POST user mismatch", "POST", "/api/users/alice/sessions", start, http.StatusBadRequest},
+		{"POST unknown user", "POST", "/api/users/nobody/sessions",
+			`{"user_id":"nobody","started_at":"2026-10-08T18:00:00Z","entries":[]}`, http.StatusBadRequest},
+		{"POST unknown exercise", "POST", "/api/users/xander/sessions",
+			`{"user_id":"xander","started_at":"2026-10-09T18:00:00Z","entries":[{"exercise_id":"nope","sets":[]}]}`, http.StatusBadRequest},
+		{"PUT id mismatch", "PUT", "/api/users/xander/sessions/other", update, http.StatusBadRequest},
+	}
+	for _, tt := range errorCases {
+		t.Run(tt.name, func(t *testing.T) {
+			if rec := do(tt.method, tt.path, tt.body); rec.Code != tt.wantStatus {
+				t.Errorf("status = %d, want %d; body %s", rec.Code, tt.wantStatus, rec.Body)
+			}
+		})
+	}
+}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"strconv"
 
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
 )
@@ -27,6 +28,11 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	mux.HandleFunc("PUT /api/exercises/{id}", h.putExercise)
 	mux.HandleFunc("GET /api/routines", h.getRoutines)
 	mux.HandleFunc("PUT /api/routines/{id}", h.putRoutine)
+	mux.HandleFunc("GET /api/users", h.getUsers)
+	mux.HandleFunc("PUT /api/users/{id}", h.putUser)
+	mux.HandleFunc("GET /api/users/{user}/sessions", h.getSessions)
+	mux.HandleFunc("POST /api/users/{user}/sessions", h.postSession)
+	mux.HandleFunc("PUT /api/users/{user}/sessions/{id}", h.putSession)
 }
 
 // getExercise returns one exercise, or 404 if the ID is unknown.
@@ -107,4 +113,103 @@ func (h *handlers) putRoutine(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpx.WriteJSON(w, http.StatusOK, rt)
+}
+
+// getUsers returns every profile sorted by name, archived included; the
+// profile picker hides archived ones. Empty (fresh install) is 200 with [].
+func (h *handlers) getUsers(w http.ResponseWriter, r *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, h.store.Users())
+}
+
+// putUser creates or replaces the profile at /api/users/{id}. Creating a
+// profile is just the first PUT; archiving is a PUT with "archived": true.
+func (h *handlers) putUser(w http.ResponseWriter, r *http.Request) {
+	var u User
+	if err := httpx.DecodeJSON(w, r, &u); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if id := r.PathValue("id"); u.ID != id {
+		httpx.WriteError(w, http.StatusBadRequest, "body id "+u.ID+" does not match URL id "+id)
+		return
+	}
+	if err := h.store.SaveUser(u); err != nil {
+		if errors.Is(err, ErrInvalid) {
+			httpx.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpx.ServerError(w, r, h.log, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, u)
+}
+
+// getSessions returns the user's most recent non-archived sessions, newest
+// first. ?limit=n picks how many (default 20, max 100).
+func (h *handlers) getSessions(w http.ResponseWriter, r *http.Request) {
+	user := r.PathValue("user")
+	if _, ok := h.store.User(user); !ok {
+		httpx.WriteError(w, http.StatusNotFound, "user "+user+" not found")
+		return
+	}
+
+	limit := 20
+	if q := r.URL.Query().Get("limit"); q != "" {
+		n, err := strconv.Atoi(q)
+		if err != nil || n < 1 || n > 100 {
+			httpx.WriteError(w, http.StatusBadRequest, "limit must be a number from 1 to 100")
+			return
+		}
+		limit = n
+	}
+	httpx.WriteJSON(w, http.StatusOK, h.store.RecentSessions(user, limit))
+}
+
+// postSession starts (or logs) a new session. POST, not PUT: the server
+// picks the ID from started_at, so the client sends no id.
+func (h *handlers) postSession(w http.ResponseWriter, r *http.Request) {
+	var sess Session
+	if err := httpx.DecodeJSON(w, r, &sess); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if sess.ID != "" {
+		httpx.WriteError(w, http.StatusBadRequest, "id is assigned by the server; use PUT to update a session")
+		return
+	}
+	h.saveSession(w, r, sess, http.StatusCreated)
+}
+
+// putSession replaces an existing session (adding sets, finishing it,
+// archiving it). The URL and body must agree on both user and id.
+func (h *handlers) putSession(w http.ResponseWriter, r *http.Request) {
+	var sess Session
+	if err := httpx.DecodeJSON(w, r, &sess); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if id := r.PathValue("id"); sess.ID != id {
+		httpx.WriteError(w, http.StatusBadRequest, "body id "+sess.ID+" does not match URL id "+id)
+		return
+	}
+	h.saveSession(w, r, sess, http.StatusOK)
+}
+
+// saveSession is the shared tail of POST and PUT: check the user in the
+// URL matches the body, save, and map errors. status is the success code.
+func (h *handlers) saveSession(w http.ResponseWriter, r *http.Request, sess Session, status int) {
+	if user := r.PathValue("user"); sess.UserID != user {
+		httpx.WriteError(w, http.StatusBadRequest, "body user_id "+sess.UserID+" does not match URL user "+user)
+		return
+	}
+	saved, err := h.store.SaveSession(sess)
+	if err != nil {
+		if errors.Is(err, ErrInvalid) {
+			httpx.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpx.ServerError(w, r, h.log, err)
+		return
+	}
+	httpx.WriteJSON(w, status, saved) // saved has the server-assigned ID
 }

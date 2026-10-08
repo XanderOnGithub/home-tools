@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
+	"time"
 )
 
 // ErrInvalid marks data that breaks a model rule. Callers check it with
@@ -137,6 +139,51 @@ func (r Routine) Validate() error {
 		}
 	}
 	return nil
+}
+
+// Validate checks u's own rules:
+//   - ID is a valid ID (it becomes the user's folder name)
+//   - Name is not blank
+//   - Units is a known value (required: the UI always sends one)
+//   - HeightM is not negative (0 means not set)
+//   - Birthday, if set, is not in the future
+//   - AvatarColor is a "#rrggbb" hex color
+func (u User) Validate() error {
+	if !validID(u.ID) {
+		return fmt.Errorf("%w user: bad ID %q", ErrInvalid, u.ID)
+	}
+	if strings.TrimSpace(u.Name) == "" {
+		return fmt.Errorf("%w user %s: missing name", ErrInvalid, u.ID)
+	}
+	if !slices.Contains(AllUnits, u.Units) {
+		return fmt.Errorf("%w user %s: unknown units %q", ErrInvalid, u.ID, u.Units)
+	}
+	if u.HeightM < 0 {
+		return fmt.Errorf("%w user %s: negative height_m", ErrInvalid, u.ID)
+	}
+	if u.Birthday.After(time.Now()) {
+		return fmt.Errorf("%w user %s: birthday is in the future", ErrInvalid, u.ID)
+	}
+	if !validHexColor(u.AvatarColor) {
+		return fmt.Errorf("%w user %s: avatar_color %q is not #rrggbb", ErrInvalid, u.ID, u.AvatarColor)
+	}
+	return nil
+}
+
+// validHexColor reports whether c is "#" followed by exactly 6 hex digits.
+// Indexing bytes is safe here: anything non-ASCII fails the digit check.
+func validHexColor(c string) bool {
+	if len(c) != 7 || c[0] != '#' {
+		return false
+	}
+	for i := 1; i < len(c); i++ {
+		ch := c[i]
+		ok := ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
+		if !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // Validate checks s's own rules:

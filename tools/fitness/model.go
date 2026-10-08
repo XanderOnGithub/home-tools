@@ -196,3 +196,24 @@ type Set struct {
 	DurationSec int     `json:"duration_sec,omitempty"`
 	DistanceM   float64 `json:"distance_m,omitempty"`
 }
+
+type Units string
+
+const (
+	UnitsMetric   Units = "metric"
+	UnitsImperial Units = "imperial"
+)
+
+// AllUnits lists every valid Units value (for validation and UI options).
+var AllUnits = []Units{UnitsMetric, UnitsImperial}
+
+type User struct {
+	ID          string    `json:"id"`
+	Name        string    `json:"name"`
+	Birthday    time.Time `json:"birthday"`
+	HeightM     float64   `json:"height_m"`
+	Units       Units     `json:"units"` // "metric" or "imperial"
+	AvatarColor string    `json:"avatar_color"`
+	AvatarEmoji string    `json:"avatar_emoji"`
+	Archived    bool      `json:"archived,omitempty"`
+}

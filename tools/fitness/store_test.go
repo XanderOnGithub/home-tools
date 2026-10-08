@@ -10,6 +10,9 @@ import (
 	"time"
 )
 
+// xanderJSON is a valid user.json for fixtures that write files directly.
+const xanderJSON = `{"id":"xander","name":"Xander","units":"metric","avatar_color":"#4f8cff"}`
+
 func TestLoadDir(t *testing.T) {
 	dir := t.TempDir()
 	files := map[string]string{
@@ -57,11 +60,20 @@ func TestOpenRejectsBadData(t *testing.T) {
 			"routines/legs.json": `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`,
 		}},
 		{"session with unknown exercise", map[string]string{
+			"users/xander/user.json":                          xanderJSON,
 			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5}]}]}`,
 		}},
 		{"session set with negative weight", map[string]string{
 			"exercises/squat.json":                            squat,
+			"users/xander/user.json":                          xanderJSON,
 			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5,"weight_kg":-1}]}]}`,
+		}},
+		{"routine with unknown creator", map[string]string{
+			"exercises/squat.json": squat,
+			"routines/legs.json":   `{"id":"legs","name":"Legs","created_by":"nobody","exercises":[{"exercise_id":"squat"}]}`,
+		}},
+		{"invalid user", map[string]string{
+			"users/xander/user.json": `{"id":"xander","name":"Xander","units":"furlongs","avatar_color":"#4f8cff"}`,
 		}},
 	}
 	for _, tt := range tests {
@@ -93,6 +105,11 @@ func TestOpenSessionUserMismatch(t *testing.T) {
 	if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	// alice has a valid profile, so the user_id check is what must fail.
+	alice := `{"id":"alice","name":"Alice","units":"metric","avatar_color":"#ff8c4f"}`
+	if err := os.WriteFile(filepath.Join(dir, "users", "alice", "user.json"), []byte(alice), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if _, err := Open(dir); err == nil {
 		t.Error("Open() err = nil, want user_id/folder mismatch error")
 	}
@@ -120,6 +137,7 @@ func TestOpen(t *testing.T) {
 	}
 	write("exercises/squat.json", `{"id":"squat","name":"Squat","activation":{"quadriceps":1},"metrics":["reps","weight"]}`)
 	write("routines/legs.json", `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`)
+	write("users/xander/user.json", xanderJSON)
 	write("users/xander/sessions/2026-10-08T18-00-00Z.json", `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`)
 	write("users/xander/sessions/2026-10-07T18-00-00Z.json", `{"id":"2026-10-07T18-00-00Z","user_id":"xander","started_at":"2026-10-07T18:00:00Z","entries":[]}`)
 
@@ -132,6 +150,9 @@ func TestOpen(t *testing.T) {
 	}
 	if _, ok := s.routines["legs"]; !ok {
 		t.Error("routine legs not loaded")
+	}
+	if u, ok := s.User("xander"); !ok || u.Name != "Xander" {
+		t.Errorf("user xander not loaded: %+v", u)
 	}
 	got := s.sessions["xander"]
 	if len(got) != 2 || got[0].ID != "2026-10-07T18-00-00Z" {
@@ -149,8 +170,9 @@ func TestOpenEmptyDir(t *testing.T) {
 	}
 }
 
-// newTestStore returns a store with one exercise (squat: reps + weight),
-// saved to disk so a reopened store can resolve references to it.
+// newTestStore returns a store with one user (xander) and one exercise
+// (squat: reps + weight), saved to disk so a reopened store can resolve
+// references to them.
 func newTestStore(t *testing.T) *Store {
 	t.Helper()
 	s, err := Open(t.TempDir())
@@ -161,6 +183,9 @@ func newTestStore(t *testing.T) *Store {
 		Activation: map[Muscle]float64{MuscleQuadriceps: 1},
 		Metrics:    []Metric{MetricReps, MetricWeight}}
 	if err := s.SaveExercise(squat); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveUser(User{ID: "xander", Name: "Xander", Units: UnitsMetric, AvatarColor: "#4f8cff"}); err != nil {
 		t.Fatal(err)
 	}
 	return s
@@ -229,6 +254,7 @@ func TestSaveSessionRejects(t *testing.T) {
 			Entries: []Entry{{ExerciseID: "squat", Sets: []Set{{Reps: 5}}}}}},
 		{"path traversal user", Session{UserID: "../../etc", StartedAt: at(7, 18)}},
 		{"missing start", Session{UserID: "xander"}},
+		{"unknown user", Session{UserID: "xandr", StartedAt: at(7, 18)}},
 		{"ends before start", Session{UserID: "xander", StartedAt: at(7, 18), EndedAt: at(7, 17)}},
 	}
 	for _, tt := range tests {
@@ -343,7 +369,80 @@ func TestSaveRoutineChecksCatalog(t *testing.T) {
 	if err := s.SaveRoutine(legs); !errors.Is(err, ErrInvalid) {
 		t.Errorf("unknown exercise: err = %v, want ErrInvalid", err)
 	}
+	stranger := Routine{ID: "arms", Name: "Arms", CreatedBy: "nobody",
+		Exercises: []RoutineExercise{{ExerciseID: "squat"}}}
+	if err := s.SaveRoutine(stranger); !errors.Is(err, ErrInvalid) {
+		t.Errorf("unknown creator: err = %v, want ErrInvalid", err)
+	}
 	if got := s.Routines(); len(got) != 1 || len(got[0].Exercises) != 1 {
 		t.Errorf("rejected save changed memory: %+v", got)
+	}
+}
+
+func TestOpenUserFolderProblems(t *testing.T) {
+	tests := []struct {
+		name  string
+		files map[string]string
+	}{
+		{"folder without user.json", map[string]string{
+			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`,
+		}},
+		{"user id does not match folder", map[string]string{
+			"users/alice/user.json": xanderJSON,
+		}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for rel, body := range tt.files {
+				path := filepath.Join(dir, rel)
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if _, err := Open(dir); err == nil {
+				t.Error("Open() err = nil, want an error")
+			}
+		})
+	}
+}
+
+func TestSaveUserAndList(t *testing.T) {
+	s := newTestStore(t) // already has xander
+	if err := s.SaveUser(User{ID: "alice", Name: "Alice", Units: UnitsImperial, AvatarColor: "#ff8c4f", AvatarEmoji: "🏃"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SaveUser(User{ID: "bad", Name: "Bad", Units: UnitsMetric}); !errors.Is(err, ErrInvalid) {
+		t.Errorf("invalid user: err = %v, want ErrInvalid", err)
+	}
+
+	names := func(us []User) []string {
+		out := make([]string, len(us))
+		for i, u := range us {
+			out[i] = u.Name
+		}
+		return out
+	}
+	want := []string{"Alice", "Xander"} // sorted by name
+	if got := names(s.Users()); !slices.Equal(got, want) {
+		t.Errorf("Users() = %v, want %v", got, want)
+	}
+
+	// A new user can log sessions right away, and everything survives a reopen.
+	if _, err := s.SaveSession(Session{UserID: "alice", StartedAt: at(8, 7)}); err != nil {
+		t.Fatalf("session for new user: %v", err)
+	}
+	reopened, err := Open(s.dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := names(reopened.Users()); !slices.Equal(got, want) {
+		t.Errorf("after reopen Users() = %v, want %v", got, want)
+	}
+	if u, _ := reopened.User("alice"); u.AvatarEmoji != "🏃" {
+		t.Errorf("alice after reopen = %+v, want emoji kept", u)
 	}
 }

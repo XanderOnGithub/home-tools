@@ -1,6 +1,9 @@
 package fitness
 
-import "testing"
+import (
+	"testing"
+	"time"
+)
 
 func TestSetValidate(t *testing.T) {
 	bench := Exercise{ID: "bench_press", Metrics: []Metric{MetricReps, MetricWeight}}
@@ -125,6 +128,51 @@ func TestRoutineValidate(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			err := tt.r.Validate()
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestUserValidate(t *testing.T) {
+	xander := User{
+		ID:          "xander",
+		Name:        "Xander",
+		Birthday:    time.Date(2000, 1, 2, 0, 0, 0, 0, time.UTC),
+		HeightM:     1.8,
+		Units:       UnitsMetric,
+		AvatarColor: "#4f8cff",
+	}
+	with := func(change func(*User)) User {
+		u := xander
+		change(&u)
+		return u
+	}
+
+	tests := []struct {
+		name    string
+		user    User
+		wantErr bool
+	}{
+		{"ok", xander, false},
+		{"optional fields empty", with(func(u *User) { u.Birthday = time.Time{}; u.HeightM = 0 }), false},
+		{"emoji avatar", with(func(u *User) { u.AvatarEmoji = "🏋️" }), false},
+		{"uppercase hex", with(func(u *User) { u.AvatarColor = "#4F8CFF" }), false},
+		{"bad id", with(func(u *User) { u.ID = "../root" }), true},
+		{"blank name", with(func(u *User) { u.Name = "   " }), true},
+		{"missing units", with(func(u *User) { u.Units = "" }), true},
+		{"unknown units", with(func(u *User) { u.Units = "furlongs" }), true},
+		{"negative height", with(func(u *User) { u.HeightM = -1 }), true},
+		{"future birthday", with(func(u *User) { u.Birthday = time.Now().AddDate(1, 0, 0) }), true},
+		{"missing color", with(func(u *User) { u.AvatarColor = "" }), true},
+		{"color without #", with(func(u *User) { u.AvatarColor = "4f8cff0" }), true},
+		{"short color", with(func(u *User) { u.AvatarColor = "#fff" }), true},
+		{"non-hex color", with(func(u *User) { u.AvatarColor = "#zzzzzz" }), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := tt.user.Validate()
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Validate() error = %v, wantErr %v", err, tt.wantErr)
 			}
