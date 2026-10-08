@@ -1,0 +1,47 @@
+# Paste into ZimaOS → App Store → Custom Install → Import (compose).
+# Fill in the three <...> values first. Never commit the filled-in copy:
+# it contains the Cloudflare token.
+# No network_mode: compose's own network lets Caddy reach "home-tools"
+# by name (the plain "bridge" network has no name lookup).
+name: home-tools
+services:
+  home-tools:
+    image: ghcr.io/xanderongithub/home-tools:latest
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    volumes:
+      - type: bind
+        source: /var/lib/casaos_data/.media/Vault/Apps/HomeTools
+        target: /data
+
+  caddy:
+    image: ghcr.io/xanderongithub/home-tools-caddy:latest
+    restart: unless-stopped
+    depends_on:
+      - home-tools
+    ports:
+      - "443:443"
+    environment:
+      DOMAIN: <your domain, e.g. example.com>
+      CLOUDFLARE_API_TOKEN: <token>
+      UPSTREAM: home-tools:8080
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    volumes:
+      - type: bind
+        source: /var/lib/casaos_data/.media/Vault/Apps/Caddy/data
+        target: /data
+      - type: bind
+        source: /var/lib/casaos_data/.media/Vault/Apps/Caddy/config
+        target: /config
+
+x-casaos:
+  title:
+    custom: Home Tools
+  main: home-tools
+  index: /

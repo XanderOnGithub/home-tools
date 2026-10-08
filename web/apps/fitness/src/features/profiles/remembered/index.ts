@@ -1,7 +1,7 @@
 // Remembers which profile this browser picked, until "Switch profile".
 //
 // A cookie, not localStorage: localStorage is separate per subdomain, but a
-// cookie set on the parent domain (.starport.tech) is shared, so picking a
+// cookie set on the parent domain (e.g. .example.com) is shared, so picking a
 // profile in fitness also picks it in every other tool (decision #24).
 // The server never reads it; it's just the browser's memory.
 
@@ -26,7 +26,7 @@ export function forgetProfile(): void {
 }
 
 /**
- * fitness.starport.tech → shared with all of .starport.tech. Hosts without
+ * fitness.example.com → shared with all of .example.com. Hosts without
  * a subdomain (localhost, a bare IP) keep the cookie to themselves.
  */
 function attributes(maxAgeSec: number): string {
@@ -34,5 +34,6 @@ function attributes(maxAgeSec: number): string {
   const parts = host.split('.')
   const isIP = /^[\d.]+$/.test(host)
   const domain = !isIP && parts.length >= 3 ? `; domain=.${parts.slice(1).join('.')}` : ''
-  return `path=/; max-age=${maxAgeSec}; samesite=lax${domain}`
+  const secure = location.protocol === 'https:' ? '; secure' : ''
+  return `path=/; max-age=${maxAgeSec}; samesite=lax${domain}${secure}`
 }

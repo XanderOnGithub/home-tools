@@ -17,8 +17,10 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/XanderOnGithub/home-tools/internal/httpx"
 	"github.com/XanderOnGithub/home-tools/internal/users"
 	"github.com/XanderOnGithub/home-tools/tools/fitness"
+	fitnessweb "github.com/XanderOnGithub/home-tools/web/apps/fitness"
 )
 
 func main() {
@@ -57,6 +59,16 @@ func run(addr, dataDir string, log *slog.Logger) error {
 	})
 	users.Register(mux, us, log)
 	fitness.Register(mux, store, log)
+
+	// The UI, when built in (-tags webembed). Unknown API paths stay a JSON
+	// 404 instead of falling through to index.html.
+	// TODO(#5): pick the SPA by Host once a second tool exists.
+	if fitnessweb.Dist != nil {
+		mux.HandleFunc("GET /api/", func(w http.ResponseWriter, r *http.Request) {
+			httpx.WriteError(w, http.StatusNotFound, "not found")
+		})
+		mux.Handle("GET /", httpx.SPA(fitnessweb.Dist))
+	}
 
 	srv := &http.Server{
 		Addr:    addr,

@@ -45,16 +45,18 @@ Rules:
   under `tools/<name>/` exposing one registration function; a single binary
   `cmd/home-tools` mounts all tools. One process = lowest memory.
 - **Routing:** the Go server dispatches by `Host` header
-  (`fitness.starport.tech` → fitness, `games.starport.tech` → games).
+  (`fitness.<domain>` → fitness, `games.<domain>` → games; the real
+  domain lives only in `deploy/.env`).
   API under `/api/...` per host; everything else serves the tool's SPA.
 - **Frontend:** Svelte + Vite, no SSR, pnpm workspaces. Packages named
   `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`.
 - **Storage:** JSON files under a configurable data dir (e.g. `data/<tool>/`).
   In-memory index loaded at start; mutations written atomically
   (write temp → fsync → rename). Store design is a Xander-written core module.
-- **Network:** LAN only. Local DNS (router / AdGuard / Pi-hole) resolves
-  `*.starport.tech` to the server's LAN IP. No port forwarding, no tunnel.
-  TLS approach is an open decision.
+- **Network:** LAN only. Local DNS (UniFi DNS records, one per tool)
+  resolves `<tool>.<domain>` to the server's LAN IP. No port forwarding,
+  no tunnel. HTTPS: Caddy in Docker with a Let's Encrypt wildcard cert via
+  Cloudflare DNS-01, proxying to Go on plain HTTP (`deploy/`).
 
 ### Planned layout (not yet created)
     cmd/home-tools/        main.go: config load, wire tools, start server
@@ -64,6 +66,8 @@ Rules:
     web/packages/ui/       @home-tools/ui: shared Svelte components + styles
     web/apps/fitness/      @home-tools/fitness (Vite SPA)
     web/apps/games/        @home-tools/games (Vite SPA)
+    deploy/                ZimaOS: Caddy image (HTTPS), compose files, setup steps
+    .github/workflows/     CI: checks, then publish images to GHCR
     docs/decisions/        ADRs: NNNN-title.md
     data/                  runtime JSON (gitignored)
 
@@ -77,7 +81,8 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
     make run     go run ./cmd/home-tools  (API on :8080)
     make web     fitness UI dev server on :5173 (proxies /api, /images to :8080)
     pnpm --dir web install | check | build   web deps, type-check, production build
-    make build   → bin/home-tools
+    make build   → bin/home-tools (UI built in via -tags webembed)
+    docker build -t home-tools .   production image (CI publishes it; see deploy/)
     make check   vet + test (-race) + gofmt check (run before committing)
     go run ./cmd/fitness-import -data data/fitness -users data/users   import exercises + photos (idempotent)
 
@@ -93,8 +98,8 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 5 | Single Go module + single binary; tools are packages mounted by a main server, host-based routing | ✅ | 2026-10-07. Lowest memory; tools still isolated as packages. |
 | 6 | Frontend: one SPA per tool + shared `@home-tools/ui` | ✅ | 2026-10-07. Static files, so server memory ≈ same; smaller per-subdomain bundles, clean boundaries. |
 | 7 | Fitness JSON layout | ✅ | Per-user dirs (`users/<id>/…`); exercises + routines shared (`created_by`); **one file per session** named by ISO start time (`users/<id>/sessions/<start>.json`). Exercise declares tracked `Metrics`; `Set` is flat numbers; muscle `Activation` is a sparse map in (0,1]. In-progress session = zero `EndedAt` + `omitzero`. `Bodyweight` exercises: weight optional (0 = BW only); negative values rejected (no assisted lifts yet). Exercises require ≥1 muscle activation (even stretches). Routines: `RoutineExercise{exercise_id, suggested_sets}` — hints only. Rules enforced in `validate.go`; catalog-reference checks belong to the store. Model: `tools/fitness/model.go`. |
-| 8 | TLS on LAN: plain HTTP vs Let's Encrypt via DNS-01 vs local CA | ⬜ | DNS-01 gives real certs with zero exposure. |
-| 9 | Reverse proxy: Go serves :443 directly vs Caddy in front | ⬜ | |
+| 8 | TLS on LAN: Let's Encrypt wildcard `*.<domain>` via Cloudflare DNS-01 | ✅ | 2026-10-08. Real certs (no CA to install on phones), nothing exposed, subdomain names stay out of CT logs. Scoped Cloudflare token in gitignored `deploy/.env`; domain also only there. Rejected: plain HTTP (no Wake Lock on phones), local CA (install on every phone). |
+| 9 | Reverse proxy: Caddy (Docker, custom build with `caddy-dns/cloudflare`) on :443 only → Go on plain HTTP | ✅ | 2026-10-08. Caddy renews certs; Go needs no TLS code or new dependency (`autocert` can't do DNS-01). Port 80 left to the ZimaOS dashboard. Config: `deploy/`. |
 | 10 | Auth: none; Netflix-style profile picker | ✅ | 2026-10-08. Trusted LAN; family members aren't a security boundary. UI remembers the chosen profile; API takes the user ID in the URL (`/api/users/{id}/...`). A PIN can be added later as a field. |
 | 11 | Exercise data: free-exercise-db (Unlicense, 876 exercises, 2 photos each) | ✅ | 2026-10-07. Import: `cmd/fitness-import` + `tools/fitness/fedb.go`. Primary→1.0, secondary→0.5; stretching/cardio→duration, else reps+weight; bodyweight-style equipment→weight optional. Never overwrites existing IDs. Rejected: Gym Visual dataset (media needs own license), wger (AGPL/per-entry CC). |
 | 12 | Muscle diagram: `body-highlighter` (npm, MIT, framework-agnostic, zero deps) | 🟡 | Verify when building the UI. Its region names differ from our `Muscle` values; one frontend map translates (e.g. shoulders→front+back deltoids, lats/middle_back→upper-back). |
@@ -109,18 +114,20 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 21 | Fitness keeps no profile data of its own: sessions live in `users/<id>/sessions/` keyed by the shared profile ID (#24). **No weight on User:** body weight is an optional `body_weight_kg` on `Session`; "current weight" = latest logged. Height/birthday dropped until a screen needs them | ✅ | 2026-10-08. One source of truth; weight history comes free. |
 | 22 | Profile `color` enum (green, blue, orange, purple) = avatar background **and** UI accent. Avatar shape: an organic SVG blob: a circle whose radius follows layered waves of 3, 4 and 5 bumps (random strength and angle), normalized to the same 30% spread so none look round or broken, smoothed with Catmull-Rom curves, computed in the frontend from the profile ID (`features/profiles/blob`), so it is never stored and is always the same for a person. Face: two plain dark oval eyes (same in light/dark mode; white eyes with pupils were rejected as creepy), per-ID placement/size/tilt and timing (`blobFace`); eyes blink, glance around as a pair, and the body leans slightly with them; with reduced motion the face stays still. No initial, no emoji. Component: `features/profiles/profile-avatar`. A flat 2D avatar maker (face shape/eyes/mouth parts) is a later feature | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
 | 23 | UI foundation: CSS custom-property tokens (raw palette → semantic layer), font Figtree (bundled via `@fontsource/figtree`, OFL, Latin subset only, weights 400–800; system font fallback; rejected: M PLUS Rounded 1c, too rounded), `rem` type scale, 4px spacing scale; light/dark via `prefers-color-scheme` + per-device override; WCAG 2.2 AA; 44px touch targets; every interactive element defines rest/hover/pressed/focus/disabled/loading | ✅ | 2026-10-08. Neutrals, type, spacing shared by all tools; only the accent varies (per profile). Red only for errors/destructive actions. Rules in `web/DESIGN.md`. |
-| 24 | Profiles are shared by all tools: `internal/users` (`User{id, name, color, units, archived}`, files `data/users/<id>.json`, `GET/PUT /api/users`). Tools key their own data by user ID and check it against this store | ✅ | 2026-10-08. Pick once, same people everywhere. Units live here (recipes need them too). Remembering the chosen profile across subdomains needs a cookie on `.starport.tech` (localStorage is per subdomain). |
+| 24 | Profiles are shared by all tools: `internal/users` (`User{id, name, color, units, archived}`, files `data/users/<id>.json`, `GET/PUT /api/users`). Tools key their own data by user ID and check it against this store | ✅ | 2026-10-08. Pick once, same people everywhere. Units live here (recipes need them too). Remembering the chosen profile across subdomains needs a cookie on `.<domain>` (localStorage is per subdomain). |
 | 25 | Shared profile gains optional `birthday` (date, `omitzero`), asked in "Add profile" | ✅ | 2026-10-08. Not fitness-specific; other tools may use it. |
 | 26 | Fitness "workout profile" `users/<id>/fitness.json`: `goal` (strength / muscle / endurance / general), `height_m`, `schedule` (weekday → routine ID; missing = rest), `weight_prompt_skipped` (ISO week, e.g. `2026-W41`). Onboarding = height → current weight, both required (weight: "a rough estimate is fine"), in the profile's units (ft + in / lb, or cm / kg); schedule can be set later. "Add profile" asks units, default imperial. `goal` is optional and not asked (2026-10-08: "a tool, not a product") | ✅ | 2026-10-08. No profile file yet = show onboarding. Weekly target is derived from the schedule (count of workout days), not stored. |
 | 27 | Fixed weekly schedule (Mon = Upper, Wed = rest…), not a rotation. Home's "Up next" = today's routine | ✅ | 2026-10-08. Easier to understand; missed days aren't carried over. |
 | 28 | Body weight is a per-user log `users/<id>/weights.json` (`[{date, weight_kg}]`, ≤1 entry per day). Weekly check-in card on home: input pre-filled with the last weight; Skip records nothing and hides the card for that ISO week. `body_weight_kg` removed from `Session` | ✅ | 2026-10-08. Supersedes the weight part of #21: one source of truth; skipping never invents a measurement. |
 | 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
 | 30 | Routines are one shared household list of plans (anyone creates/edits); each person's weekly schedule (their `fitness.json`) picks which routine on which day. Routines page = "Your week" planner + the shared list; create/edit is its own page (`/routines/new`, `/routines/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
+| 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
+| 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form (`deploy/zimaos.yaml`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
 ## 5. Tool briefs (scope, not specs)
-### Fitness (`fitness.starport.tech`): mostly CRUD
+### Fitness (`fitness.<domain>`): mostly CRUD
 - **User:** name, birthday, height, weight; optional body-weight entry per session.
 - **Exercise:** name, primary/secondary muscles, instructions, media.
   Later: guidance per goal (strength: low reps/high weight vs endurance/hypertrophy).
@@ -129,7 +136,7 @@ Record each finalized decision as an ADR in `docs/decisions/` and update this ta
   enforce sets/reps/weight. Starting a session from a routine pre-fills it.
 - **Progress:** derived from sessions (and snapshots) for charts per exercise/user.
 
-### Game Server Manager (`games.starport.tech`)
+### Game Server Manager (`games.<domain>`)
 - Servers: Valheim + Minecraft as Docker containers on ZimaOS.
 - Start / stop / restart via the Docker Engine API (unix socket).
 - Live logs (stream to browser; SSE or WebSocket, decide later).
@@ -200,7 +207,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   states) + create dialog (native `<dialog>`; name + color blobs; ID slug
   from name with -2 suffix; avatar morphs via `Tween`; units default metric
   until a settings screen exists). Choosing a profile remembers it in the
-  `home_tools_profile` cookie (shared across *.starport.tech; until
+  `home_tools_profile` cookie (shared across *.<domain>; until
   "Switch profile"), sets `<html data-accent>`, and shows a placeholder
   fitness home. No router yet (App switches on the chosen profile).
   Backend for onboarding/home: `users.User.birthday`; fitness `Profile`
@@ -232,7 +239,13 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   (default 90 s, ±15 s, skip; computed from an end timestamp; vibrates
   where supported); Leave keeps it in progress (home shows Resume),
   Finish sets `ended_at`. Screen Wake Lock while open (HTTPS/localhost
-  only, see #8). Next: decide TLS (#8) so wake lock works on phones.
+  only, see #8). HTTPS decided (#8, #9): `deploy/` has the Caddy
+  image, Caddyfile, compose file and setup steps; not yet run on ZimaOS.
+  Profile cookie gets `secure` on HTTPS. Docker image (#31): UI embedded
+  (`httpx.SPA`: index.html fallback for client routes, hashed assets
+  cached forever; unknown `/api/` paths stay a JSON 404). CI publishes
+  images to GHCR (#32); `deploy/zimaos.yaml` is the paste-in app. Not yet
+  run on ZimaOS.
 
 
 ## 8. Improvements (later, not urgent)

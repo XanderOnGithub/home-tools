@@ -1,0 +1,31 @@
+# For SSH or a local test: `docker compose up -d` pulls the published
+# images; `--build` builds them from this checkout instead. Values come
+# from .env. For the ZimaOS app form, use zimaos.yaml.
+services:
+  home-tools:
+    image: ghcr.io/xanderongithub/home-tools:latest
+    build: ..
+    restart: unless-stopped
+    volumes:
+      # Plain host folder (users/, fitness/), so it's backed up and
+      # editable like any other files.
+      - ${DATA_DIR}:/data
+    # Not published: only Caddy reaches it, over the compose network.
+
+  caddy:
+    image: ghcr.io/xanderongithub/home-tools-caddy:latest
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "443:443"
+    depends_on:
+      - home-tools
+    volumes:
+      # Certificates; keep across restarts (Let's Encrypt rate-limits).
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

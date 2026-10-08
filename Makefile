@@ -7,8 +7,10 @@ run:
 web:
 	pnpm --dir web dev:fitness
 
+# Production binary with the UI built in.
 build:
-	go build -o bin/home-tools ./cmd/home-tools
+	pnpm --dir web build
+	go build -tags webembed -o bin/home-tools ./cmd/home-tools
 
 test:
 	go test -race ./...

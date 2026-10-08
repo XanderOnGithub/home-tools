@@ -1,0 +1,6 @@
+.git
+bin
+data
+deploy/.env
+**/node_modules
+**/dist
