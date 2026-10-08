@@ -1,18 +1,28 @@
 <script lang="ts">
   import { getFitnessProfile, type FitnessProfile } from '@/features/fitness-profile'
+  import { HistoryScreen } from '@/features/history/history-screen'
   import { HomeScreen } from '@/features/home/home-screen'
   import { OnboardingFlow } from '@/features/onboarding/onboarding-flow'
   import { ProfilePicker } from '@/features/profiles/profile-picker'
   import { forgetProfile } from '@/features/profiles/remembered'
   import type { Profile } from '@/features/profiles/types'
+  import { RoutinesScreen } from '@/features/routines/routines-screen'
+  import { AppShell } from '@/features/shell/app-shell'
+  import { NotFound } from '@/features/shell/not-found'
+  import { router } from '@/router'
 
-  // No router yet. The screens, in order:
+  // Gates, in order:
   //   no profile chosen      → picker
   //   chosen, not onboarded  → onboarding
-  //   chosen and onboarded   → home
+  //   chosen and onboarded   → the app (pages chosen by URL, see router)
   let profile = $state<Profile | null>(null)
   let fitness = $state<FitnessProfile | null>(null)
   let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
+
+  const TITLES: Record<string, string> = { '/': 'Home', '/routines': 'Routines', '/history': 'History' }
+  $effect(() => {
+    document.title = `${TITLES[router.path] ?? 'Not found'} · Fitness`
+  })
 
   // The chosen person's color becomes the accent for the whole app.
   $effect(() => {
@@ -54,7 +64,17 @@
 {:else if status === 'ready' && !fitness}
   <OnboardingFlow {profile} oncomplete={(fp) => (fitness = fp)} />
 {:else if status === 'ready' && fitness}
-  <HomeScreen {profile} onswitch={switchProfile} />
+  <AppShell {profile} onswitch={switchProfile}>
+    {#if router.path === '/'}
+      <HomeScreen {profile} bind:fitness />
+    {:else if router.path === '/routines'}
+      <RoutinesScreen />
+    {:else if router.path === '/history'}
+      <HistoryScreen {profile} />
+    {:else}
+      <NotFound />
+    {/if}
+  </AppShell>
 {/if}
 
 <style>

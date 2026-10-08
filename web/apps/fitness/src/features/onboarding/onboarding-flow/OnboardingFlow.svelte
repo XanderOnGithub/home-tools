@@ -87,7 +87,8 @@
     try {
       // Weight first: if the profile saved but the weight failed, a retry
       // would skip onboarding and lose the weight.
-      await saveWeight(profile.id, { date: today(), weight_kg: Math.round(weightKg() * 10) / 10 })
+      // 0.01 kg precision, so a weight in lb reads back exactly as typed.
+      await saveWeight(profile.id, { date: today(), weight_kg: Math.round(weightKg() * 100) / 100 })
       oncomplete(await saveFitnessProfile(fp))
     } catch (err) {
       error = `Couldn't save. ${(err as Error).message}`

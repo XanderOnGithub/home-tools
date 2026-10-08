@@ -1,80 +1,108 @@
 <!--
-  Fitness home, for the chosen profile. Placeholder until the real home
-  (start a workout, recent sessions) is designed.
+  Home: a greeting with the person's blob, today's date under it, then the
+  weekly weight check-in (only when due), today's plan, and this week.
 -->
 <script lang="ts">
+  import { isoDate, isoWeek, startOfWeek, weekDays } from '@/dates'
+  import { getWeights, type FitnessProfile, type WeightEntry } from '@/features/fitness-profile'
+  import { ThisWeek } from '@/features/home/this-week'
+  import { UpNext } from '@/features/home/up-next'
+  import { WeightCheckIn } from '@/features/home/weight-check-in'
   import { ProfileAvatar } from '@/features/profiles/profile-avatar'
   import type { Profile } from '@/features/profiles/types'
+  import { getRoutines, type Routine } from '@/features/routines'
+  import { getRecentSessions, type Session } from '@/features/sessions'
 
-  let { profile, onswitch }: { profile: Profile; onswitch: () => void } = $props()
+  let { profile, fitness = $bindable() }: { profile: Profile; fitness: FitnessProfile } = $props()
+
+  const now = new Date()
+  const date = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
+
+  // 5–11 morning, 12–16 afternoon, otherwise evening ("Good morning" at
+  // 3 a.m. reads oddly, so late night counts as evening).
+  const hour = now.getHours()
+  const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 17 ? 'Good afternoon' : 'Good evening'
+
+  let sessions = $state<Session[]>([])
+  let routines = $state<Routine[]>([])
+  let weights = $state<WeightEntry[]>([])
+  let status = $state<'loading' | 'ready' | 'error'>('loading')
+
+  async function load() {
+    status = 'loading'
+    try {
+      // Independent requests: fetch in parallel.
+      ;[sessions, routines, weights] = await Promise.all([
+        getRecentSessions(profile.id),
+        getRoutines(),
+        getWeights(profile.id),
+      ])
+      status = 'ready'
+    } catch (err) {
+      console.error('Loading home failed:', err)
+      status = 'error'
+    }
+  }
+  load()
+
+  // Only this week's sessions matter here.
+  let weekStart = isoDate(startOfWeek(now))
+  let weekEnd = isoDate(weekDays(now)[6])
+  let thisWeek = $derived(
+    sessions.filter((s) => {
+      const day = isoDate(new Date(s.started_at))
+      return day >= weekStart && day <= weekEnd
+    }),
+  )
+
+  // The check-in is due if nothing was logged this week and it wasn't skipped.
+  let checkInDue = $derived(
+    fitness.weight_prompt_skipped !== isoWeek(now) &&
+      !weights.some((w) => w.date >= weekStart && w.date <= weekEnd),
+  )
 </script>
 
-<header class="header">
-  <div class="who">
+<div class="home">
+  <div class="greeting">
     <span class="avatar"><ProfileAvatar id={profile.id} /></span>
-    <span class="name">{profile.name}</span>
+    <div>
+      <h1 tabindex="-1">{greeting}, {profile.name}</h1>
+      <p class="date"><time datetime={isoDate(now)}>{date}</time></p>
+    </div>
   </div>
-  <button type="button" class="switch" onclick={onswitch}>Switch profile</button>
-</header>
 
-<main class="main">
-  <h1>Hi, {profile.name}</h1>
-  <p>Your workouts will live here.</p>
-</main>
+  {#if status === 'error'}
+    <div class="error" role="alert">
+      <p>Couldn't load your week. Check that the server is running.</p>
+      <button type="button" class="retry" onclick={load}>Try again</button>
+    </div>
+  {:else if status === 'ready'}
+    {#if checkInDue}
+      <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
+    {/if}
+    <UpNext {fitness} sessions={thisWeek} {routines} />
+    <ThisWeek {fitness} sessions={thisWeek} {routines} />
+  {/if}
+</div>
 
 <style>
-  .header {
+  .home {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     gap: var(--space-4);
-    padding: var(--space-3) var(--space-4);
-    border-bottom: 1px solid var(--color-border);
   }
 
-  .who {
+  .greeting {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
-    min-width: 0;
+    gap: var(--space-4);
+    margin-bottom: var(--space-3);
   }
 
   .avatar {
     flex: none;
-    width: 2.5rem;
-    height: 2.5rem;
-  }
-
-  .name {
-    overflow: hidden;
-    font-weight: var(--weight-semibold);
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .switch {
-    flex: none;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-4);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-full);
-    background: none;
-    font-weight: var(--weight-medium);
-    cursor: pointer;
-    transition: border-color var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) {
-    .switch:hover {
-      border-color: var(--color-text);
-    }
-  }
-
-  .main {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-3);
-    padding: var(--space-6) var(--space-4);
+    width: 4rem;
+    height: 4rem;
   }
 
   h1 {
@@ -82,8 +110,42 @@
     font-weight: var(--weight-extrabold);
   }
 
-  p {
-    margin: 0;
+  .date {
+    margin: var(--space-1) 0 0;
     color: var(--color-text-muted);
+    font-weight: var(--weight-medium);
+  }
+
+  @media (min-width: 40rem) {
+    .avatar {
+      width: 5rem;
+      height: 5rem;
+    }
+
+    h1 {
+      font-size: var(--text-3xl);
+    }
+  }
+
+  .error {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+
+  .error p {
+    margin: 0;
+  }
+
+  .retry {
+    min-height: var(--touch-target);
+    padding: 0 var(--space-5);
+    border: none;
+    border-radius: var(--radius-full);
+    background: var(--color-accent);
+    color: var(--color-on-accent);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
   }
 </style>
