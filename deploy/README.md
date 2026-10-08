@@ -52,7 +52,9 @@ back, set the image tag to an older `sha-<commit>`.
 
 ## Gotchas
 - Phones must use the UniFi box for DNS: turn off Android "Private DNS";
-  iCloud Private Relay may bypass it in Safari.
+  iCloud Private Relay may bypass it in Safari. A VPN on the phone (e.g.
+  Google One VPN) sends DNS elsewhere too: "This site can't be reached"
+  while `http://<server IP>:8080` works means the VPN is on.
 - Keep the Caddy data folder: deleting it means re-issuing certificates
   (Let's Encrypt has rate limits).
 - The containers run as root so they can write to the CasaOS folders.
