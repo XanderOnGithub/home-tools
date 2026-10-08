@@ -26,8 +26,14 @@
   // /workout/<session id> → workout mode (full screen, no navigation).
   let workoutId = $derived(router.path.match(/^\/workout\/([^/]+)$/)?.[1] ?? null)
 
-  const TITLES: Record<string, string> = { '/': 'Home', '/routines': 'Routines', '/history': 'History' }
+  // "Page · Fitness" (most specific first: tabs cut off the end). Home is
+  // the tool's front page, so it names the whole set instead.
+  const TITLES: Record<string, string> = { '/routines': 'Routines', '/history': 'History' }
   $effect(() => {
+    if (router.path === '/') {
+      document.title = 'Fitness · Home Tools'
+      return
+    }
     const title = workoutId
       ? 'Workout'
       : routineId
