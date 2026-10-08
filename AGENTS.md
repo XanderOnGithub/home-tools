@@ -130,6 +130,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - 2026-10-07: Go module scaffolded (go.mod, cmd/home-tools stub, Makefile,
   .gitignore, .editorconfig). Fitness model done (`tools/fitness/model.go`).
   Validation done for Set, Exercise, Routine (29 table tests); Session.Validate
-  not yet. Next: the JSON store (atomic writes, in-memory index), then the
-  server in main.go.
+  not yet. `internal/jsonfile` done (generic Read[T], atomic Write; temp files
+  are dotfiles, so loaders skip names starting with "."). Next: fitness Store
+  (in-memory index + RWMutex, write-through to disk), then the server.
   pnpm workspace not yet created. Not a git repo yet.
