@@ -71,7 +71,8 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 ### Commands
     make run     go run ./cmd/home-tools
     make build   → bin/home-tools
-    make check   vet + test + gofmt check (run before committing)
+    make check   vet + test (-race) + gofmt check (run before committing)
+    go run ./cmd/fitness-import -data data/fitness   import exercises + photos (idempotent)
 
 ## 4. Decision Log
 Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
@@ -88,13 +89,15 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 8 | TLS on LAN: plain HTTP vs Let's Encrypt via DNS-01 vs local CA | ⬜ | DNS-01 gives real certs with zero exposure. |
 | 9 | Reverse proxy: Go serves :443 directly vs Caddy in front | ⬜ | |
 | 10 | Auth: none (trusted LAN) vs simple user picker vs PIN | ⬜ | Family users ≠ security boundary? |
-| 11 | Exercise data source | ⬜ | Candidate: free-exercise-db (public domain JSON + images); verify license/fit. |
-| 12 | Muscle diagram rendering | ⬜ | Likely SVG body map with muscle IDs; find/verify a Svelte-friendly source. |
+| 11 | Exercise data: free-exercise-db (Unlicense, 876 exercises, 2 photos each) | ✅ | 2026-10-07. Import: `cmd/fitness-import` + `tools/fitness/fedb.go`. Primary→1.0, secondary→0.5; stretching/cardio→duration, else reps+weight; bodyweight-style equipment→weight optional. Never overwrites existing IDs. Rejected: Gym Visual dataset (media needs own license), wger (AGPL/per-entry CC). |
+| 12 | Muscle diagram: `body-highlighter` (npm, MIT, framework-agnostic, zero deps) | 🟡 | Verify when building the UI. Its region names differ from our `Muscle` values; one frontend map translates (e.g. shoulders→front+back deltoids, lats/middle_back→upper-back). |
 | 13 | Units: store metric (kg, m, s), unit in field name; per-user display preference, UI converts | ✅ | 2026-10-07. Server never converts. |
 | 14 | JSON keys are snake_case (`weight_kg`, `duration_sec`) | ✅ | 2026-10-07. TS types mirror them. |
 | 15 | Store holds its write lock across the disk write (writes fully serialized) | ✅ | 2026-10-07. Household traffic; a few ms of blocked reads beats disk/memory ordering bugs. Revisit only if measured. |
 | 16 | Nothing is deleted: Exercise, Routine, Session all have `archived`; archiving = a normal save | ✅ | 2026-10-07. Lists return archived items (history needs names); UI hides them from pickers. |
 | 17 | Exercise `equipment: []Equipment` (enum, empty = none) for UI filtering; enums validated against `All*` lists | ✅ | 2026-10-07. Final value lists will be aligned with the chosen exercise data source (#11). |
+| 18 | `Muscle` enum = free-exercise-db's 17 names (snake_case); Exercise gains `category`, `level`, `instructions`, `images`, `source` | ✅ | 2026-10-07. Lossless import; diagram mapping lives in the frontend. |
+| 19 | Exercise photos copied to `data/fitness/images/<path>` (~100 MB), served by the Go binary | ✅ | 2026-10-07. Works offline on the LAN. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -138,6 +141,9 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `RecentSessions`; all IDs pass `validID` (they become paths). `make test`
   runs with -race. Also `Exercises`/`SaveExercise`,
   `Routines`/`SaveRoutine` (catalog-checked). Known gaps: no User model yet;
-  file name vs `id` not cross-checked on load. Next: pick the exercise data
-  source (#11) and/or start the HTTP layer + server.
+  file name vs `id` not cross-checked on load. Exercise catalog import works
+  (876 exercises, 1,746 photos, ~30 s, idempotent). Next: HTTP layer + server
+  (handlers: `errors.Is(err, ErrInvalid)` → 400 with err's message as
+  `{"error": ...}`; anything else → 500 with a generic message, real error
+  logged server-side only).
   pnpm workspace not yet created. Not a git repo yet.

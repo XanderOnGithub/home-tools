@@ -26,6 +26,17 @@ type Exercise struct {
 	// on it ("what can I do with what I have").
 	Equipment []Equipment `json:"equipment,omitempty"`
 
+	Category     Category `json:"category,omitempty"`
+	Level        Level    `json:"level,omitempty"`
+	Instructions []string `json:"instructions,omitempty"` // ordered steps
+	// Images are paths relative to the fitness images folder, e.g.
+	// "Air_Bike/0.jpg" (start position) and ".../1.jpg" (end position).
+	Images []string `json:"images,omitempty"`
+
+	// Source records where an imported exercise came from (attribution);
+	// empty for exercises made by hand.
+	Source string `json:"source,omitempty"`
+
 	Archived bool `json:"archived,omitempty"`
 }
 
@@ -42,54 +53,96 @@ const (
 // AllMetrics lists every valid Metric (for validation and UI options).
 var AllMetrics = []Metric{MetricReps, MetricWeight, MetricDistance, MetricDuration}
 
-// Muscle values double as element IDs in the body diagram SVG.
+// Muscle values match free-exercise-db's muscle names (spaces → '_') so
+// imports are lossless. The body diagram uses different region names; the
+// frontend maps Muscle → diagram regions.
 type Muscle string
 
 const (
-	MuscleChest      Muscle = "chest"
-	MuscleShoulders  Muscle = "shoulders"
+	MuscleAbdominals Muscle = "abdominals"
+	MuscleAbductors  Muscle = "abductors"
+	MuscleAdductors  Muscle = "adductors"
 	MuscleBiceps     Muscle = "biceps"
-	MuscleTriceps    Muscle = "triceps"
-	MuscleForearms   Muscle = "forearms"
-	MuscleAbs        Muscle = "abs"
-	MuscleObliques   Muscle = "obliques"
-	MuscleLats       Muscle = "lats"
-	MuscleTraps      Muscle = "traps"
-	MuscleLowerBack  Muscle = "lower_back"
-	MuscleGlutes     Muscle = "glutes"
-	MuscleQuads      Muscle = "quads"
-	MuscleHamstrings Muscle = "hamstrings"
 	MuscleCalves     Muscle = "calves"
+	MuscleChest      Muscle = "chest"
+	MuscleForearms   Muscle = "forearms"
+	MuscleGlutes     Muscle = "glutes"
+	MuscleHamstrings Muscle = "hamstrings"
+	MuscleLats       Muscle = "lats"
+	MuscleLowerBack  Muscle = "lower_back"
+	MuscleMiddleBack Muscle = "middle_back"
+	MuscleNeck       Muscle = "neck"
+	MuscleQuadriceps Muscle = "quadriceps"
+	MuscleShoulders  Muscle = "shoulders"
+	MuscleTraps      Muscle = "traps"
+	MuscleTriceps    Muscle = "triceps"
 )
 
 // AllMuscles lists every valid Muscle (for validation and UI options).
 var AllMuscles = []Muscle{
-	MuscleChest, MuscleShoulders, MuscleBiceps, MuscleTriceps, MuscleForearms,
-	MuscleAbs, MuscleObliques, MuscleLats, MuscleTraps, MuscleLowerBack,
-	MuscleGlutes, MuscleQuads, MuscleHamstrings, MuscleCalves,
+	MuscleAbdominals, MuscleAbductors, MuscleAdductors, MuscleBiceps,
+	MuscleCalves, MuscleChest, MuscleForearms, MuscleGlutes, MuscleHamstrings,
+	MuscleLats, MuscleLowerBack, MuscleMiddleBack, MuscleNeck,
+	MuscleQuadriceps, MuscleShoulders, MuscleTraps, MuscleTriceps,
 }
 
 // Equipment is something an exercise needs.
 type Equipment string
 
 const (
-	EquipmentBarbell    Equipment = "barbell"
-	EquipmentDumbbell   Equipment = "dumbbell"
-	EquipmentKettlebell Equipment = "kettlebell"
-	EquipmentCable      Equipment = "cable"
-	EquipmentMachine    Equipment = "machine"
-	EquipmentBench      Equipment = "bench"
-	EquipmentPullUpBar  Equipment = "pull_up_bar"
-	EquipmentBand       Equipment = "band"
-	EquipmentTreadmill  Equipment = "treadmill"
+	EquipmentBarbell      Equipment = "barbell"
+	EquipmentDumbbell     Equipment = "dumbbell"
+	EquipmentKettlebell   Equipment = "kettlebell"
+	EquipmentCable        Equipment = "cable"
+	EquipmentMachine      Equipment = "machine"
+	EquipmentBench        Equipment = "bench"
+	EquipmentPullUpBar    Equipment = "pull_up_bar"
+	EquipmentBand         Equipment = "band"
+	EquipmentTreadmill    Equipment = "treadmill"
+	EquipmentEZBar        Equipment = "ez_bar"
+	EquipmentMedicineBall Equipment = "medicine_ball"
+	EquipmentExerciseBall Equipment = "exercise_ball"
+	EquipmentFoamRoller   Equipment = "foam_roller"
 )
 
 // AllEquipment lists every valid Equipment (for validation and UI filters).
 var AllEquipment = []Equipment{
 	EquipmentBarbell, EquipmentDumbbell, EquipmentKettlebell, EquipmentCable,
 	EquipmentMachine, EquipmentBench, EquipmentPullUpBar, EquipmentBand,
-	EquipmentTreadmill,
+	EquipmentTreadmill, EquipmentEZBar, EquipmentMedicineBall,
+	EquipmentExerciseBall, EquipmentFoamRoller,
 }
+
+// Category is the kind of training an exercise is (from free-exercise-db).
+type Category string
+
+const (
+	CategoryStrength             Category = "strength"
+	CategoryPowerlifting         Category = "powerlifting"
+	CategoryOlympicWeightlifting Category = "olympic_weightlifting"
+	CategoryStrongman            Category = "strongman"
+	CategoryPlyometrics          Category = "plyometrics"
+	CategoryStretching           Category = "stretching"
+	CategoryCardio               Category = "cardio"
+)
+
+// AllCategories lists every valid Category (for validation and UI filters).
+var AllCategories = []Category{
+	CategoryStrength, CategoryPowerlifting, CategoryOlympicWeightlifting,
+	CategoryStrongman, CategoryPlyometrics, CategoryStretching, CategoryCardio,
+}
+
+// Level is how much experience an exercise assumes.
+type Level string
+
+const (
+	LevelBeginner     Level = "beginner"
+	LevelIntermediate Level = "intermediate"
+	LevelExpert       Level = "expert"
+)
+
+// AllLevels lists every valid Level (for validation and UI filters).
+var AllLevels = []Level{LevelBeginner, LevelIntermediate, LevelExpert}
 
 // ---- Planning ----
 

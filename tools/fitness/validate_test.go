@@ -44,7 +44,7 @@ func TestExerciseValidate(t *testing.T) {
 	squat := Exercise{
 		ID:         "squat",
 		Name:       "Squat",
-		Activation: map[Muscle]float64{MuscleQuads: 1, MuscleGlutes: 0.5},
+		Activation: map[Muscle]float64{MuscleQuadriceps: 1, MuscleGlutes: 0.5},
 		Metrics:    []Metric{MetricReps, MetricWeight},
 	}
 	// with returns a copy of squat with one change applied, so each case
@@ -65,13 +65,16 @@ func TestExerciseValidate(t *testing.T) {
 		{"missing name", with(func(e *Exercise) { e.Name = "" }), true},
 		{"missing metrics", with(func(e *Exercise) { e.Metrics = nil }), true},
 		{"missing activation", with(func(e *Exercise) { e.Activation = nil }), true},
-		{"activation exactly 1", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: 1} }), false},
-		{"activation zero", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: 0} }), true},
-		{"activation over 1", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: 1.01} }), true},
-		{"activation negative", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuads: -0.5} }), true},
+		{"activation exactly 1", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuadriceps: 1} }), false},
+		{"activation zero", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuadriceps: 0} }), true},
+		{"activation over 1", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuadriceps: 1.01} }), true},
+		{"activation negative", with(func(e *Exercise) { e.Activation = map[Muscle]float64{MuscleQuadriceps: -0.5} }), true},
 		{"unknown metric", with(func(e *Exercise) { e.Metrics = []Metric{"rep"} }), true},
 		{"unknown muscle", with(func(e *Exercise) { e.Activation = map[Muscle]float64{"quadz": 1} }), true},
 		{"unknown equipment", with(func(e *Exercise) { e.Equipment = []Equipment{"barbel"} }), true},
+		{"unknown category", with(func(e *Exercise) { e.Category = "strenght" }), true},
+		{"unknown level", with(func(e *Exercise) { e.Level = "pro" }), true},
+		{"known category and level", with(func(e *Exercise) { e.Category, e.Level = CategoryStrength, LevelBeginner }), false},
 		{"known equipment", with(func(e *Exercise) { e.Equipment = []Equipment{EquipmentBarbell, EquipmentBench} }), false},
 	}
 	for _, tt := range tests {

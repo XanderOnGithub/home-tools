@@ -90,7 +90,7 @@ func newTestStore(t *testing.T) *Store {
 		t.Fatal(err)
 	}
 	s.exercises["squat"] = Exercise{ID: "squat", Name: "Squat",
-		Activation: map[Muscle]float64{MuscleQuads: 1},
+		Activation: map[Muscle]float64{MuscleQuadriceps: 1},
 		Metrics:    []Metric{MetricReps, MetricWeight}}
 	return s
 }

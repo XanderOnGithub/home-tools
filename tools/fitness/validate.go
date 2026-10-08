@@ -66,7 +66,8 @@ func (s Set) Validate(ex Exercise) error {
 //   - ID and Name are required
 //   - at least one metric is tracked
 //   - at least one muscle activation, each in (0, 1]
-//   - metrics, muscles and equipment are known values
+//   - metrics, muscles, equipment, category and level are known values
+//     (category and level may be empty)
 func (e Exercise) Validate() error {
 	if !validID(e.ID) {
 		return fmt.Errorf("%w exercise: bad ID %q", ErrInvalid, e.ID)
@@ -86,6 +87,12 @@ func (e Exercise) Validate() error {
 		if !slices.Contains(AllEquipment, eq) {
 			return fmt.Errorf("%w exercise %s: unknown equipment %q", ErrInvalid, e.ID, eq)
 		}
+	}
+	if e.Category != "" && !slices.Contains(AllCategories, e.Category) {
+		return fmt.Errorf("%w exercise %s: unknown category %q", ErrInvalid, e.ID, e.Category)
+	}
+	if e.Level != "" && !slices.Contains(AllLevels, e.Level) {
+		return fmt.Errorf("%w exercise %s: unknown level %q", ErrInvalid, e.ID, e.Level)
 	}
 	if len(e.Activation) == 0 {
 		return fmt.Errorf("%w exercise %s: missing muscle activation", ErrInvalid, e.ID)

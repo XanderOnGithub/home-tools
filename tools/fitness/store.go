@@ -162,6 +162,14 @@ func (s *Store) Exercises() []Exercise {
 	return sortedByName(s.exercises, func(e Exercise) string { return e.Name })
 }
 
+// Exercise returns the exercise with id, and whether it exists.
+func (s *Store) Exercise(id string) (Exercise, bool) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	ex, ok := s.exercises[id]
+	return ex, ok
+}
+
 // SaveExercise validates ex and writes it to disk, then to memory.
 // Archiving is a save with Archived set; nothing is ever deleted.
 func (s *Store) SaveExercise(ex Exercise) error {
