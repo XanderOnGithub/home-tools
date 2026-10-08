@@ -1,0 +1,35 @@
+# ZimaOS app 2 of 2: HTTPS in front of home-tools (decisions #8, #9).
+# Fill in the <...> values in the gitignored copy zimaos-caddy.local.yaml
+# (it contains the Cloudflare token), then paste that into Custom Install.
+name: home-tools-caddy
+services:
+  caddy:
+    image: ghcr.io/xanderongithub/home-tools-caddy:latest
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    # host.docker.internal = the server itself, where home-tools
+    # publishes :8080 (separate apps don't share a network).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      DOMAIN: <your domain, e.g. example.com>
+      CLOUDFLARE_API_TOKEN: <token>
+      UPSTREAM: host.docker.internal:8080
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    volumes:
+      - type: bind
+        source: /var/lib/casaos_data/.media/Vault/Apps/Caddy/data
+        target: /data
+      - type: bind
+        source: /var/lib/casaos_data/.media/Vault/Apps/Caddy/config
+        target: /config
+
+x-casaos:
+  title:
+    custom: Home Tools HTTPS
+  main: caddy
+  index: /

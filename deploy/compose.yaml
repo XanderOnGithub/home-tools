@@ -1,6 +1,6 @@
 # For SSH or a local test: `docker compose up -d` pulls the published
 # images; `--build` builds them from this checkout instead. Values come
-# from .env. For the ZimaOS app form, use zimaos.yaml.
+# from .env. For the ZimaOS app form, use zimaos-*.yaml.
 services:
   home-tools:
     image: ghcr.io/xanderongithub/home-tools:latest

@@ -1,0 +1,25 @@
+# ZimaOS app 1 of 2: paste into App Store → Custom Install → Import.
+# (ZimaOS keeps only one service per imported app, so Caddy is its own
+# app: zimaos-caddy.yaml.) Port 8080 is published so Caddy can reach it
+# through the host; it is plain HTTP, LAN only.
+name: home-tools
+services:
+  home-tools:
+    image: ghcr.io/xanderongithub/home-tools:latest
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+    volumes:
+      - type: bind
+        source: /var/lib/casaos_data/.media/Vault/Apps/HomeTools
+        target: /data
+
+x-casaos:
+  title:
+    custom: Home Tools
+  main: home-tools
+  index: /
