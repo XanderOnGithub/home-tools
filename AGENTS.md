@@ -80,7 +80,8 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
     make run     go run ./cmd/home-tools  (API on :8080)
     make web     fitness UI dev server on :5173 (proxies /api, /images to :8080)
     pnpm --dir web install | check | build   web deps, type-check, production build
-    make build   → bin/home-tools
+    make build   → bin/home-tools (UI built in via -tags webembed)
+    docker build -t home-tools .   production image; run via deploy/compose.yaml
     make check   vet + test (-race) + gofmt check (run before committing)
     go run ./cmd/fitness-import -data data/fitness -users data/users   import exercises + photos (idempotent)
 
@@ -119,6 +120,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 28 | Body weight is a per-user log `users/<id>/weights.json` (`[{date, weight_kg}]`, ≤1 entry per day). Weekly check-in card on home: input pre-filled with the last weight; Skip records nothing and hides the card for that ISO week. `body_weight_kg` removed from `Session` | ✅ | 2026-10-08. Supersedes the weight part of #21: one source of truth; skipping never invents a measurement. |
 | 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
 | 30 | Routines are one shared household list of plans (anyone creates/edits); each person's weekly schedule (their `fitness.json`) picks which routine on which day. Routines page = "Your week" planner + the shared list; create/edit is its own page (`/routines/new`, `/routines/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
+| 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
@@ -237,7 +239,10 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   Finish sets `ended_at`. Screen Wake Lock while open (HTTPS/localhost
   only, see #8). HTTPS decided (#8, #9): `deploy/` has the Caddy
   image, Caddyfile, compose file and setup steps; not yet run on ZimaOS.
-  Profile cookie gets `secure` on HTTPS.
+  Profile cookie gets `secure` on HTTPS. Docker image (#31): UI embedded
+  (`httpx.SPA`: index.html fallback for client routes, hashed assets
+  cached forever; unknown `/api/` paths stay a JSON 404). Not yet run on
+  ZimaOS.
 
 
 ## 8. Improvements (later, not urgent)

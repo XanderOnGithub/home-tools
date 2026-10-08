@@ -1,12 +1,21 @@
 services:
+  home-tools:
+    build: ..
+    restart: unless-stopped
+    volumes:
+      # Plain host folder (users/, fitness/), so it's backed up and
+      # editable like any other files.
+      - ${DATA_DIR}:/data
+    # Not published: only Caddy reaches it, over the compose network.
+
   caddy:
     build: .
     restart: unless-stopped
     env_file: .env
     ports:
       - "443:443"
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
+    depends_on:
+      - home-tools
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       # Certificates; keep across restarts (Let's Encrypt rate-limits).
