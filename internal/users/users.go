@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/XanderOnGithub/home-tools/internal/jsonfile"
 )
@@ -22,8 +23,9 @@ var ErrInvalid = errors.New("invalid")
 type User struct {
 	ID       string `json:"id"` // slug, e.g. "xander"; becomes a file/folder name
 	Name     string `json:"name"`
-	Color    Color  `json:"color"` // avatar background and UI accent
-	Units    Units  `json:"units"` // display preference; data is always metric
+	Color    Color  `json:"color"`              // avatar background and UI accent
+	Units    Units  `json:"units"`              // display preference; data is always metric
+	Birthday string `json:"birthday,omitempty"` // optional, "YYYY-MM-DD"
 	Archived bool   `json:"archived,omitempty"`
 }
 
@@ -58,6 +60,7 @@ var AllUnits = []Units{UnitsMetric, UnitsImperial}
 //   - ID is a valid ID (it becomes a file name, and folder names in tools)
 //   - Name is not blank
 //   - Color and Units are known values (both required)
+//   - Birthday, if set, is a real "YYYY-MM-DD" date, not in the future
 func (u User) Validate() error {
 	if !jsonfile.ValidID(u.ID) {
 		return fmt.Errorf("%w user: bad ID %q", ErrInvalid, u.ID)
@@ -70,6 +73,17 @@ func (u User) Validate() error {
 	}
 	if !slices.Contains(AllUnits, u.Units) {
 		return fmt.Errorf("%w user %s: unknown units %q", ErrInvalid, u.ID, u.Units)
+	}
+	if u.Birthday != "" {
+		// A plain date string, not time.Time: a birthday has no time of
+		// day or time zone, and "2000-01-02" is what a person would write.
+		day, err := time.Parse(time.DateOnly, u.Birthday)
+		if err != nil {
+			return fmt.Errorf("%w user %s: birthday %q is not YYYY-MM-DD", ErrInvalid, u.ID, u.Birthday)
+		}
+		if day.After(time.Now()) {
+			return fmt.Errorf("%w user %s: birthday is in the future", ErrInvalid, u.ID)
+		}
 	}
 	return nil
 }

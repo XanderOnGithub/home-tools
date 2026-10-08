@@ -31,6 +31,10 @@ func TestValidate(t *testing.T) {
 		{"unknown color", with(func(u *User) { u.Color = "red" }), true},
 		{"missing units", with(func(u *User) { u.Units = "" }), true},
 		{"unknown units", with(func(u *User) { u.Units = "furlongs" }), true},
+		{"birthday", with(func(u *User) { u.Birthday = "2000-01-02" }), false},
+		{"birthday not a date", with(func(u *User) { u.Birthday = "2000-02-30" }), true},
+		{"birthday wrong format", with(func(u *User) { u.Birthday = "01/02/2000" }), true},
+		{"birthday in the future", with(func(u *User) { u.Birthday = "2999-01-01" }), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

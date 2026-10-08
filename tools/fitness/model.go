@@ -170,14 +170,13 @@ type RoutineExercise struct {
 // ID is assigned once from the start time and never recomputed.
 // A zero EndedAt means the session is still in progress.
 type Session struct {
-	ID           string    `json:"id"`
-	UserID       string    `json:"user_id"`
-	RoutineID    string    `json:"routine_id,omitempty"`
-	StartedAt    time.Time `json:"started_at"`
-	EndedAt      time.Time `json:"ended_at,omitzero"`
-	BodyWeightKg float64   `json:"body_weight_kg,omitempty"`
-	Entries      []Entry   `json:"entries"`
-	Archived     bool      `json:"archived,omitempty"`
+	ID        string    `json:"id"`
+	UserID    string    `json:"user_id"`
+	RoutineID string    `json:"routine_id,omitempty"`
+	StartedAt time.Time `json:"started_at"`
+	EndedAt   time.Time `json:"ended_at,omitzero"`
+	Entries   []Entry   `json:"entries"`
+	Archived  bool      `json:"archived,omitempty"`
 }
 
 // Entry is one exercise performed within a session. Sets may be empty
@@ -195,4 +194,48 @@ type Set struct {
 	WeightKg    float64 `json:"weight_kg,omitempty"`
 	DurationSec int     `json:"duration_sec,omitempty"`
 	DistanceM   float64 `json:"distance_m,omitempty"`
+}
+
+// ---- Per-user settings and body tracking ----
+
+// Profile is a user's fitness setup ("workout profile"), stored as
+// users/<user_id>/fitness.json. The shared profile (name, color, units)
+// lives in internal/users; this holds only what fitness needs. No file yet
+// means the user hasn't done onboarding.
+type Profile struct {
+	UserID   string             `json:"user_id"`
+	Goal     Goal               `json:"goal,omitempty"` // optional; not asked in onboarding
+	HeightM  float64            `json:"height_m,omitempty"`
+	Schedule map[Weekday]string `json:"schedule,omitempty"` // weekday → routine ID; missing = rest day
+	// WeightPromptSkipped is the ISO week ("2026-W41") whose weight
+	// check-in was skipped, so home doesn't ask again that week.
+	WeightPromptSkipped string `json:"weight_prompt_skipped,omitempty"`
+}
+
+// Goal is what a user trains for; it shapes advice (reps, rest), not data.
+type Goal string
+
+const (
+	GoalStrength  Goal = "strength"
+	GoalMuscle    Goal = "muscle"
+	GoalEndurance Goal = "endurance"
+	GoalGeneral   Goal = "general"
+)
+
+// AllGoals lists every valid Goal (for validation and UI options).
+var AllGoals = []Goal{GoalStrength, GoalMuscle, GoalEndurance, GoalGeneral}
+
+// Weekday keys a Schedule. Lowercase English names, so the JSON reads
+// naturally: {"monday": "upper", "tuesday": "lower"}.
+type Weekday string
+
+// AllWeekdays lists the days Monday first (the UI's week order).
+var AllWeekdays = []Weekday{"monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"}
+
+// WeightEntry is one body-weight measurement. A user's entries are stored
+// together, oldest first, in users/<user_id>/weights.json; at most one
+// per day (saving the same date again replaces it).
+type WeightEntry struct {
+	Date     string  `json:"date"` // "YYYY-MM-DD"
+	WeightKg float64 `json:"weight_kg"`
 }

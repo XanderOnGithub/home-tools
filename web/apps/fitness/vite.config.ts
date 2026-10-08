@@ -12,9 +12,11 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
+    // API_URL lets a second server (e.g. test data on another port) be used
+    // without touching the one `make run` starts.
     proxy: {
-      '/api': 'http://localhost:8080',
-      '/images': 'http://localhost:8080',
+      '/api': process.env.API_URL ?? 'http://localhost:8080',
+      '/images': process.env.API_URL ?? 'http://localhost:8080',
     },
   },
 })

@@ -4,6 +4,7 @@ export type Profile = {
   name: string
   color: ProfileColor
   units: 'metric' | 'imperial'
+  birthday?: string // "YYYY-MM-DD"
   archived?: boolean
 }
 

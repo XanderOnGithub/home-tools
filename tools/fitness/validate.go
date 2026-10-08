@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
 	"github.com/XanderOnGithub/home-tools/internal/jsonfile"
 )
@@ -128,7 +129,6 @@ func (r Routine) Validate() error {
 // Validate checks s's own rules:
 //   - ID and UserID are valid IDs (they become paths on disk)
 //   - StartedAt is set; EndedAt, if set, is not before it
-//   - BodyWeightKg is not negative
 //   - every entry has an ExerciseID
 //
 // Checking entries against the exercise catalog (and each Set against its
@@ -146,13 +146,68 @@ func (s Session) Validate() error {
 	if !s.EndedAt.IsZero() && s.EndedAt.Before(s.StartedAt) {
 		return fmt.Errorf("%w session %s: ended before it started", ErrInvalid, s.ID)
 	}
-	if s.BodyWeightKg < 0 {
-		return fmt.Errorf("%w session %s: negative body_weight_kg", ErrInvalid, s.ID)
-	}
 	for i, e := range s.Entries {
 		if e.ExerciseID == "" {
 			return fmt.Errorf("%w session %s: entry %d missing exercise_id", ErrInvalid, s.ID, i)
 		}
+	}
+	return nil
+}
+
+// Validate checks p's own rules:
+//   - UserID is a valid ID
+//   - Goal, if set, is a known value
+//   - HeightM is 0 (not set) or a plausible human height (0.5 to 2.75 m)
+//   - Schedule keys are weekdays and values are valid routine IDs
+//   - WeightPromptSkipped, if set, is an ISO week like "2026-W41"
+//
+// Whether scheduled routines exist is checked by the store.
+func (p Profile) Validate() error {
+	if !jsonfile.ValidID(p.UserID) {
+		return fmt.Errorf("%w fitness profile: bad user_id %q", ErrInvalid, p.UserID)
+	}
+	if p.Goal != "" && !slices.Contains(AllGoals, p.Goal) {
+		return fmt.Errorf("%w fitness profile %s: unknown goal %q", ErrInvalid, p.UserID, p.Goal)
+	}
+	if p.HeightM != 0 && (p.HeightM < 0.5 || p.HeightM > 2.75) {
+		return fmt.Errorf("%w fitness profile %s: height_m %g is not between 0.5 and 2.75", ErrInvalid, p.UserID, p.HeightM)
+	}
+	for day, routineID := range p.Schedule {
+		if !slices.Contains(AllWeekdays, day) {
+			return fmt.Errorf("%w fitness profile %s: unknown weekday %q", ErrInvalid, p.UserID, day)
+		}
+		if !jsonfile.ValidID(routineID) {
+			return fmt.Errorf("%w fitness profile %s: %s has bad routine ID %q", ErrInvalid, p.UserID, day, routineID)
+		}
+	}
+	if p.WeightPromptSkipped != "" && !validISOWeek(p.WeightPromptSkipped) {
+		return fmt.Errorf("%w fitness profile %s: weight_prompt_skipped %q is not like 2026-W41", ErrInvalid, p.UserID, p.WeightPromptSkipped)
+	}
+	return nil
+}
+
+// validISOWeek reports whether w looks like "2026-W41" (week 01 to 53).
+func validISOWeek(w string) bool {
+	var year, week int
+	n, err := fmt.Sscanf(w, "%4d-W%2d", &year, &week)
+	return err == nil && n == 2 && len(w) == 8 && week >= 1 && week <= 53
+}
+
+// Validate checks w's rules:
+//   - Date is a real "YYYY-MM-DD" date, not in the future
+//   - WeightKg is plausible for a person (20 to 400 kg)
+func (w WeightEntry) Validate() error {
+	day, err := time.Parse(time.DateOnly, w.Date)
+	if err != nil {
+		return fmt.Errorf("%w weight: date %q is not YYYY-MM-DD", ErrInvalid, w.Date)
+	}
+	// Compare dates, not instants: "today" is still allowed late in the
+	// day in any time zone, so allow one day of slack.
+	if day.After(time.Now().AddDate(0, 0, 1)) {
+		return fmt.Errorf("%w weight: date %s is in the future", ErrInvalid, w.Date)
+	}
+	if w.WeightKg < 20 || w.WeightKg > 400 {
+		return fmt.Errorf("%w weight %s: %g kg is not between 20 and 400", ErrInvalid, w.Date, w.WeightKg)
 	}
 	return nil
 }
