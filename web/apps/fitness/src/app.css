@@ -1,9 +1,61 @@
-:root {
-  font-family: system-ui, sans-serif;
-  color-scheme: light dark;
+/* Base styles: element defaults built on tokens.css. Components style
+ * themselves; this file only sets what every page shares. */
+@import './tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
 }
 
 body {
   margin: 0;
-  padding: 1rem;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3 {
+  line-height: var(--leading-tight);
+  margin: 0;
+}
+
+/* Numbers that change (reps, kg, timers) keep the same width, so they
+ * don't jiggle as they update. */
+input,
+output,
+time,
+data {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Form controls inherit the page font instead of the browser default. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+/* Keyboard focus is always visible; mouse clicks don't show the ring. */
+:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+/* Visually hidden but read by screen readers (e.g. an icon button's name). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
 }

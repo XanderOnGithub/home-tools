@@ -141,7 +141,7 @@ func TestRoutineHandlers(t *testing.T) {
 }
 
 func TestUserHandlers(t *testing.T) {
-	const alice = `{"id":"alice","name":"Alice","units":"imperial","avatar_color":"#ff8c4f","avatar_emoji":"🏃"}`
+	const alice = `{"id":"alice","name":"Alice","units":"imperial","color":"green","avatar_emoji":"🏃"}`
 	tests := []struct {
 		name       string
 		path       string
@@ -150,14 +150,14 @@ func TestUserHandlers(t *testing.T) {
 	}{
 		{"create", "/api/users/alice", alice, http.StatusOK},
 		{"update existing", "/api/users/xander",
-			`{"id":"xander","name":"Xander H","units":"metric","avatar_color":"#000000"}`, http.StatusOK},
+			`{"id":"xander","name":"Xander H","units":"metric","color":"green"}`, http.StatusOK},
 		{"id mismatch", "/api/users/bob", alice, http.StatusBadRequest},
 		{"fails validation", "/api/users/alice",
-			`{"id":"alice","name":"Alice","units":"metric","avatar_color":"red"}`, http.StatusBadRequest},
+			`{"id":"alice","name":"Alice","units":"metric","color":"red"}`, http.StatusBadRequest},
 		{"unknown field", "/api/users/alice",
-			`{"id":"alice","name":"Alice","units":"metric","avatar_color":"#ff8c4f","weight_kg":60}`, http.StatusBadRequest},
+			`{"id":"alice","name":"Alice","units":"metric","color":"green","weight_kg":60}`, http.StatusBadRequest},
 		{"path trick", "/api/users/..%2Froot",
-			`{"id":"../root","name":"Root","units":"metric","avatar_color":"#ff8c4f"}`, http.StatusBadRequest},
+			`{"id":"../root","name":"Root","units":"metric","color":"green"}`, http.StatusBadRequest},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

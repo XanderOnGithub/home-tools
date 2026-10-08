@@ -1,0 +1,152 @@
+/*
+ * Design tokens: the only place raw values live. Components use the
+ * semantic tokens (--color-text, --space-4, ...), never hex codes or px.
+ * Rules and reasoning: web/DESIGN.md.
+ *
+ * Light/dark: every color is light-dark(<light>, <dark>). The browser picks
+ * based on `color-scheme`, which follows the OS unless <html data-theme>
+ * overrides it. One definition per token, no duplicated dark blocks.
+ *
+ * Accent: <html data-accent="green|blue|orange|purple"> (the profile's
+ * color). Green is the default before a profile is chosen.
+ *
+ * Every color pair below was contrast-checked (WCAG 2.2 AA): body text ≥ 7:1,
+ * muted text and accent text ≥ 4.5:1, borders and fills ≥ 3:1, on every
+ * surface, in both themes.
+ */
+
+:root {
+  color-scheme: light dark;
+}
+:root[data-theme='light'] {
+  color-scheme: light;
+}
+:root[data-theme='dark'] {
+  color-scheme: dark;
+}
+
+/* ---- Neutrals and status (shared by every tool) ---- */
+:root {
+  /* Surfaces, back to front */
+  --color-bg: light-dark(#fafaf9, #0c0a09); /* page */
+  --color-surface: light-dark(#ffffff, #1c1917); /* cards, panels */
+  --color-surface-raised: light-dark(#ffffff, #292524); /* menus, dialogs */
+
+  /* Text */
+  --color-text: light-dark(#1c1917, #fafaf9);
+  --color-text-muted: light-dark(#57534e, #a8a29e); /* secondary info, never essential-only */
+
+  /* Lines */
+  --color-border: light-dark(#e7e5e4, #292524); /* decorative dividers */
+  --color-border-strong: light-dark(#78716c, #78716c); /* input outlines: ≥ 3:1 */
+
+  /* Danger: errors and destructive actions only, never decoration */
+  --color-danger: light-dark(#b91c1c, #f87171);
+  --color-on-danger: light-dark(#ffffff, #450a0a);
+  --color-danger-text: light-dark(#b91c1c, #f87171);
+  --color-danger-subtle: light-dark(#fef2f2, #2a1414);
+}
+
+/* ---- Accents (one per profile color) ----
+ * accent          filled buttons, selected states
+ * accent-hover    hover on filled
+ * accent-pressed  :active on filled
+ * on-accent       text/icons on any of the three above
+ * accent-text     accent-colored text and links on surfaces
+ * accent-subtle   tinted backgrounds (selected rows, chips)
+ */
+:root,
+[data-accent='green'] {
+  --color-accent: light-dark(#15803d, #4ade80);
+  --color-accent-hover: light-dark(#166534, #86efac);
+  --color-accent-pressed: light-dark(#14532d, #22c55e);
+  --color-on-accent: light-dark(#ffffff, #052e16);
+  --color-accent-text: light-dark(#15803d, #4ade80);
+  --color-accent-subtle: light-dark(#f0fdf4, #10241a);
+}
+[data-accent='blue'] {
+  --color-accent: light-dark(#1d4ed8, #60a5fa);
+  --color-accent-hover: light-dark(#1e40af, #93c5fd);
+  --color-accent-pressed: light-dark(#1e3a8a, #5299f8);
+  --color-on-accent: light-dark(#ffffff, #172554);
+  --color-accent-text: light-dark(#1d4ed8, #60a5fa);
+  --color-accent-subtle: light-dark(#eff6ff, #121c30);
+}
+[data-accent='orange'] {
+  --color-accent: light-dark(#c2410c, #fb923c);
+  --color-accent-hover: light-dark(#9a3412, #fdba74);
+  --color-accent-pressed: light-dark(#7c2d12, #f97316);
+  --color-on-accent: light-dark(#ffffff, #431407);
+  --color-accent-text: light-dark(#c2410c, #fb923c);
+  --color-accent-subtle: light-dark(#fff7ed, #2a1a0e);
+}
+[data-accent='purple'] {
+  --color-accent: light-dark(#7e22ce, #c084fc);
+  --color-accent-hover: light-dark(#6b21a8, #d8b4fe);
+  --color-accent-pressed: light-dark(#581c87, #b476fa);
+  --color-on-accent: light-dark(#ffffff, #3b0764);
+  --color-accent-text: light-dark(#7e22ce, #c084fc);
+  --color-accent-subtle: light-dark(#faf5ff, #221430);
+}
+
+/* ---- Type ---- */
+:root {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* rem, so the user's browser/OS text size still applies */
+  --text-xs: 0.75rem; /* 12px: badges only */
+  --text-sm: 0.875rem; /* 14px: secondary text */
+  --text-md: 1rem; /* 16px: body; also the minimum for inputs (iOS zooms below it) */
+  --text-lg: 1.25rem; /* 20px */
+  --text-xl: 1.5rem; /* 24px */
+  --text-2xl: 2rem; /* 32px: page titles */
+  --text-3xl: 2.5rem; /* 40px: hero numbers (the weight you're lifting) */
+
+  --leading-tight: 1.2; /* headings */
+  --leading-normal: 1.5; /* body */
+
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+  --weight-bold: 700;
+}
+
+/* ---- Space and shape ---- */
+:root {
+  /* 4px grid */
+  --space-1: 0.25rem; /* 4 */
+  --space-2: 0.5rem; /* 8 */
+  --space-3: 0.75rem; /* 12 */
+  --space-4: 1rem; /* 16 */
+  --space-5: 1.5rem; /* 24 */
+  --space-6: 2rem; /* 32 */
+  --space-7: 3rem; /* 48 */
+  --space-8: 4rem; /* 64 */
+
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --radius-full: 9999px; /* pills, avatars */
+
+  --touch-target: 2.75rem; /* 44px: minimum size of anything tappable */
+
+  --shadow-sm: 0 1px 2px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4));
+  --shadow-md: 0 4px 12px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.5));
+}
+
+/* ---- Focus and motion ---- */
+:root {
+  --focus-ring: 2px solid var(--color-accent-text);
+  --focus-offset: 2px;
+
+  --duration-fast: 100ms; /* hover, press */
+  --duration-normal: 200ms; /* open/close, enter/leave */
+  --ease-out: cubic-bezier(0.2, 0, 0, 1); /* fast start, gentle stop: feels responsive */
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-normal: 0ms;
+  }
+}

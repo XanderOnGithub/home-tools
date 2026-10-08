@@ -147,7 +147,7 @@ func (r Routine) Validate() error {
 //   - Units is a known value (required: the UI always sends one)
 //   - HeightM is not negative (0 means not set)
 //   - Birthday, if set, is not in the future
-//   - AvatarColor is a "#rrggbb" hex color
+//   - Color is a known ProfileColor
 func (u User) Validate() error {
 	if !validID(u.ID) {
 		return fmt.Errorf("%w user: bad ID %q", ErrInvalid, u.ID)
@@ -164,26 +164,10 @@ func (u User) Validate() error {
 	if u.Birthday.After(time.Now()) {
 		return fmt.Errorf("%w user %s: birthday is in the future", ErrInvalid, u.ID)
 	}
-	if !validHexColor(u.AvatarColor) {
-		return fmt.Errorf("%w user %s: avatar_color %q is not #rrggbb", ErrInvalid, u.ID, u.AvatarColor)
+	if !slices.Contains(AllProfileColors, u.Color) {
+		return fmt.Errorf("%w user %s: unknown color %q", ErrInvalid, u.ID, u.Color)
 	}
 	return nil
-}
-
-// validHexColor reports whether c is "#" followed by exactly 6 hex digits.
-// Indexing bytes is safe here: anything non-ASCII fails the digit check.
-func validHexColor(c string) bool {
-	if len(c) != 7 || c[0] != '#' {
-		return false
-	}
-	for i := 1; i < len(c); i++ {
-		ch := c[i]
-		ok := ch >= '0' && ch <= '9' || ch >= 'a' && ch <= 'f' || ch >= 'A' && ch <= 'F'
-		if !ok {
-			return false
-		}
-	}
-	return true
 }
 
 // Validate checks s's own rules:

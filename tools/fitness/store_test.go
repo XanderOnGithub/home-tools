@@ -11,7 +11,7 @@ import (
 )
 
 // xanderJSON is a valid user.json for fixtures that write files directly.
-const xanderJSON = `{"id":"xander","name":"Xander","units":"metric","avatar_color":"#4f8cff"}`
+const xanderJSON = `{"id":"xander","name":"Xander","units":"metric","color":"green"}`
 
 func TestLoadDir(t *testing.T) {
 	dir := t.TempDir()
@@ -73,7 +73,7 @@ func TestOpenRejectsBadData(t *testing.T) {
 			"routines/legs.json":   `{"id":"legs","name":"Legs","created_by":"nobody","exercises":[{"exercise_id":"squat"}]}`,
 		}},
 		{"invalid user", map[string]string{
-			"users/xander/user.json": `{"id":"xander","name":"Xander","units":"furlongs","avatar_color":"#4f8cff"}`,
+			"users/xander/user.json": `{"id":"xander","name":"Xander","units":"furlongs","color":"green"}`,
 		}},
 	}
 	for _, tt := range tests {
@@ -106,7 +106,7 @@ func TestOpenSessionUserMismatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	// alice has a valid profile, so the user_id check is what must fail.
-	alice := `{"id":"alice","name":"Alice","units":"metric","avatar_color":"#ff8c4f"}`
+	alice := `{"id":"alice","name":"Alice","units":"metric","color":"green"}`
 	if err := os.WriteFile(filepath.Join(dir, "users", "alice", "user.json"), []byte(alice), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func newTestStore(t *testing.T) *Store {
 	if err := s.SaveExercise(squat); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.SaveUser(User{ID: "xander", Name: "Xander", Units: UnitsMetric, AvatarColor: "#4f8cff"}); err != nil {
+	if err := s.SaveUser(User{ID: "xander", Name: "Xander", Units: UnitsMetric, Color: ColorBlue}); err != nil {
 		t.Fatal(err)
 	}
 	return s
@@ -412,7 +412,7 @@ func TestOpenUserFolderProblems(t *testing.T) {
 
 func TestSaveUserAndList(t *testing.T) {
 	s := newTestStore(t) // already has xander
-	if err := s.SaveUser(User{ID: "alice", Name: "Alice", Units: UnitsImperial, AvatarColor: "#ff8c4f", AvatarEmoji: "🏃"}); err != nil {
+	if err := s.SaveUser(User{ID: "alice", Name: "Alice", Units: UnitsImperial, Color: ColorBlue, AvatarEmoji: "🏃"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := s.SaveUser(User{ID: "bad", Name: "Bad", Units: UnitsMetric}); !errors.Is(err, ErrInvalid) {

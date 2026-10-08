@@ -102,7 +102,8 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 19 | Exercise photos copied to `data/fitness/images/<path>` (~100 MB), served by the Go binary | ✅ | 2026-10-07. Works offline on the LAN. |
 | 20 | API request bodies decoded strictly: unknown fields, trailing data, >1 MiB → 400 | ✅ | 2026-10-08. A typo'd key (`weigth_kg`) must fail, not silently save a set without weight. Frontend sends exactly the model's fields. `httpx.DecodeJSON`. |
 | 21 | `User` = `users/<id>/user.json`: id (slug = folder name), name, birthday, `height_m`, `units` (metric/imperial, display only), `archived`. **No weight on User:** body weight is an optional `body_weight_kg` on `Session`; "current weight" = latest logged | ✅ | 2026-10-08. One source of truth; weight history comes free. |
-| 22 | Profile avatar: `avatar_color` (hex) + optional `avatar_emoji`, initial as fallback; no photo uploads | 🟡 | Proposed 2026-10-08. Photos can be added later without breaking anything. |
+| 22 | Profile `color` enum (green, blue, orange, purple) = avatar circle **and** UI accent; optional `avatar_emoji`, initial as fallback; no photo uploads | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
+| 23 | UI foundation: CSS custom-property tokens (raw palette → semantic layer), system font stack, `rem` type scale, 4px spacing scale; light/dark via `prefers-color-scheme` + per-device override; WCAG 2.2 AA; 44px touch targets; every interactive element defines rest/hover/pressed/focus/disabled/loading | ✅ | 2026-10-08. Neutrals, type, spacing shared by all tools; only the accent varies (per profile). Red only for errors/destructive actions. Rules in `web/DESIGN.md`. |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
 
