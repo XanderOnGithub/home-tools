@@ -20,7 +20,11 @@ a second app exists).
   a selected item also gets a check or weight change.
 
 ## 3. Type and space
-- System font. Sizes from the `--text-*` scale only; body is `--text-md`.
+- Font: Figtree (friendly geometric; bundled, so it works offline).
+  Weights only from `--weight-*`: only the five bundled weights (400–800)
+  render for real; anything else is faked by the browser. Page titles use
+  `--weight-extrabold`.
+- Sizes from the `--text-*` scale only; body is `--text-md`.
 - Inputs are at least `--text-md` (iOS zooms the page on smaller inputs).
 - Numbers that update (reps, kg, timers) use tabular figures (set in `app.css`).
 - Spacing from the 4px `--space-*` scale. Related things sit closer together

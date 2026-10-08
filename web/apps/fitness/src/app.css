@@ -2,6 +2,14 @@
  * themselves; this file only sets what every page shares. */
 @import './tokens.css';
 
+/* Figtree, bundled (no Google Fonts call; works offline). Latin subset
+ * only, one file per weight we use; see the --weight-* tokens. */
+@import '@fontsource/figtree/latin-400.css';
+@import '@fontsource/figtree/latin-500.css';
+@import '@fontsource/figtree/latin-600.css';
+@import '@fontsource/figtree/latin-700.css';
+@import '@fontsource/figtree/latin-800.css';
+
 *,
 *::before,
 *::after {

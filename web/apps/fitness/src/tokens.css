@@ -91,7 +91,8 @@
 
 /* ---- Type ---- */
 :root {
-  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* System font as fallback while the font loads, or if it's missing. */
+  --font-sans: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /* rem, so the user's browser/OS text size still applies */
   --text-xs: 0.75rem; /* 12px: badges only */
@@ -105,10 +106,12 @@
   --leading-tight: 1.2; /* headings */
   --leading-normal: 1.5; /* body */
 
+  /* Only these five weights are bundled (app.css); others would be faked. */
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
+  --weight-extrabold: 800; /* page titles */
 }
 
 /* ---- Space and shape ---- */

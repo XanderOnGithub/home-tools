@@ -102,8 +102,8 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 19 | Exercise photos copied to `data/fitness/images/<path>` (~100 MB), served by the Go binary | ✅ | 2026-10-07. Works offline on the LAN. |
 | 20 | API request bodies decoded strictly: unknown fields, trailing data, >1 MiB → 400 | ✅ | 2026-10-08. A typo'd key (`weigth_kg`) must fail, not silently save a set without weight. Frontend sends exactly the model's fields. `httpx.DecodeJSON`. |
 | 21 | Fitness keeps no profile data of its own: sessions live in `users/<id>/sessions/` keyed by the shared profile ID (#24). **No weight on User:** body weight is an optional `body_weight_kg` on `Session`; "current weight" = latest logged. Height/birthday dropped until a screen needs them | ✅ | 2026-10-08. One source of truth; weight history comes free. |
-| 22 | Profile `color` enum (green, blue, orange, purple) = avatar background **and** UI accent. Avatar shape: a gently irregular rounded blob (small variation, not wild), computed in the frontend from the profile ID, so it is never stored and is always the same for a person. Content: the name's initial for now; no emoji. A flat 2D avatar maker (face shape/eyes/mouth parts) is a later feature | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
-| 23 | UI foundation: CSS custom-property tokens (raw palette → semantic layer), system font stack, `rem` type scale, 4px spacing scale; light/dark via `prefers-color-scheme` + per-device override; WCAG 2.2 AA; 44px touch targets; every interactive element defines rest/hover/pressed/focus/disabled/loading | ✅ | 2026-10-08. Neutrals, type, spacing shared by all tools; only the accent varies (per profile). Red only for errors/destructive actions. Rules in `web/DESIGN.md`. |
+| 22 | Profile `color` enum (green, blue, orange, purple) = avatar background **and** UI accent. Avatar shape: an organic SVG blob: a circle whose radius follows layered waves of 3, 4 and 5 bumps (random strength and angle), normalized to the same 30% spread so none look round or broken, smoothed with Catmull-Rom curves, computed in the frontend from the profile ID (`features/profiles/blob`), so it is never stored and is always the same for a person. Face: two plain dark oval eyes (same in light/dark mode; white eyes with pupils were rejected as creepy), per-ID placement/size/tilt and timing (`blobFace`); eyes blink, glance around as a pair, and the body leans slightly with them; with reduced motion the face stays still. No initial, no emoji. Component: `features/profiles/profile-avatar`. A flat 2D avatar maker (face shape/eyes/mouth parts) is a later feature | ✅ | 2026-10-08. Preset, contrast-checked palettes instead of free hex: derived colors fail contrast. |
+| 23 | UI foundation: CSS custom-property tokens (raw palette → semantic layer), font Figtree (bundled via `@fontsource/figtree`, OFL, Latin subset only, weights 400–800; system font fallback; rejected: M PLUS Rounded 1c, too rounded), `rem` type scale, 4px spacing scale; light/dark via `prefers-color-scheme` + per-device override; WCAG 2.2 AA; 44px touch targets; every interactive element defines rest/hover/pressed/focus/disabled/loading | ✅ | 2026-10-08. Neutrals, type, spacing shared by all tools; only the accent varies (per profile). Red only for errors/destructive actions. Rules in `web/DESIGN.md`. |
 | 24 | Profiles are shared by all tools: `internal/users` (`User{id, name, color, units, archived}`, files `data/users/<id>.json`, `GET/PUT /api/users`). Tools key their own data by user ID and check it against this store | ✅ | 2026-10-08. Pick once, same people everywhere. Units live here (recipes need them too). Remembering the chosen profile across subdomains needs a cookie on `.starport.tech` (localStorage is per subdomain). |
 
 Record each finalized decision as an ADR in `docs/decisions/` and update this table.
@@ -135,6 +135,15 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   table-driven tests; no globals for state; pass dependencies explicitly.
 - JSON: snake_case keys; units in the key name (`_kg`, `_sec`, `_m`).
 - Web: TypeScript strict; components small; no state library until needed.
+- Web layout: one folder per component or module, never a loose file.
+  Folders are kebab-case; Svelte files are PascalCase (Svelte components
+  must be capitalized when used: `<ProfilePicker />`).
+  `src/components/<name>/` = generic UI (Button, Dialog; knows no domain).
+  `src/features/<feature>/` = everything for one feature (its components,
+  api, types, helpers), e.g. `features/profiles/profile-picker/`:
+  `ProfilePicker.svelte` + `index.ts` (re-export; Vite can't resolve an
+  `index.svelte`) + `types.ts`/`utils.ts` only when needed. Import the
+  folder via `@/...` (= `src/`; alias in vite.config + tsconfig).
 - Commits: small, imperative mood; one concern per commit.
 - Before writing code, read the nearest README/AGENTS.md in that directory.
   Each tool directory gets its own short AGENTS.md once it exists.
@@ -172,7 +181,14 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   Vite + strict TS, placeholder page that calls the API. Design rules in
   `web/DESIGN.md`, tokens in `web/apps/fitness/src/tokens.css` (#23).
   Profiles moved to shared `internal/users` (#24); `jsonfile.LoadDir` and
-  `jsonfile.ValidID` now shared. Next: profile picker + creator UI.
+  `jsonfile.ValidID` now shared. Profile picker (loading/empty/error
+  states) + create dialog (native `<dialog>`; name + color blobs; ID slug
+  from name with -2 suffix; avatar morphs via `Tween`; units default metric
+  until a settings screen exists). Choosing a profile remembers it in the
+  `home_tools_profile` cookie (shared across *.starport.tech; until
+  "Switch profile"), sets `<html data-accent>`, and shows a placeholder
+  fitness home. No router yet (App switches on the chosen profile).
+  Next: fitness home screen.
 
 
 ## 8. Improvements (later, not urgent)

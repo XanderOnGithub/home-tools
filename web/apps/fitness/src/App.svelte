@@ -1,17 +1,28 @@
 <script lang="ts">
-  // Placeholder: proves the UI can reach the Go API through the proxy.
-  let status = $state('Connecting…')
+  import { HomeScreen } from '@/features/home/home-screen'
+  import { ProfilePicker } from '@/features/profiles/profile-picker'
+  import { forgetProfile } from '@/features/profiles/remembered'
+  import type { Profile } from '@/features/profiles/types'
 
-  fetch('/api/exercises')
-    .then((res) => {
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      return res.json()
-    })
-    .then((list: unknown[]) => (status = `Connected: ${list.length} exercises`))
-    .catch((err) => (status = `API unreachable (${err.message}). Is \`make run\` running?`))
+  // No router yet: one profile chosen = home, none = picker.
+  let profile = $state<Profile | null>(null)
+
+  // The chosen person's color becomes the accent for the whole app.
+  $effect(() => {
+    if (profile) document.documentElement.dataset.accent = profile.color
+    else delete document.documentElement.dataset.accent
+  })
+
+  function switchProfile() {
+    forgetProfile()
+    profile = null
+  }
 </script>
 
-<main>
-  <h1>Fitness</h1>
-  <p>{status}</p>
-</main>
+{#if profile}
+  <HomeScreen {profile} onswitch={switchProfile} />
+{:else}
+  <main>
+    <ProfilePicker onselect={(p) => (profile = p)} />
+  </main>
+{/if}
