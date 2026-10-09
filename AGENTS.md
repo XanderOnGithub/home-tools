@@ -182,7 +182,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `SaveSession` (backward scan from newest; same scan finds insert point),
   `RecentSessions`; all IDs pass `validID` (they become paths). `make test`
   runs with -race. Also `Exercises`/`SaveExercise`,
-  `Plans`/`SaveRoutine` (catalog-checked). `Open` trusts files no more
+  `Plans`/`SavePlan` (catalog-checked). `Open` trusts files no more
   than API input: each must pass `Validate`, `id` must match its filename,
   session `user_id` must match its folder, and catalog refs must resolve;
   any failure aborts startup with the file's path. Exercise catalog import works
@@ -264,9 +264,6 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 
 
 ## 8. Improvements (later, not urgent)
-- Fitness handlers: `putExercise`/`putRoutine`/`putUser` are near-copies.
-  Consider one generic `put[T]` helper once session handlers exist and
-  show whether the pattern really repeats.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
 - Muscle recovery map (own screen): per-muscle fatigue computed from recent
   sessions × exercise `activation`, decaying over days; "needs rest" view.
