@@ -40,36 +40,42 @@ Rules:
 5. Data in human-readable JSON; writes must be atomic (never corrupt on crash).
 6. Docs are code: update the relevant README/AGENTS section in the same change.
 
-## 3. Architecture (proposed, see Decision Log for status)
+## 3. Architecture
+Decided; the reasons are in `docs/decisions/` (ADRs).
 - **Backend:** Go, single module (`go.mod` at root). Each tool is a Go package
   under `tools/<name>/` exposing one registration function; a single binary
   `cmd/home-tools` mounts all tools. One process = lowest memory.
 - **Routing:** the Go server dispatches by `Host` header
   (`fitness.<domain>` → fitness, `games.<domain>` → games; the real
-  domain lives only in `deploy/.env`).
+  domain is only in the deploy config, never in git).
   API under `/api/...` per host; everything else serves the tool's SPA.
+  *Not built yet:* with one tool, everything is on one mux (`TODO(#5)` in
+  `main.go`); it's step 1 of `docs/adding-a-tool.md`.
 - **Frontend:** Svelte + Vite, no SSR, pnpm workspaces. Packages named
-  `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`.
+  `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`
+  (`-tags webembed`). Shared UI moves to `@home-tools/ui` when a second app
+  exists.
 - **Storage:** JSON files under a configurable data dir (e.g. `data/<tool>/`).
   In-memory index loaded at start; mutations written atomically
-  (write temp → fsync → rename). Store design is a Xander-written core module.
+  (write temp → fsync → rename); files are loaded as strictly as API input.
 - **Network:** LAN only. Local DNS (UniFi DNS records, one per tool)
   resolves `<tool>.<domain>` to the server's LAN IP. No port forwarding,
   no tunnel. HTTPS: Caddy in Docker with a Let's Encrypt wildcard cert via
   Cloudflare DNS-01, proxying to Go on plain HTTP (`deploy/`).
 
-### Planned layout (not yet created)
-    cmd/home-tools/        main.go: config load, wire tools, start server
-    internal/              shared Go: jsonfile, httpx, users (shared profiles), later config + host router
-    tools/fitness/         Go package: domain, store, handlers
-    tools/games/           Go package: docker client, RCON, log streaming
-    web/packages/ui/       @home-tools/ui: shared Svelte components + styles
-    web/apps/fitness/      @home-tools/fitness (Vite SPA)
-    web/apps/games/        @home-tools/games (Vite SPA)
-    deploy/                ZimaOS: Caddy image (HTTPS), compose files, setup steps
+### Layout
+    cmd/home-tools/        main.go: open stores, mount tools, serve (flags -addr, -data)
+    cmd/fitness-import/    exercise catalog importer (-fix-metrics)
+    internal/              shared Go: jsonfile, httpx, users (shared profiles)
+    tools/fitness/         Go package: model, rules, store, API (+ its AGENTS.md)
+    web/apps/fitness/      @home-tools/fitness (Vite SPA) + embed.go
+    web/DESIGN.md          UI rules and shared building blocks
+    deploy/                Caddy image (HTTPS), compose + ZimaOS app files, setup steps
     .github/workflows/     CI: checks, then publish images to GHCR
-    docs/decisions/        ADRs: NNNN-title.md
+    docs/decisions/        ADRs (index in its README)
+    docs/adding-a-tool.md  checklist for the next tool
     data/                  runtime JSON (gitignored)
+    later: tools/games/, web/apps/games/, web/packages/ui/
 
 Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 "@home-tools/fitness" is an *import path*
@@ -98,11 +104,11 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 4 | JSON-file storage, no database | ✅ | |
 | 5 | Single Go module + single binary; tools are packages mounted by a main server, host-based routing | ✅ | 2026-10-07. Lowest memory; tools still isolated as packages. |
 | 6 | Frontend: one SPA per tool + shared `@home-tools/ui` | ✅ | 2026-10-07. Static files, so server memory ≈ same; smaller per-subdomain bundles, clean boundaries. |
-| 7 | Fitness JSON layout | ✅ | Per-user dirs (`users/<id>/…`); exercises + plans shared (`created_by`); **one file per session** named by ISO start time (`users/<id>/sessions/<start>.json`). Exercise declares tracked `Metrics`; `Set` is flat numbers; muscle `Activation` is a sparse map in (0,1]. In-progress session = zero `EndedAt` + `omitzero`. `Bodyweight` exercises: weight optional (0 = BW only); negative values rejected (no assisted lifts yet). Exercises require ≥1 muscle activation (even stretches). Plans: `PlanExercise{exercise_id, suggested_sets}` — hints only. Rules enforced in `validate.go`; catalog-reference checks belong to the store. Model: `tools/fitness/model.go`. |
+| 7 | Fitness JSON layout | ✅ | Per-user dirs (`users/<id>/…`); exercises + plans shared (`created_by`); **one file per session** named by ISO start time (`users/<id>/sessions/<start>.json`). Exercise declares tracked `Metrics`; `Set` is flat numbers; muscle `Activation` is a sparse map in (0,1]. In-progress session = zero `EndedAt` + `omitzero`. `Bodyweight` exercises: weight optional (0 = BW only); negative values rejected (no assisted lifts yet). Exercises require ≥1 muscle activation (even stretches). Plans: `PlanExercise{exercise_id, suggested_sets, rest_sec}` — hints only (#35). Rules enforced in `validate.go`; catalog-reference checks belong to the store. Model: `tools/fitness/model.go`. |
 | 8 | TLS on LAN: Let's Encrypt wildcard `*.<domain>` via Cloudflare DNS-01 | ✅ | 2026-10-08. Real certs (no CA to install on phones), nothing exposed, subdomain names stay out of CT logs. Scoped Cloudflare token in gitignored `deploy/.env`; domain also only there. Rejected: plain HTTP (no Wake Lock on phones), local CA (install on every phone). |
 | 9 | Reverse proxy: Caddy (Docker, custom build with `caddy-dns/cloudflare`) on :443 only → Go on plain HTTP | ✅ | 2026-10-08. Caddy renews certs; Go needs no TLS code or new dependency (`autocert` can't do DNS-01). Port 80 left to the ZimaOS dashboard. Config: `deploy/`. |
 | 10 | Auth: none; Netflix-style profile picker | ✅ | 2026-10-08. Trusted LAN; family members aren't a security boundary. UI remembers the chosen profile; API takes the user ID in the URL (`/api/users/{id}/...`). A PIN can be added later as a field. |
-| 11 | Exercise data: free-exercise-db (Unlicense, 876 exercises, 2 photos each) | ✅ | 2026-10-07. Import: `cmd/fitness-import` + `tools/fitness/fedb.go`. Primary→1.0, secondary→0.5; stretching/cardio→duration, else reps+weight; bodyweight-style equipment→weight optional. Never overwrites existing IDs. Rejected: Gym Visual dataset (media needs own license), wger (AGPL/per-entry CC). |
+| 11 | Exercise data: free-exercise-db (Unlicense, 876 exercises, 2 photos each) | ✅ | 2026-10-07. Import: `cmd/fitness-import` + `tools/fitness/fedb.go`. Primary→1.0, secondary→0.5; stretching/cardio/static holds→duration, distance cardio→duration+distance (#36), else reps+weight; bodyweight-style equipment→weight optional. Never overwrites existing IDs. Rejected: Gym Visual dataset (media needs own license), wger (AGPL/per-entry CC). |
 | 12 | Muscle diagram: `body-highlighter` (npm, MIT, framework-agnostic, zero deps) | 🟡 | Verify when building the UI. Its region names differ from our `Muscle` values; one frontend map translates (e.g. shoulders→front+back deltoids, lats/middle_back→upper-back). |
 | 13 | Units: store metric (kg, m, s), unit in field name; per-user display preference, UI converts | ✅ | 2026-10-07. Server never converts. |
 | 14 | JSON keys are snake_case (`weight_kg`, `duration_sec`) | ✅ | 2026-10-07. TS types mirror them. |
@@ -122,21 +128,25 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 28 | Body weight is a per-user log `users/<id>/weights.json` (`[{date, weight_kg}]`, ≤1 entry per day). Weekly check-in card on home: input pre-filled with the last weight; Skip records nothing and hides the card for that ISO week. `body_weight_kg` removed from `Session` | ✅ | 2026-10-08. Supersedes the weight part of #21: one source of truth; skipping never invents a measurement. |
 | 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
 | 30 | Plans are one shared household list (anyone creates/edits); each person's routine (`schedule` in their `fitness.json`) picks which plan on which day. Plans page = "Your routine" planner + the shared list; create/edit is its own page (`/plans/new`, `/plans/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
+| 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
+| 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form as two apps (its importer keeps one service per app): `deploy/zimaos-home-tools.yaml` (publishes :8080) + `deploy/zimaos-caddy.yaml` (proxies to `host.docker.internal:8080`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
 | 33 | Vocabulary: **Plan** = a named list of exercises (was "Routine"; Go `Plan`, `/api/plans`, `fitness/plans/`, `plan_id` on sessions). **Routine** = a person's weekly schedule of plans (JSON key stays `schedule`). **Workout** (UI) = **Session** (code) | ✅ | 2026-10-08. Matches how Xander thinks about it. Renamed everywhere with no data migration (nothing to keep yet). |
 | 34 | Starting and discarding workouts: home's Today card has "Other workout" (or "Start a workout" when nothing is scheduled) → dialog: any plan or an **empty workout**; workout mode has "+ Add exercise" (catalog picker, appended at the end; removable until a set is logged). An in-progress workout can be **discarded** from the Today card (trash icon → inline confirm) = archived (#16) | ✅ | 2026-10-08. Xander: archive, not delete. |
 | 35 | Rest between sets: optional `rest_sec` per plan exercise (0 = default 60 s, shown as the field's placeholder; max 3600), a hint like `suggested_sets`; typed as seconds in the plan editor. In workout mode ±15 s changes that exercise's rest for the rest of the workout. Rest end: vibrate (Android) + a Web Audio chime (iOS, unlocked by the ✓ tap). Timed sets are entered as min + sec boxes, distance in km/mi per profile units | ✅ | 2026-10-08. Phone number pads have no ":" key, hence seconds / two boxes instead of "1:30". |
 | 36 | Cardio (category `cardio`) is one effort, not sets: workout mode starts it with one row (no set number), no rest timer, "+ Add interval" for more; the plan editor hides its rest field. Distance cardio (running, cycling, rowing, elliptical, skating, walking; `fedbDistance`) tracks duration + **optional** distance (Set rule: distance 0 = not measured); stair/rope/prowler time only. `SaveExercise` refuses metric changes that would invalidate logged sets. `fitness-import -fix-metrics` re-applies the import metric rules to existing free-exercise-db exercises (stop the server first) | ✅ | 2026-10-08. Fixes existing data (server) without overwriting hand edits to anything but metrics. |
-| 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
-| 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form as two apps (its importer keeps one service per app): `deploy/zimaos-home-tools.yaml` (publishes :8080) + `deploy/zimaos-caddy.yaml` (proxies to `host.docker.internal:8080`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
 
-Record each finalized decision as an ADR in `docs/decisions/` and update this table.
+Every decision goes in this table. Decisions that shape the architecture
+also get an ADR in `docs/decisions/` (index and template in its README;
+ADRs exist for #3–#6, #8–#10, #24, #31–#33).
 
 ## 5. Tool briefs (scope, not specs)
 ### Fitness (`fitness.<domain>`): mostly CRUD
-- **User:** name, birthday, height, weight; optional body-weight entry per session.
+- **Profile:** shared name, color, units, birthday (#24); fitness adds
+  height, a routine and a weight log (#26, #28).
 - **Exercise:** name, primary/secondary muscles, instructions, media.
   Later: guidance per goal (strength: low reps/high weight vs endurance/hypertrophy).
-- **Session:** date, user, entries `[{exercise, sets: [{reps, weight}]}]`.
+- **Session (workout):** user, start/end, entries `[{exercise, sets}]`;
+  a set holds whichever metrics the exercise tracks.
 - **Plan:** a template listing exercises (+ suggested sets); does *not*
   enforce sets/reps/weight. Starting a session from a plan pre-fills it.
 - **Routine:** per person, which plan on which weekday (#33).
@@ -174,96 +184,25 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `experiment/<thing>`; merge to `main` when `make check` and
   `pnpm --dir web check` pass, then delete the branch. Days, not weeks.
 - Before writing code, read the nearest README/AGENTS.md in that directory.
-  Each tool directory gets its own short AGENTS.md once it exists.
+  Each tool has its own `tools/<name>/AGENTS.md` (fitness: data layout,
+  rules, API, how to add a feature). New tool: `docs/adding-a-tool.md`.
 
-## 7. Status
-- 2026-10-07: Go module scaffolded (go.mod, cmd/home-tools stub, Makefile,
-  .gitignore, .editorconfig). Fitness model done (`tools/fitness/model.go`).
-  Validation done for Set, Exercise, Plan, Session (table tests). `internal/jsonfile` done (generic Read[T], atomic Write; temp files
-  are dotfiles, so loaders skip names starting with "."). Store: `Open`,
-  `SaveSession` (backward scan from newest; same scan finds insert point),
-  `RecentSessions`; all IDs pass `validID` (they become paths). `make test`
-  runs with -race. Also `Exercises`/`SaveExercise`,
-  `Plans`/`SavePlan` (catalog-checked). `Open` trusts files no more
-  than API input: each must pass `Validate`, `id` must match its filename,
-  session `user_id` must match its folder, and catalog refs must resolve;
-  any failure aborts startup with the file's path. Exercise catalog import works
-  (876 exercises, 1,746 photos, ~30 s, idempotent).
-- 2026-10-08: `internal/httpx` (WriteJSON, WriteError, ServerError, strict
-  DecodeJSON: unknown fields/trailing data/>1 MiB rejected). Server starts
-  in `cmd/home-tools` (flags `-addr`, `-data`; slog; graceful shutdown on
-  SIGINT/SIGTERM; `GET /healthz`). No host routing yet: one mux.
-  Handlers take a concrete `*fitness.Store` (no interface until a second
-  implementation exists). Fitness API: `GET /api/exercises[/{id}]`,
-  `PUT /api/exercises/{id}`, `GET /api/plans`, `PUT /api/plans/{id}`
-  (`ErrInvalid` → 400 with its message; else 500, real error logged only).
-  `User` model + `Validate` + store (`Users`/`User`/`SaveUser`); `Open`
-  requires `users/<id>/user.json` in every user folder with matching id;
-  `SaveSession` rejects unknown users; plans' `created_by` must be a
-  known user (`Open` loads users before plans). `GET /api/users`,
-  `PUT /api/users/{id}`. Sessions: `GET /api/users/{user}/sessions?limit=n`,
-  `POST` (server assigns ID, 201), `PUT .../sessions/{id}`. Exercise photos
-  at `GET /images/<path>` (no listings, can't escape the folder, 1-day
-  cache). Web: pnpm workspace in `web/` (apps only, no shared `ui`
-  package until a second app needs it); `web/apps/fitness` = Svelte 5 +
-  Vite + strict TS, placeholder page that calls the API. Design rules in
-  `web/DESIGN.md`, tokens in `web/apps/fitness/src/tokens.css` (#23).
-  Profiles moved to shared `internal/users` (#24); `jsonfile.LoadDir` and
-  `jsonfile.ValidID` now shared. Profile picker (loading/empty/error
-  states) + create dialog (native `<dialog>`; name + color blobs; ID slug
-  from name with -2 suffix; avatar morphs via `Tween`; units default metric
-  until a settings screen exists). Choosing a profile remembers it in the
-  `home_tools_profile` cookie (shared across *.<domain>; until
-  "Switch profile"), sets `<html data-accent>`, and shows a placeholder
-  fitness home. No router yet (App switches on the chosen profile).
-  Backend for onboarding/home: `users.User.birthday`; fitness `Profile`
-  (`fitness.json`) + weight log (`weights.json`, upsert by date) in
-  `tools/fitness/body.go`; `GET/PUT /api/users/{user}/fitness` (404 = not
-  onboarded), `GET /api/users/{user}/weights`, `PUT .../weights/{date}`.
-  `Session.body_weight_kg` removed. Onboarding UI: one question per screen
-  (goal → height → weight; height/weight skippable), units per profile;
-  shared web helpers `src/api` (ApiError with display-safe messages),
-  `src/dates`, `src/units`, `features/fitness-profile`. "Add profile" has
-  an optional birthday. Profile management (#29): `features/profiles/
-  profile-dialog` (add + edit + remove), manage mode in the picker. API
-  errors from a stale server say "may need a restart". Vite dev proxy
-  target is overridable with `API_URL` (for testing against scratch data).
-  Navigation: tiny History-API router (`src/router`), `AppShell` (header
-  links on wide screens, bottom tabs on phones, shared `--page-width`),
-  `ProfileMenu` (blob + caret, native Popover). Home: greeting + blob,
-  Today hero (accent panel, exercise preview), week drawn with the user's
-  blob (done/planned/missed/rest), slim weekly weight check-in. Plans
-  page is a placeholder; History lists sessions. Plans (#30): list +
-  "Your week" planner (auto-saves the schedule), editor at
-  `/plans/new` and `/plans/<id>` (name, ordered exercises with
-  optional suggested sets, up/down reorder, archive), `ExercisePicker`
-  (search + muscle/equipment filters over the cached catalog). Shared
-  `.btn` classes in app.css; shared `src/ids`. Workout mode at
-  `/workout/<session id>` (full screen, outside AppShell): one exercise
-  at a time, sets pre-filled from the last finished session with that
-  exercise, ✓ saves the whole session (PUT) and starts a rest timer
-  (default 60 s since #35, ±15 s, skip; computed from an end timestamp; vibrates
-  where supported); Leave keeps it in progress (home shows Resume),
-  Finish sets `ended_at`. Screen Wake Lock while open (HTTPS/localhost
-  only, see #8). HTTPS decided (#8, #9): `deploy/` has the Caddy
-  image, Caddyfile, compose file and setup steps.
-  Profile cookie gets `secure` on HTTPS. Docker image (#31): UI embedded
-  (`httpx.SPA`: index.html fallback for client routes, hashed assets
-  cached forever; unknown `/api/` paths stay a JSON 404). CI publishes
-  images to GHCR (#32); `deploy/zimaos-*.yaml` are the paste-in apps.
-  Live at `https://fitness.<domain>`. Favicon + iPhone home-screen icon
-  = the blob for seed "gym" in light green (bigger eyes for 16 px),
-  generated from the avatar code: `pnpm --filter @home-tools/fitness
-  favicon` (`scripts/favicon/`, needs Chrome for the PNG).
-  Plans/workouts (#33–#35): Routine→Plan rename, start any plan or an
-  empty workout, "+ Add exercise", discard (archive) from the Today
-  card, 409 on same-second sessions, rest per plan exercise, min/sec and
-  distance inputs, rest chime. Workout mode shows the exercise's two
-  photos full width as a looping crossfade (start ↔ end position;
-  pausable, still with reduced motion; `features/exercises/
-  exercise-photos`) and a collapsed "How to do it" with the
-  instructions.
-
+## 7. Status (2026-10-08)
+Live at `https://fitness.<domain>` on ZimaOS (#31, #32). History of how it
+got here: `git log`.
+- **Done:** shared profiles (picker, manage mode, blob avatars, accent
+  colors); fitness onboarding (height, weight); home (Today card, this
+  week, weekly weight check-in); plans + routine planner; workout mode
+  (pre-filled sets, rest timer + chime, photo demo + how-to, cardio with
+  optional distance, add exercises, empty workouts, discard); history
+  list; HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
+  adding-a-tool).
+- **Not built yet:** Progress (charts per exercise); host routing (#5);
+  `@home-tools/ui`; tool #2.
+- **Open decisions:** #12 (muscle diagram library), #29 (review the
+  profile management flow).
+- **Next:** tool #2, the game server manager (§5), via
+  `docs/adding-a-tool.md`.
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
