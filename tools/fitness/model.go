@@ -157,11 +157,13 @@ type Plan struct {
 	Archived  bool           `json:"archived,omitempty"`
 }
 
-// PlanExercise is one step of a plan. SuggestedSets is a hint shown
-// in the UI (0 = no suggestion); sessions may log any number of sets.
+// PlanExercise is one step of a plan. SuggestedSets and RestSec are
+// hints for the UI (0 = no suggestion / the default rest); sessions may
+// log any number of sets and rest as long as they like.
 type PlanExercise struct {
 	ExerciseID    string `json:"exercise_id"`
 	SuggestedSets int    `json:"suggested_sets,omitempty"`
+	RestSec       int    `json:"rest_sec,omitempty"` // between sets
 }
 
 // ---- Logging ----

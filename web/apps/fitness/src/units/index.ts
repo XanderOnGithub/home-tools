@@ -21,3 +21,14 @@ export function parseNumber(text: string): number {
   const t = text.trim().replace(',', '.')
   return t === '' ? NaN : Number(t)
 }
+
+const M_PER_MI = 1609.344 // exact, by definition
+
+/** Distance for display/input: km (metric) or mi (imperial). */
+export const mToKm = (m: number) => m / 1000
+export const kmToM = (km: number) => km * 1000
+export const mToMi = (m: number) => m / M_PER_MI
+export const miToM = (mi: number) => mi * M_PER_MI
+
+/** 90 → "1:30", 45 → "0:45". */
+export const formatDuration = (sec: number) => `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`

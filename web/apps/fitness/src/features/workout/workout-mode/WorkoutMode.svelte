@@ -4,7 +4,11 @@
   - Each set row is pre-filled with what was done last time for that
     exercise ("Last: 8 × 135 lb" beside it); tapping ✓ completes it.
   - Completing a set saves the whole session (so a refresh or a dead
-    battery loses nothing) and starts the rest timer.
+    battery loses nothing) and starts the rest timer: the plan's rest for
+    that exercise, else 90 s (#35). When it ends: vibrate (Android) and a
+    short chime.
+  - Timed sets take min + sec (phone number pads have no ":"); distance
+    is km or mi per the profile's units.
   - The screen stays on while this is open (where the browser allows).
   - "+ Add exercise" adds any exercise from the catalog (at the end), so
     an empty workout is built as you go.
@@ -17,6 +21,7 @@
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
+  import { playChime, unlockChime } from '@/features/workout/chime'
   import { RestTimer } from '@/features/workout/rest-timer'
   import {
     getRecentSessions,
@@ -26,7 +31,7 @@
     type SetEntry,
   } from '@/features/sessions'
   import { router } from '@/router'
-  import { kgToLb, lbToKg, parseNumber } from '@/units'
+  import { formatDuration, kgToLb, kmToM, lbToKg, miToM, mToKm, mToMi, parseNumber } from '@/units'
   import { keepScreenOn } from '@/wake-lock'
 
   let { profile, sessionId }: { profile: Profile; sessionId: string } = $props()
@@ -35,11 +40,22 @@
   const DEFAULT_REST_SEC = 90
 
   // One editable row per set. Values are kept as typed text; `done` rows
-  // are the ones saved to the server. `fromKg` remembers the exact stored
-  // weight a pre-filled value came from: lb are shown rounded (84 kg →
-  // "185.2"), and converting that text back would drift (→ 84.01 kg).
-  type Row = { reps: string; weight: string; duration: string; done: boolean; fromKg?: { kg: number; shown: string } }
-  type Step = { exercise: Exercise | null; exerciseId: string; rows: Row[]; last: SetEntry[] }
+  // are the ones saved to the server. `fromKg`/`fromM` remember the exact
+  // stored value a pre-filled one came from: lb and mi are shown rounded
+  // (84 kg → "185.2"), and converting that text back would drift.
+  type Row = {
+    reps: string
+    weight: string
+    min: string // duration = min + sec
+    sec: string
+    distance: string
+    done: boolean
+    fromKg?: { kg: number; shown: string }
+    fromM?: { m: number; shown: string }
+  }
+  // restSec: this exercise's rest, from the plan; ±15 s changes it for
+  // the rest of this workout.
+  type Step = { exercise: Exercise | null; exerciseId: string; rows: Row[]; last: SetEntry[]; restSec: number }
 
   let session = $state<Session | null>(null)
   let history: Session[] = [] // recent sessions, for "Last:" and pre-fills
@@ -52,7 +68,7 @@
   let confirmingFinish = $state(false)
   let finishing = $state(false)
 
-  let restSec = $state(DEFAULT_REST_SEC) // remembered for this workout
+  let restStep = 0 // whose rest is running, for ±15 s
   let restEndsAt = $state<number | null>(null)
   let restTotal = $state(DEFAULT_REST_SEC)
   let now = $state(Date.now())
@@ -61,6 +77,8 @@
   let unit = $derived(imperial ? 'lb' : 'kg')
   const round1 = (n: number) => Math.round(n * 10) / 10
   const showWeight = (kg: number) => String(round1(imperial ? kgToLb(kg) : kg))
+  let distUnit = $derived(imperial ? 'mi' : 'km')
+  const showDistance = (m: number) => String(Math.round((imperial ? mToMi(m) : mToKm(m)) * 100) / 100)
 
   async function load() {
     status = 'loading'
@@ -100,15 +118,20 @@
       const done = doneSets[n]
       const src = done ?? last[n] ?? last.at(-1)
       const weight = src?.weight_kg ? showWeight(src.weight_kg) : ''
+      const distance = src?.distance_m ? showDistance(src.distance_m) : ''
       return {
         reps: src?.reps ? String(src.reps) : '',
         weight,
-        duration: src?.duration_sec ? String(src.duration_sec) : '',
+        min: src?.duration_sec ? String(Math.floor(src.duration_sec / 60)) : '',
+        sec: src?.duration_sec ? String(src.duration_sec % 60) : '',
+        distance,
         done: !!done,
         fromKg: src?.weight_kg ? { kg: src.weight_kg, shown: weight } : undefined,
+        fromM: src?.distance_m ? { m: src.distance_m, shown: distance } : undefined,
       }
     })
-    return { exercise, exerciseId, rows, last }
+    const restSec = plan?.exercises.find((p) => p.exercise_id === exerciseId)?.rest_sec || DEFAULT_REST_SEC
+    return { exercise, exerciseId, rows, last, restSec }
   }
 
   // "+ Add exercise": the catalog is loaded on first open only.
@@ -165,6 +188,7 @@
     if (restEndsAt !== null && now >= restEndsAt) {
       restEndsAt = null
       navigator.vibrate?.([200, 100, 200])
+      playChime()
       announce = 'Rest over. Next set.'
     }
   })
@@ -205,9 +229,22 @@
       }
     }
     if (tracks(ex, 'duration')) {
-      const d = parseNumber(row.duration)
-      if (!(Number.isInteger(d) && d > 0)) return 'Enter the time in seconds.'
-      set.duration_sec = d
+      // Either box may be empty (= 0): "0 min 45 sec" or just "2 min".
+      const min = row.min.trim() === '' ? 0 : parseNumber(row.min)
+      const sec = row.sec.trim() === '' ? 0 : parseNumber(row.sec)
+      if (!(Number.isInteger(min) && min >= 0 && Number.isInteger(sec) && sec >= 0 && sec < 60) || min + sec === 0) {
+        return 'Enter the time: minutes and seconds (0–59).'
+      }
+      set.duration_sec = min * 60 + sec
+    }
+    if (tracks(ex, 'distance')) {
+      const d = parseNumber(row.distance)
+      if (!(d > 0)) return `Enter the distance in ${distUnit}.`
+      if (row.fromM && row.distance === row.fromM.shown) {
+        set.distance_m = row.fromM.m // untouched pre-fill: keep the exact value
+      } else {
+        set.distance_m = Math.round(imperial ? miToM(d) : kmToM(d)) // whole meters
+      }
     }
     return set
   }
@@ -241,6 +278,7 @@
       }
     }
     rowError = null
+    unlockChime() // inside the tap, so the chime may play when rest ends
     row.done = !row.done
     if (!(await persist())) {
       row.done = !row.done // undo: the server didn't take it
@@ -249,9 +287,10 @@
     if (row.done) {
       const allDone = steps.every((st) => st.rows.every((r) => r.done))
       if (!allDone) {
-        restTotal = restSec
-        restEndsAt = Date.now() + restSec * 1000
-        announce = `Set ${i + 1} done. Rest ${restSec} seconds.`
+        restStep = step
+        restTotal = current.restSec
+        restEndsAt = Date.now() + current.restSec * 1000
+        announce = `Set ${i + 1} done. Rest ${formatDuration(current.restSec)}.`
       } else {
         announce = 'All sets done. Finish when ready.'
       }
@@ -260,7 +299,7 @@
 
   function adjustRest(delta: number) {
     if (restEndsAt === null) return
-    restSec = Math.max(15, restSec + delta)
+    steps[restStep].restSec = Math.max(15, steps[restStep].restSec + delta)
     restEndsAt = Math.max(Date.now() + 5000, restEndsAt + delta * 1000)
     restTotal = Math.max(restTotal + delta, 15)
   }
@@ -301,9 +340,12 @@
     current.rows.push({
       reps: prev?.reps ?? '',
       weight: prev?.weight ?? '',
-      duration: prev?.duration ?? '',
+      min: prev?.min ?? '',
+      sec: prev?.sec ?? '',
+      distance: prev?.distance ?? '',
       done: false,
       fromKg: prev?.fromKg,
+      fromM: prev?.fromM,
     })
   }
 
@@ -344,7 +386,8 @@
     const parts = []
     if (s.reps) parts.push(`${s.reps}`)
     if (s.weight_kg) parts.push(`${showWeight(s.weight_kg)} ${unit}`)
-    if (s.duration_sec) parts.push(`${s.duration_sec} s`)
+    if (s.duration_sec) parts.push(formatDuration(s.duration_sec))
+    if (s.distance_m) parts.push(`${showDistance(s.distance_m)} ${distUnit}`)
     return parts.join(' × ')
   }
 </script>
@@ -441,8 +484,18 @@
                 {/if}
                 {#if tracks(current.exercise, 'duration')}
                   <label class="field">
-                    <input type="text" inputmode="numeric" maxlength="4" bind:value={row.duration} disabled={row.done} />
+                    <input type="text" inputmode="numeric" maxlength="3" bind:value={row.min} disabled={row.done} />
+                    <span>min<span class="visually-hidden">, set {i + 1}</span></span>
+                  </label>
+                  <label class="field">
+                    <input type="text" inputmode="numeric" maxlength="2" bind:value={row.sec} disabled={row.done} />
                     <span>sec<span class="visually-hidden">, set {i + 1}</span></span>
+                  </label>
+                {/if}
+                {#if tracks(current.exercise, 'distance')}
+                  <label class="field">
+                    <input type="text" inputmode="decimal" maxlength="6" bind:value={row.distance} disabled={row.done} />
+                    <span>{distUnit}<span class="visually-hidden">, set {i + 1}</span></span>
                   </label>
                 {/if}
               </span>

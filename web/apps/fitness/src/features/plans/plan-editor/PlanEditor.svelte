@@ -1,7 +1,7 @@
 <!--
   Create (id = null) or edit a shared plan: a name and an ordered list
-  of exercises, each with an optional suggested number of sets (a hint,
-  never enforced; decision #7). Reorder with up/down buttons (keyboard and
+  of exercises, each with an optional suggested number of sets and rest
+  between sets (hints, never enforced; decisions #7, #35). Reorder with up/down buttons (keyboard and
   touch friendly; the moved row keeps focus). Archive instead of delete.
 -->
 <script lang="ts">
@@ -15,7 +15,9 @@
 
   let { profile, id }: { profile: Profile; id: string | null } = $props()
 
-  type Item = { exercise_id: string; sets: string } // sets as typed ('' = no hint)
+  // As typed ('' = no hint). Rest is in seconds: phone number pads have
+  // no ":" key, so "1:30" couldn't be typed there.
+  type Item = { exercise_id: string; sets: string; rest: string }
 
   let plans = $state<Plan[]>([])
   let catalog = $state<Exercise[]>([])
@@ -43,6 +45,7 @@
         items = original.exercises.map((e) => ({
           exercise_id: e.exercise_id,
           sets: e.suggested_sets ? String(e.suggested_sets) : '',
+          rest: e.rest_sec ? String(e.rest_sec) : '',
         }))
       }
       status = 'ready'
@@ -59,7 +62,7 @@
 
   function toggle(ex: Exercise) {
     const i = items.findIndex((it) => it.exercise_id === ex.id)
-    if (i === -1) items.push({ exercise_id: ex.id, sets: '' })
+    if (i === -1) items.push({ exercise_id: ex.id, sets: '', rest: '' })
     else items.splice(i, 1)
   }
 
@@ -91,6 +94,11 @@
       formError = `Sets for ${byId.get(bad.exercise_id)?.name ?? 'an exercise'} should be 1 to 20, or empty.`
       return
     }
+    const badRest = items.find((i) => i.rest.trim() && !(Number.isInteger(Number(i.rest)) && Number(i.rest) >= 1 && Number(i.rest) <= 3600))
+    if (badRest) {
+      formError = `Rest for ${byId.get(badRest.exercise_id)?.name ?? 'an exercise'} should be 1 to 3600 seconds, or empty.`
+      return
+    }
 
     // "new" is reserved: /plans/new is the create page, not a plan.
     const taken = new Set([...plans.map((r) => r.id), 'new'])
@@ -98,9 +106,12 @@
       id: original?.id ?? idFromName(name, taken),
       name: name.trim(),
       created_by: original?.created_by ?? profile.id,
-      exercises: items.map((i) =>
-        i.sets.trim() ? { exercise_id: i.exercise_id, suggested_sets: Number(i.sets) } : { exercise_id: i.exercise_id },
-      ),
+      // Empty hints are left out (the server omits zeros too).
+      exercises: items.map((i) => ({
+        exercise_id: i.exercise_id,
+        ...(i.sets.trim() && { suggested_sets: Number(i.sets) }),
+        ...(i.rest.trim() && { rest_sec: Number(i.rest) }),
+      })),
     }
     if (!plan.id) {
       nameError = 'Use at least one letter or number.'
@@ -165,7 +176,7 @@
       <section class="exercises" aria-labelledby="exercises-title">
         <div class="section-head">
           <h2 id="exercises-title">Exercises</h2>
-          <span class="hint">Sets are a suggestion</span>
+          <span class="hint">Sets and rest are suggestions</span>
         </div>
 
         {#if items.length === 0}
@@ -186,6 +197,10 @@
                 <label class="sets">
                   <input type="text" inputmode="numeric" maxlength="2" placeholder="–" bind:value={item.sets} />
                   <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
+                </label>
+                <label class="sets rest">
+                  <input type="text" inputmode="numeric" maxlength="4" placeholder="–" bind:value={item.rest} />
+                  <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
                 </label>
                 <span class="tools">
                   <button
@@ -422,6 +437,10 @@
     background: var(--color-bg);
     font-weight: var(--weight-semibold);
     text-align: center;
+  }
+
+  .rest input {
+    width: 3.5rem;
   }
 
   .tools {

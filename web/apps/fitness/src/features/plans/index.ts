@@ -5,7 +5,7 @@ export type Plan = {
   id: string
   name: string
   created_by: string
-  exercises: { exercise_id: string; suggested_sets?: number }[]
+  exercises: { exercise_id: string; suggested_sets?: number; rest_sec?: number }[] // sets, rest: hints
   archived?: boolean
 }
 

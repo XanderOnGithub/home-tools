@@ -99,10 +99,15 @@ func (e Exercise) Validate() error {
 	return nil
 }
 
+// maxRestSec caps a plan's rest hint; anything longer is a typo
+// (9000 for 90), not a rest.
+const maxRestSec = 3600
+
 // Validate checks r's own rules:
 //   - ID, Name and CreatedBy are required
 //   - at least one exercise, each with an ExerciseID
 //   - SuggestedSets is not negative (0 means no suggestion)
+//   - RestSec is 0 (default rest) to maxRestSec
 //
 // Whether each ExerciseID exists in the catalog is checked by the store,
 // which has the catalog; Validate only sees the plan itself.
@@ -125,6 +130,9 @@ func (r Plan) Validate() error {
 		}
 		if ex.SuggestedSets < 0 {
 			return fmt.Errorf("%w plan %s: exercise %d has negative suggested_sets", ErrInvalid, r.ID, i)
+		}
+		if ex.RestSec < 0 || ex.RestSec > maxRestSec {
+			return fmt.Errorf("%w plan %s: exercise %d rest_sec must be 0 to %d", ErrInvalid, r.ID, i, maxRestSec)
 		}
 	}
 	return nil

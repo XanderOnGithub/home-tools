@@ -121,6 +121,15 @@ func TestPlanValidate(t *testing.T) {
 		{"negative suggested sets", with(func(r *Plan) {
 			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", SuggestedSets: -1}}
 		}), true},
+		{"rest hint", with(func(r *Plan) {
+			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", RestSec: 120}}
+		}), false},
+		{"negative rest", with(func(r *Plan) {
+			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", RestSec: -1}}
+		}), true},
+		{"rest over an hour", with(func(r *Plan) {
+			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", RestSec: 3601}}
+		}), true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
