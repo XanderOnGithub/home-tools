@@ -82,8 +82,8 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
   since the last read (`activity.go` has the exact formats). It resets
   when the container restarts and is rebuilt from the container's start
   after Home Tools restarts; Docker log rotation can drop old lines.
-  Valheim's leave line is unverified on the real server; "Connections 0"
-  clears anyone missed. Use made-up names in tests and docs.
+  Valheim's join/leave lines were checked against the real server's log;
+  "Connections 0" clears anyone missed. Use made-up names in tests and docs.
 - **Heads call Mojang** (`sessionserver.mojang.com`, `textures.minecraft.net`)
   from the server, never from browsers. Offline-mode servers get no heads.
 - **RCON is a password-protected admin port:** reachable from the LAN is

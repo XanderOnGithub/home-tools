@@ -37,6 +37,16 @@ func TestActivityParse(t *testing.T) {
 			{5, "10/08/2026 18:05:00: Destroying abandoned non persistent zdo 77:3 owner 77"},
 			{5, "10/08/2026 18:05:00: Destroying abandoned non persistent zdo 77:4 owner 77"},
 		}, []string{"Ragnhild"}, []string{"Erik the Red leave", "Erik the Red join", "Ragnhild join"}},
+		// The real server's lines (lloesche/valheim-server via supervisord),
+		// with a made-up name and IDs.
+		{"valheim real log", GameValheim, []line{
+			{1, "Oct  9 13:54:24 supervisord: valheim-server 10/09/2026 13:54:24: Got handshake from client 76561190000000000"},
+			{2, "Oct  9 13:54:44 supervisord: valheim-server 10/09/2026 13:54:44: Got character ZDOID from Ragnhild : 1234567890:1"},
+			{3, "Oct  9 13:54:54 supervisord: valheim-server 10/09/2026 13:54:54: RPC_Disconnect"},
+			{3, "Oct  9 13:54:54 supervisord: valheim-server 10/09/2026 13:54:54: Destroying abandoned non persistent zdo 1234567890:1 owner 1234567890"},
+			{3, "Oct  9 13:54:54 supervisord: valheim-server 10/09/2026 13:54:54: Destroying abandoned non persistent zdo 1234567890:5 owner 1234567890"},
+			{4, "Oct  9 13:50:36 supervisord: valheim-server 10/09/2026 13:50:36:  Connections 0 ZDOS:462399  sent:0 recv:0"},
+		}, nil, []string{"Ragnhild leave", "Ragnhild join"}},
 		{"valheim nobody connected clears missed leaves", GameValheim, []line{
 			{1, "10/08/2026 18:01:00: Got character ZDOID from Ragnhild : 42:1"},
 			{9, "10/08/2026 18:09:00: Connections 0 ZDOS:1234  sent:0 recv:0"},
