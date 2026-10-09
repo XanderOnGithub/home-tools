@@ -1,8 +1,10 @@
 <!--
   The frame around every signed-in screen: navigation + profile menu.
 
-  One set of links, two layouts: in the header on wide screens, a bottom
-  tab bar on phones (within thumb reach). The current page's link gets
+  Shared by every tool, so they all feel the same. One set of links (the
+  tool passes its own), two layouts: in the header on wide screens, a
+  bottom tab bar on phones (within thumb reach). With a single link there's
+  nothing to switch between, so phones get no tab bar. The current page's link gets
   aria-current="page", which screen readers announce as "current page".
 
   On navigation, focus moves to the new page's <h1> (single-page apps don't
@@ -10,18 +12,17 @@
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte'
-  import { ProfileMenu } from '@home-tools/ui/profiles/profile-menu'
-  import type { Profile } from '@home-tools/ui/profiles/types'
-  import { router } from '@home-tools/ui/router'
+  import { ProfileMenu } from '../profiles/profile-menu'
+  import type { Profile } from '../profiles/types'
+  import { router } from '../router'
+  import type { NavLink } from './types'
 
-  let { profile, onswitch, children }: { profile: Profile; onswitch: () => void; children: Snippet } =
-    $props()
-
-  const LINKS = [
-    { href: '/', label: 'Home', icon: 'M3 11l9-8 9 8 M5 9.5V20h5v-6h4v6h5V9.5' },
-    { href: '/plans', label: 'Plans', icon: 'M8 6h12 M8 12h12 M8 18h12 M4 6h.01 M4 12h.01 M4 18h.01' },
-    { href: '/history', label: 'History', icon: 'M12 7v5l3 2 M3.05 11a9 9 0 1 1 .5 4 M3 4v5h5' },
-  ]
+  let {
+    links,
+    profile,
+    onswitch,
+    children,
+  }: { links: NavLink[]; profile: Profile; onswitch: () => void; children: Snippet } = $props()
 
   let main = $state<HTMLElement>()
   let first = true
@@ -38,7 +39,7 @@
 
 {#snippet navLinks(variant: 'inline' | 'tabs')}
   <ul class="links {variant}">
-    {#each LINKS as link (link.href)}
+    {#each links as link (link.href)}
       <li>
         <a href={link.href} aria-current={router.path === link.href ? 'page' : undefined}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d={link.icon} /></svg>
@@ -63,9 +64,11 @@
     {@render children()}
   </main>
 
-  <nav class="tab-bar" aria-label="Main">
-    {@render navLinks('tabs')}
-  </nav>
+  {#if links.length > 1}
+    <nav class="tab-bar" aria-label="Main">
+      {@render navLinks('tabs')}
+    </nav>
+  {/if}
 </div>
 
 <style>

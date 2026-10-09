@@ -156,11 +156,11 @@ func do(h http.Handler, method, path string) *httptest.ResponseRecorder {
 func TestGetServers(t *testing.T) {
 	docker, _ := fakeDocker(t)
 	rec := do(newTestHandlers(t, docker), "GET", "/api/servers")
-	var got []serverStatus
+	var got []serverView
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	byID := map[string]serverStatus{}
+	byID := map[string]serverView{}
 	for _, s := range got {
 		byID[s.ID] = s
 	}

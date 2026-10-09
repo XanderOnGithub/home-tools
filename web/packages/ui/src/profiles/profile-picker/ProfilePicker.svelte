@@ -7,7 +7,13 @@
   import { rememberedProfileId, rememberProfile } from '../remembered'
   import type { Profile } from '../types'
 
-  let { onselect }: { onselect: (profile: Profile) => void } = $props()
+  let {
+    onselect,
+    title = "Who's here?",
+  }: {
+    onselect: (profile: Profile) => void
+    title?: string // each tool asks its own way: "Who's working out?"
+  } = $props()
 
   // Only show "Loading…" if the request is actually slow. On the LAN it
   // usually answers in milliseconds, and a flash of loading text looks broken.
@@ -86,7 +92,7 @@
 </script>
 
 <!--
-  "Who's working out?" Each profile is one button (avatar + name inside, so
+  The picker ("Who's working out?" in fitness). Each profile is one button (avatar + name inside, so
   the whole tile is the tap target and the button's accessible name is the
   person's name). The avatar is aria-hidden: the name already says it.
 
@@ -96,7 +102,7 @@
 -->
 <section class="profile-picker" aria-labelledby="profile-picker-title">
   <h1 id="profile-picker-title" class:hidden={remembered && status === 'loading'}>
-    {managing ? 'Manage profiles' : "Who's working out?"}
+    {managing ? 'Manage profiles' : title}
   </h1>
 
   <!-- One live region for every status message: screen readers announce

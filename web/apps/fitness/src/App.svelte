@@ -9,10 +9,16 @@
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { PlanEditor } from '@/features/plans/plan-editor'
   import { PlansScreen } from '@/features/plans/plans-screen'
-  import { AppShell } from '@/features/shell/app-shell'
+  import { AppShell } from '@home-tools/ui/app-shell'
   import { NotFound } from '@/features/shell/not-found'
   import { WorkoutMode } from '@/features/workout/workout-mode'
   import { router } from '@home-tools/ui/router'
+
+  const LINKS = [
+    { href: '/', label: 'Home', icon: 'M3 11l9-8 9 8 M5 9.5V20h5v-6h4v6h5V9.5' },
+    { href: '/plans', label: 'Plans', icon: 'M8 6h12 M8 12h12 M8 18h12 M4 6h.01 M4 12h.01 M4 18h.01' },
+    { href: '/history', label: 'History', icon: 'M12 7v5l3 2 M3.05 11a9 9 0 1 1 .5 4 M3 4v5h5' },
+  ]
 
   // Gates, in order:
   //   no profile chosen      → picker
@@ -74,7 +80,7 @@
 
 {#if !profile}
   <main>
-    <ProfilePicker onselect={choose} />
+    <ProfilePicker onselect={choose} title="Who's working out?" />
   </main>
 {:else if status === 'error'}
   <main class="center">
@@ -89,7 +95,7 @@
     <WorkoutMode {profile} sessionId={decodeURIComponent(workoutId)} />
   {/key}
 {:else if status === 'ready' && fitness}
-  <AppShell {profile} onswitch={switchProfile}>
+  <AppShell links={LINKS} {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <HomeScreen {profile} bind:fitness />
     {:else if router.path === '/plans'}

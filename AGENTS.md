@@ -137,6 +137,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 35 | Rest between sets: optional `rest_sec` per plan exercise (0 = default 60 s, shown as the field's placeholder; max 3600), a hint like `suggested_sets`; typed as seconds in the plan editor. In workout mode ±15 s changes that exercise's rest for the rest of the workout. Rest end: vibrate (Android) + a Web Audio chime (iOS, unlocked by the ✓ tap). Timed sets are entered as min + sec boxes, distance in km/mi per profile units | ✅ | 2026-10-08. Phone number pads have no ":" key, hence seconds / two boxes instead of "1:30". |
 | 36 | Cardio (category `cardio`) is one effort, not sets: workout mode starts it with one row (no set number), no rest timer, "+ Add interval" for more; the plan editor hides its rest field. Distance cardio (running, cycling, rowing, elliptical, skating, walking; `fedbDistance`) tracks duration + **optional** distance (Set rule: distance 0 = not measured); stair/rope/prowler time only. `SaveExercise` refuses metric changes that would invalidate logged sets. `fitness-import -fix-metrics` re-applies the import metric rules to existing free-exercise-db exercises (stop the server first) | ✅ | 2026-10-08. Fixes existing data (server) without overwriting hand edits to anything but metrics. |
 | 37 | Game server manager v1: status, start/stop/restart, live logs (players + console later). Servers are config files `data/games/servers/<id>.json` (`{id, name, game: minecraft\|valheim, container}`), one per server like every other store. Docker via its HTTP API with `net/http` over a unix socket (no SDK), through **wollomatic/socket-proxy** (own ZimaOS app; allowlist: container inspect/logs GET, start/stop/restart POST; socket in `/run/home-tools-docker`, not on a share). Logs stream as **Server-Sent Events** (last 200 lines, then live). Stop/restart wait up to 60 s for the world to save. Local dev: `-tool <name>`; host routing in `internal/hostroute` | ✅ | 2026-10-08. Xander chose file config, the proxy (the raw socket is root on the server and the app has no auth), SSE and the small v1. |
+| 38 | Games v2: same look as fitness (shared `AppShell` in `@home-tools/ui`, nav links per tool, no phone tab bar with one link). Cards: game icon (own drawings in the accent color, not the games' logos), name, status, "Up 2 h · 2 of 20 online"; the whole card opens the server page; a ⋯ menu top-right holds Start or Stop + Restart (confirm dialog). Server page: header, Players, Log. **Players online:** Minecraft via **RCON** (`list`; password in the server file as `rcon_password`, never sent to browsers), Valheim via Steam **A2S**; address = a `query` field per server | ✅ | 2026-10-08. Xander chose RCON over Server List Ping (it also opens the door to console commands), a query field over guessing from Docker, and the menu top-right. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
@@ -202,14 +203,15 @@ got here: `git log`.
   optional distance, add exercises, empty workouts, discard); history
   list; HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
   adding-a-tool).
-- **Games (#37, ADR 0011):** server list with live status,
-  start/stop/restart, live logs (SSE), via the socket proxy. Tested against
-  a fake Docker API; not yet run against the real server.
-- **Not built yet:** Progress (charts per exercise); games players online,
-  console commands, permissions, server config editor.
+- **Games (#37, #38, ADR 0011):** server cards with status and players,
+  ⋯ menu for start/stop/restart, server page with players and live log;
+  runs on the real server via the socket proxy. Players online tested
+  against fakes; needs `query` (+ RCON setup for Minecraft) on the server.
+- **Not built yet:** Progress (charts per exercise); games console
+  commands, permissions, server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
-- **Next:** deploy games (`deploy/README.md` "Games"), then players online.
+- **Next:** set up player queries on the server (RCON for Minecraft).
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
