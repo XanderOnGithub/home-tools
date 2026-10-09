@@ -21,6 +21,20 @@ to the bot.
 - Unverified people who try a verified-only command become **access
   requests** on the People page (Verify / Dismiss).
 
+### Features (#44): each with an on/off switch
+- **Poll:** a native Discord poll every `every_days` (1–7, default 2) at
+  `post_at` (local time) in one channel, open `duration_hours`.
+  Questions are edited on the Features page; `rotate` shuffles them so
+  none repeat before all were asked.
+- **`/blob name color [animated]`:** anyone; PNG 512 px (transparent,
+  with margin) or the blinking GIF 256 px. The page has a maker.
+- **Adding a feature:** a struct in `Features` (`model.go`, zero value =
+  off, defaults in `fillDefaults`, rules in `Validate`); its commands in
+  `commands(f)` behind its switch (and a check in `handle`, since Discord
+  may lag a moment); its job as a loop in `Run` that re-reads the config
+  and wakes on `Changed`; a card on the Features page with
+  `ToggleSwitch`.
+
 ## Where things are
 | File | What |
 |---|---|
@@ -31,7 +45,8 @@ to the bot.
 | `boards.go` | Status board sync: one games request per tick, edit only when an embed's hash changed. |
 | `games.go` | Client for the games HTTP API (`Games` interface; fakes in tests). |
 | `sens.go` | The conversion table (from Starport-Assistant) and math. |
-| `persona.go` | `PersonaFor(date, names)`: pure; shuffled names per pass, no repeats on consecutive days. Shares the blob's seeded generator. |
+| `persona.go` | `PersonaFor(date, names)` and `rotate` (shuffled turns, no repeats back to back), both pure. Shares the blob's seeded generator. |
+| `poll.go` | Poll schedule (`nextPollSlot`, pure), the posting loop, "post now". |
 | `blob.go` | Go port of the frontend blob (shape + face); tested against the TypeScript's numbers. |
 | `raster.go` | Scanline polygon fill with anti-aliasing (edge table + active list). |
 | `avatar.go` | The animation script (rest → blink ×2 → look left → right → back) → GIF, plus a still PNG. |
@@ -40,8 +55,9 @@ to the bot.
 UI: `web/apps/discord` (Svelte, shared `AppShell`): `features/bot/`:
 `settings` (shared state, polls the bot every 15 s while visible; saves
 with the revision, reloads on 409), `today-card`, `status-boards`,
-`name-list`, `commands-help`, `overview-page` (`/`), `people-page`
-(`/people`).
+`name-list`, `commands-help`, `overview-page` (`/`), `features-page`
+(`/features`: `poll-settings` + `poll-questions`, `blob-maker`),
+`people-page` (`/people`); `components/toggle-switch`.
 
 ## Configuration
 - **Token:** `DISCORD_TOKEN` env var only (never in files, flags or the
@@ -53,7 +69,8 @@ with the revision, reloads on 409), `today-card`, `status-boards`,
   looks at the first label).
 - Discord developer portal: a bot with **no privileged intents**.
   Invite with the link on the page (view channels, send messages, embed
-  links, read history, change nickname; no admin).
+  links, attach files, read history, change nickname, send polls; no
+  admin).
 
 ## API
 | Method + path | Does |
@@ -62,6 +79,8 @@ with the revision, reloads on 409), `today-card`, `status-boards`,
 | `PUT /api/config` | Replace it. Body's `revision` must be current: 409 otherwise (someone else saved). 400 = a rule broke. Answers with the new revision. |
 | `GET /api/bot` | Connection (`connected`, `error`, `user`, `invite_url`), `guilds` with postable text channels, today's `persona`, `requests`, games `servers` (+ `servers_error`). |
 | `DELETE /api/requests/{user}` | Dismiss an access request. |
+| `POST /api/poll` | Post the next poll now (takes the next slot). 409 = off, no questions, offline, or Discord refused. |
+| `GET /api/blob?name=&color=[&animated=1]` | The blob `/blob` would send (immutable cache). |
 | `GET /api/persona.gif` / `.png` | Today's avatar, animated / still (ETag per persona). |
 
 ## Gotchas

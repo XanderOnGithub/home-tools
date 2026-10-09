@@ -1,8 +1,8 @@
 <!--
   Discord: pick a profile (shared with every tool, ADR 0007; the choice is
   remembered across subdomains), then the shared app shell (same header,
-  nav and spacing as fitness and games) around the bot page ("/") or the
-  people page ("/people"). The profile gives the accent color.
+  nav and spacing as fitness and games) around the bot page ("/"), the
+  features page ("/features") or the people page ("/people"). The profile gives the accent color.
 -->
 <script lang="ts">
   import { AppShell } from '@home-tools/ui/app-shell'
@@ -10,12 +10,15 @@
   import { forgetProfile } from '@home-tools/ui/profiles/remembered'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { router } from '@home-tools/ui/router'
+  import { FeaturesPage } from '@/features/bot/features-page'
   import { OverviewPage } from '@/features/bot/overview-page'
   import { PeoplePage } from '@/features/bot/people-page'
 
   const LINKS = [
     // A chat bubble with a smile: the bot.
     { href: '/', label: 'Bot', icon: 'M4 5h16v11H9l-5 4z M9 10.5h.01 M15 10.5h.01' },
+    // A sparkle: the optional extras.
+    { href: '/features', label: 'Features', icon: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z M19 3v4 M21 5h-4' },
     // Two people.
     {
       href: '/people',
@@ -32,7 +35,8 @@
   })
 
   $effect(() => {
-    document.title = router.path === '/people' ? 'People · Discord' : 'Discord · Home Tools'
+    const titles: Record<string, string> = { '/people': 'People · Discord', '/features': 'Features · Discord' }
+    document.title = titles[router.path] ?? 'Discord · Home Tools'
   })
 
   function switchProfile() {
@@ -49,6 +53,8 @@
   <AppShell links={LINKS} {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <OverviewPage />
+    {:else if router.path === '/features'}
+      <FeaturesPage />
     {:else if router.path === '/people'}
       <PeoplePage />
     {:else}

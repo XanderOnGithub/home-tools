@@ -51,47 +51,56 @@ func dayNumber(t time.Time) int64 {
 	return time.Date(y, m, d, 0, 0, 0, 0, time.UTC).Unix() / 86400
 }
 
-// PersonaFor returns the persona for t's date.
-//
-// Colors simply rotate (never the same two days running). Names go through
-// the list in a shuffled order, a new shuffle each pass: every name gets a
-// day before any repeats, and the order isn't predictable. Each pass is a
-// Fisher–Yates shuffle seeded by the pass number: O(n) time and space for n
-// names, recomputed per call (n ≤ 500, so microseconds).
+// PersonaFor returns the persona for t's date: colors simply rotate
+// (never the same two days running); names take turns (see rotate).
 func PersonaFor(t time.Time, names []string) Persona {
 	day := dayNumber(t)
 	p := Persona{Color: AllColors[mod(day, int64(len(AllColors)))], Date: t.Format(time.DateOnly)}
-	n := int64(len(names))
-	switch n {
-	case 0:
-		return p
-	case 1, 2:
-		// One name: always it. Two: alternate (a shuffle could repeat one).
-		p.Name = names[mod(day, n)]
-		return p
+	if len(names) > 0 {
+		p.Name = names[rotate(day, len(names), "names")]
 	}
-	pass, i := day/n, mod(day, n)
-	if day < 0 && i != 0 {
-		pass-- // floor division for dates before 1970 (tests only, really)
-	}
-	order := shuffled(n, pass)
-	// Passes are independent shuffles, so the last name of one pass could
-	// open the next. Swapping the first two of the new pass fixes that; it
-	// never moves the pass's last name (n ≥ 3), so no new clash appears.
-	if prev := shuffled(n, pass-1); order[0] == prev[n-1] {
-		order[0], order[1] = order[1], order[0]
-	}
-	p.Name = names[order[i]]
 	return p
 }
 
-// shuffled returns 0..n-1 in an order fixed by seed (Fisher–Yates).
-func shuffled(n, seed int64) []int {
+// rotate returns which of n items has turn k (k = 0, 1, 2, …): the items
+// go in a shuffled order, a new shuffle each pass of n turns, so every
+// item gets a turn before any repeats, the order isn't predictable, and
+// no item has two turns in a row. Each pass is a Fisher–Yates shuffle
+// seeded by salt + the pass number: O(n) time and space per call, no
+// state to store (n ≤ 500, so microseconds).
+func rotate(k int64, n int, salt string) int {
+	switch n {
+	case 1:
+		return 0
+	case 2:
+		return int(mod(k, 2)) // alternate: a shuffle could repeat one
+	}
+	pass, i := floorDiv(k, int64(n)), mod(k, int64(n))
+	order := shuffled(int64(n), salt, pass)
+	// Passes are independent shuffles, so the last item of one pass could
+	// open the next. Swapping the first two of the new pass fixes that; it
+	// never moves the pass's last item (n ≥ 3), so no new clash appears.
+	if prev := shuffled(int64(n), salt, pass-1); order[0] == prev[n-1] {
+		order[0], order[1] = order[1], order[0]
+	}
+	return order[i]
+}
+
+func floorDiv(a, b int64) int64 {
+	q := a / b
+	if a%b != 0 && a < 0 {
+		q-- // Go truncates toward zero; dates before 1970 need floor
+	}
+	return q
+}
+
+// shuffled returns 0..n-1 in an order fixed by salt and seed (Fisher–Yates).
+func shuffled(n int64, salt string, seed int64) []int {
 	order := make([]int, n)
 	for i := range order {
 		order[i] = i
 	}
-	rng := newRand("names:" + strconv.FormatInt(seed, 10))
+	rng := newRand(salt + ":" + strconv.FormatInt(seed, 10))
 	for i := n - 1; i > 0; i-- {
 		j := int(rng.next() * float64(i+1))
 		order[i], order[j] = order[j], order[i]

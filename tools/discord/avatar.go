@@ -115,22 +115,22 @@ func newFigure(seed string) figure {
 // Transforms match the SVG: the body leans around its center, the eye
 // pair sits at the face point, tilted, then looks; each eye blinks around
 // its own center.
-func (f figure) draw(p pose) (body, eyes *mask) {
-	scale := avatarPx / viewBox * avatarZoom
-	offset := avatarPx * (1 - avatarZoom) / 2 // centers the shrunken viewBox
+func (f figure) draw(p pose, px int) (body, eyes *mask) {
+	scale := float64(px) / viewBox * avatarZoom
+	offset := float64(px) * (1 - avatarZoom) / 2 // centers the shrunken viewBox
 	sin, cos := math.Sincos(p.lean * math.Pi / 180)
 	toPx := func(q point) point { // body transform, then viewBox → pixels
 		dx, dy := q.x-f.center.x, q.y-f.center.y
 		return point{(f.center.x+dx*cos-dy*sin+p.shiftX)*scale + offset, (f.center.y+dx*sin+dy*cos)*scale + offset}
 	}
-	body = newMask(avatarPx, avatarPx)
+	body = newMask(px, px)
 	poly := make([]point, len(f.body))
 	for i, q := range f.body {
 		poly[i] = toPx(q)
 	}
 	body.fill(poly)
 
-	eyes = newMask(avatarPx, avatarPx)
+	eyes = newMask(px, px)
 	ts, tc := math.Sincos(f.face.tilt * math.Pi / 180)
 	for _, side := range []float64{-1, 1} {
 		poly := make([]point, len(f.eye))
@@ -155,18 +155,26 @@ func avatarPalette(c Color) color.Palette {
 	return pal
 }
 
-// AvatarGIF renders p's animated avatar. GIF transparency is on/off, so the
-// body's outline is cut at half coverage (Discord shrinks the image, which
-// smooths it); the eyes, drawn on the body, are fully anti-aliased.
-func AvatarGIF(p Persona) ([]byte, error) {
-	f := newFigure(p.Name)
-	pal := avatarPalette(p.Color)
+// AvatarGIF renders p's animated avatar (see BlobGIF).
+func AvatarGIF(p Persona) ([]byte, error) { return BlobGIF(p.Name, p.Color, avatarPx) }
+
+// AvatarPNG renders p's avatar at rest (see BlobPNG): the fallback where
+// an animated avatar isn't allowed.
+func AvatarPNG(p Persona) ([]byte, error) { return BlobPNG(p.Name, p.Color, avatarPx) }
+
+// BlobGIF renders the blob for name, px × px, animated. GIF transparency
+// is on/off, so the body's outline is cut at half coverage (Discord
+// shrinks the image, which smooths it); the eyes, drawn on the body, are
+// fully anti-aliased.
+func BlobGIF(name string, c Color, px int) ([]byte, error) {
+	f := newFigure(name)
+	pal := avatarPalette(c)
 	anim := &gif.GIF{LoopCount: 0} // 0 = forever
 	for _, fr := range frames() {
-		body, eyes := f.draw(fr.p)
-		img := image.NewPaletted(image.Rect(0, 0, avatarPx, avatarPx), pal)
-		for y := range avatarPx {
-			for x := range avatarPx {
+		body, eyes := f.draw(fr.p, px)
+		img := image.NewPaletted(image.Rect(0, 0, px, px), pal)
+		for y := range px {
+			for x := range px {
 				if body.at(x, y) >= 0.5 {
 					img.Pix[y*img.Stride+x] = 1 + uint8(math.Round(float64(eyes.at(x, y))*(eyeLevels-1)))
 				}
@@ -185,14 +193,14 @@ func AvatarGIF(p Persona) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// AvatarPNG renders p's avatar at rest, fully anti-aliased (PNG has real
-// alpha): the fallback where an animated avatar isn't allowed.
-func AvatarPNG(p Persona) ([]byte, error) {
-	body, eyes := newFigure(p.Name).draw(rest)
-	skin, eye := rgb(colorHex[p.Color]), rgb(eyeHex)
-	img := image.NewNRGBA(image.Rect(0, 0, avatarPx, avatarPx))
-	for y := range avatarPx {
-		for x := range avatarPx {
+// BlobPNG renders the blob for name at rest, px × px, on a transparent
+// background, fully anti-aliased (PNG has real alpha).
+func BlobPNG(name string, c Color, px int) ([]byte, error) {
+	body, eyes := newFigure(name).draw(rest, px)
+	skin, eye := rgb(colorHex[c]), rgb(eyeHex)
+	img := image.NewNRGBA(image.Rect(0, 0, px, px))
+	for y := range px {
+		for x := range px {
 			a := body.at(x, y)
 			if a == 0 {
 				continue

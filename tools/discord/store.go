@@ -34,6 +34,9 @@ type state struct {
 	// same message instead of posting a new one.
 	StatusMessages map[string]string `json:"status_messages"`
 	Requests       []AccessRequest   `json:"requests"` // newest first, ≤ maxRequests
+	// LastPoll is the date (YYYY-MM-DD) of the last poll posted, so a
+	// restart never posts the same day's poll twice.
+	LastPoll string `json:"last_poll,omitempty"`
 }
 
 // Store holds the config and the bot's state in memory and writes changes
@@ -57,6 +60,7 @@ func Open(dir string) (*Store, error) {
 	case err != nil:
 		return nil, err
 	}
+	cfg.fillDefaults() // configs from before a setting existed
 	if err := cfg.Validate(); err != nil {
 		return nil, fmt.Errorf("load %s: %w", filepath.Join(dir, "config.json"), err)
 	}
@@ -90,6 +94,7 @@ func (s *Store) Config() Config {
 	c.StatusBoards = slices.Clone(c.StatusBoards)
 	c.Verified = slices.Clone(c.Verified)
 	c.Names = slices.Clone(c.Names)
+	c.Features.Poll.Questions = slices.Clone(c.Features.Poll.Questions)
 	return c
 }
 
@@ -97,6 +102,7 @@ func (s *Store) Config() Config {
 // one (else ErrConflict). It returns the saved config, with the new
 // revision. People who are now verified drop off the request list.
 func (s *Store) SaveConfig(cfg Config) (Config, error) {
+	cfg.fillDefaults()
 	if err := cfg.Validate(); err != nil {
 		return Config{}, err
 	}
@@ -182,6 +188,20 @@ func (s *Store) AddRequest(r AccessRequest) error {
 	return s.writeState(func(st *state) { st.Requests = reqs })
 }
 
+// LastPoll returns the date of the last poll posted ("" = none yet).
+func (s *Store) LastPoll() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return s.st.LastPoll
+}
+
+// SetLastPoll records that the poll for date was posted.
+func (s *Store) SetLastPoll(date string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.writeState(func(st *state) { st.LastPoll = date })
+}
+
 // Requests returns the access requests, newest first (never nil: it's
 // sent as a JSON list).
 func (s *Store) Requests() []AccessRequest {
@@ -205,7 +225,7 @@ func (s *Store) DismissRequest(userID string) error {
 // only then keeps it: memory never runs ahead of the disk (decision #15:
 // the lock is held across the write). Caller holds s.mu.
 func (s *Store) writeState(change func(*state)) error {
-	next := state{StatusMessages: make(map[string]string, len(s.st.StatusMessages)), Requests: s.st.Requests}
+	next := state{StatusMessages: make(map[string]string, len(s.st.StatusMessages)), Requests: s.st.Requests, LastPoll: s.st.LastPoll}
 	for k, v := range s.st.StatusMessages {
 		next.StatusMessages[k] = v
 	}
