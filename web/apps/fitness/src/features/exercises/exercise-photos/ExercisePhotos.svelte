@@ -85,7 +85,7 @@
     overflow: hidden;
     border: none;
     border-radius: var(--radius-lg);
-    background: #fff; /* the photos have white backgrounds; no flash in dark mode */
+    background: var(--color-photo-bg); /* no dark flash around the photo */
     cursor: pointer;
   }
 
@@ -120,8 +120,8 @@
     gap: var(--space-2);
     padding-left: var(--space-3);
     border-radius: var(--radius-full);
-    background: rgb(0 0 0 / 0.55);
-    color: #fff;
+    background: var(--color-overlay);
+    color: var(--color-on-overlay);
   }
 
   .dots {
@@ -133,11 +133,11 @@
     width: 0.4rem;
     height: 0.4rem;
     border-radius: var(--radius-full);
-    background: rgb(255 255 255 / 0.45);
+    background: var(--color-on-overlay-muted);
   }
 
   .dots .on {
-    background: #fff;
+    background: var(--color-on-overlay);
   }
 
   .play {
