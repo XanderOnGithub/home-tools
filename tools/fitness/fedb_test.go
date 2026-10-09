@@ -63,6 +63,25 @@ func TestParseFreeExerciseDBHolds(t *testing.T) {
 	}
 }
 
+func TestFedbMetrics(t *testing.T) {
+	tests := []struct {
+		id       string
+		category Category
+		want     []Metric
+	}{
+		{"Running_Treadmill", CategoryCardio, []Metric{MetricDuration, MetricDistance}},
+		{"Stairmaster", CategoryCardio, []Metric{MetricDuration}},
+		{"Hamstring_Stretch", CategoryStretching, []Metric{MetricDuration}},
+		{"Plank", CategoryStrength, []Metric{MetricDuration}},
+		{"Barbell_Squat", CategoryStrength, []Metric{MetricReps, MetricWeight}},
+	}
+	for _, tt := range tests {
+		if got := fedbMetrics(tt.id, tt.category); !slices.Equal(got, tt.want) {
+			t.Errorf("fedbMetrics(%s) = %v, want %v", tt.id, got, tt.want)
+		}
+	}
+}
+
 func TestParseFreeExerciseDBRejectsUnknown(t *testing.T) {
 	tests := map[string]string{
 		"equipment": `[{"id":"x","name":"X","level":"beginner","equipment":"spaceship","primaryMuscles":["chest"],"category":"strength"}]`,

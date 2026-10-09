@@ -50,6 +50,21 @@ Merge to `main` → wait for the "images" workflow (GitHub → Actions) →
 update the app in ZimaOS (pulls `latest`). Data is untouched. To roll
 back, set the image tag to an older `sha-<commit>`.
 
+## Fix exercise metrics after an import-rule change
+When a release changes how imported exercises are tracked (e.g. planks
+timed, runs with distance), existing exercises keep their old metrics
+until you re-apply the rules. Over SSH:
+
+    # 1. Stop the Home Tools app in ZimaOS (it only reads files at startup).
+    # 2. Re-apply the rules (only metrics change; prints each fix):
+    sudo docker run --rm -v /var/lib/casaos_data/.media/Vault/Apps/HomeTools:/data \
+      --entrypoint fitness-import ghcr.io/xanderongithub/home-tools \
+      -data /data/fitness -users /data/users -images=false -fix-metrics
+    # 3. Start the app again.
+
+An exercise whose logged sets wouldn't fit the new metrics is kept as is
+and reported ("kept …").
+
 ## Gotchas
 - Phones must use the UniFi box for DNS: turn off Android "Private DNS";
   iCloud Private Relay may bypass it in Safari. A VPN on the phone (e.g.

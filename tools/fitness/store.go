@@ -206,12 +206,32 @@ func (s *Store) Exercise(id string) (Exercise, bool) {
 
 // SaveExercise validates ex and writes it to disk, then to memory.
 // Archiving is a save with Archived set; nothing is ever deleted.
+// A change that would make already-logged sets invalid (e.g. reps →
+// duration while sessions hold reps) is refused with ErrInvalid: Open
+// would reject those session files on the next start.
 func (s *Store) SaveExercise(ex Exercise) error {
 	if err := ex.Validate(); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	// O(all logged sets); a household's history is small, and exercise
+	// edits are rare.
+	for _, list := range s.sessions {
+		for _, sess := range list {
+			for _, e := range sess.Entries {
+				if e.ExerciseID != ex.ID {
+					continue
+				}
+				for _, set := range e.Sets {
+					if err := set.Validate(ex); err != nil {
+						return fmt.Errorf("%w exercise %s: session %s has sets that wouldn't fit: %v", ErrInvalid, ex.ID, sess.ID, err)
+					}
+				}
+			}
+		}
+	}
 
 	if err := jsonfile.Write(filepath.Join(s.dir, "exercises", ex.ID+".json"), ex); err != nil {
 		return err

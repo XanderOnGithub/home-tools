@@ -6,6 +6,7 @@ func TestSetValidate(t *testing.T) {
 	bench := Exercise{ID: "bench_press", Metrics: []Metric{MetricReps, MetricWeight}}
 	treadmill := Exercise{ID: "treadmill", Metrics: []Metric{MetricDuration}}
 	pullUp := Exercise{ID: "pull_up", Bodyweight: true, Metrics: []Metric{MetricReps, MetricWeight}}
+	run := Exercise{ID: "run", Metrics: []Metric{MetricDuration, MetricDistance}}
 
 	tests := []struct {
 		name    string
@@ -28,6 +29,11 @@ func TestSetValidate(t *testing.T) {
 		{"pull-up added weight", pullUp, Set{Reps: 8, WeightKg: 10}, false},
 		{"pull-up zero reps", pullUp, Set{WeightKg: 10}, true},
 		{"pull-up negative weight", pullUp, Set{Reps: 8, WeightKg: -10}, true},
+
+		{"run with distance", run, Set{DurationSec: 1800, DistanceM: 5000}, false},
+		{"run distance not measured", run, Set{DurationSec: 1800}, false},
+		{"run missing duration", run, Set{DistanceM: 5000}, true},
+		{"run negative distance", run, Set{DurationSec: 1800, DistanceM: -1}, true},
 	}
 
 	for _, tt := range tests {
