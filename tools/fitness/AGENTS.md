@@ -66,6 +66,8 @@ All JSON; bodies are decoded strictly (unknown fields → 400).
 | `GET /api/users/{user}/sessions?limit=n` | Newest first, archived skipped; `limit` 1–100, default 20 |
 | `POST /api/users/{user}/sessions` | Start a workout; server assigns the ID (201; 409 same second) |
 | `PUT /api/users/{user}/sessions/{id}` | Save sets, finish (`ended_at`), archive |
+| `GET /api/users/{user}/exercise-log` | Progress (#39): exercises with logged sets, `{exercise_id, last_done, workouts}`, most recent first |
+| `GET /api/users/{user}/exercise-log/{exercise}` | One exercise's history, all time, newest first: `{session_id, started_at, sets}` per workout. Both count only finished, non-archived workouts |
 | `GET`/`PUT /api/users/{user}/fitness` | Fitness profile + routine (404 = not onboarded) |
 | `GET /api/users/{user}/weights`, `PUT …/weights/{date}` | Weight log (upsert by date) |
 | `GET /images/<path>` | Exercise photos (no listings, 1-day cache) |
