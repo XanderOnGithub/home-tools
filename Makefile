@@ -1,13 +1,16 @@
-.PHONY: run web build test vet fmt check
+.PHONY: run web web-games build test vet fmt check
 
 # Local dev serves one tool on every host (localhost has no subdomain).
 TOOL ?= fitness
 run:
 	go run ./cmd/home-tools -tool $(TOOL)
 
-# Fitness UI dev server (http://localhost:5173); run `make run` alongside.
-web:
+# UI dev servers; run `make run TOOL=<same tool>` alongside.
+web:        # fitness on http://localhost:5173
 	pnpm --dir web dev:fitness
+
+web-games:  # games on http://localhost:5174
+	pnpm --dir web dev:games
 
 # Production binary with the UI built in.
 build:

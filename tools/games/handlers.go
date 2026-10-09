@@ -126,7 +126,8 @@ func (h *handlers) postAction(w http.ResponseWriter, r *http.Request) {
 // getLogs streams a server's log as Server-Sent Events (decision #37): the
 // last logTail lines, then new ones live. Each line is one "data:" event;
 // "event: end" means the container stopped (the stream is over), and
-// "event: error" carries a message. The browser's EventSource reconnects
+// "event: failure" carries a message (not "error": EventSource uses that
+// name for its own connection errors). The browser's EventSource reconnects
 // by itself after a network blip; the UI clears its lines on (re)open,
 // since the stream always starts with the tail again.
 func (h *handlers) getLogs(w http.ResponseWriter, r *http.Request) {
@@ -163,10 +164,10 @@ func (h *handlers) getLogs(w http.ResponseWriter, r *http.Request) {
 	case r.Context().Err() != nil:
 		// The viewer closed the page; nothing to say.
 	case errors.Is(err, ErrNotFound):
-		_ = send("error", fmt.Sprintf("no container named %q", srv.Container))
+		_ = send("failure", fmt.Sprintf("no container named %q", srv.Container))
 	case err != nil:
 		h.log.Error("docker logs", "server", srv.ID, "err", err)
-		_ = send("error", "lost the connection to Docker")
+		_ = send("failure", "lost the connection to Docker")
 	default:
 		_ = send("end", "")
 	}

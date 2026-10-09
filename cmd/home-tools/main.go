@@ -26,6 +26,7 @@ import (
 	"github.com/XanderOnGithub/home-tools/tools/fitness"
 	"github.com/XanderOnGithub/home-tools/tools/games"
 	fitnessweb "github.com/XanderOnGithub/home-tools/web/apps/fitness"
+	gamesweb "github.com/XanderOnGithub/home-tools/web/apps/games"
 )
 
 // config is everything the command line sets.
@@ -82,7 +83,7 @@ func run(cfg config, log *slog.Logger) error {
 	tools.Handle("fitness", toolMux(us, fitnessweb.Dist, log, func(mux *http.ServeMux) {
 		fitness.Register(mux, store, log)
 	}))
-	tools.Handle("games", toolMux(us, nil, log, func(mux *http.ServeMux) {
+	tools.Handle("games", toolMux(us, gamesweb.Dist, log, func(mux *http.ServeMux) {
 		games.Register(mux, gameServers, docker, log)
 	}))
 	if cfg.tool != "" && !slices.Contains(tools.Names(), cfg.tool) {
