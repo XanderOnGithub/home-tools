@@ -49,8 +49,9 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
   (`fitness.<domain>` → fitness, `games.<domain>` → games; the real
   domain is only in the deploy config, never in git).
   API under `/api/...` per host; everything else serves the tool's SPA.
-  *Not built yet:* with one tool, everything is on one mux (`TODO(#5)` in
-  `main.go`); it's step 1 of `docs/adding-a-tool.md`.
+  `internal/hostroute`; a bare IP or unknown subdomain gets a 404, and
+  `/healthz` answers on any host. Local dev: `-tool <name>` serves one
+  tool on every host (`make run TOOL=fitness`).
 - **Frontend:** Svelte + Vite, no SSR, pnpm workspaces. Packages named
   `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`
   (`-tags webembed`). Shared UI moves to `@home-tools/ui` when a second app
@@ -66,7 +67,7 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
 ### Layout
     cmd/home-tools/        main.go: open stores, mount tools, serve (flags -addr, -data)
     cmd/fitness-import/    exercise catalog importer (-fix-metrics)
-    internal/              shared Go: jsonfile, httpx, users (shared profiles)
+    internal/              shared Go: jsonfile, httpx, users (shared profiles), hostroute
     tools/fitness/         Go package: model, rules, store, API (+ its AGENTS.md)
     web/apps/fitness/      @home-tools/fitness (Vite SPA) + embed.go
     web/DESIGN.md          UI rules and shared building blocks
@@ -84,7 +85,7 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 `./...` never walks node_modules.
 
 ### Commands
-    make run     go run ./cmd/home-tools  (API on :8080)
+    make run     go run ./cmd/home-tools -tool $(TOOL)  (API on :8080; TOOL=fitness default)
     make web     fitness UI dev server on :5173 (proxies /api, /images to :8080)
     pnpm --dir web install | check | build   web deps, type-check, production build
     make build   → bin/home-tools (UI built in via -tags webembed)
@@ -197,8 +198,8 @@ got here: `git log`.
   optional distance, add exercises, empty workouts, discard); history
   list; HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
   adding-a-tool).
-- **Not built yet:** Progress (charts per exercise); host routing (#5);
-  `@home-tools/ui`; tool #2.
+- **Not built yet:** Progress (charts per exercise); `@home-tools/ui`;
+  tool #2 (in progress on `feature/games`: host routing done).
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
 - **Next:** tool #2, the game server manager (§5), via

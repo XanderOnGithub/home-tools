@@ -1,6 +1,6 @@
 # 0003. One binary; tools are packages; host-based routing
 
-- Status: Accepted, 2026-10-07 (log #5). Host routing not built yet.
+- Status: Accepted, 2026-10-07 (log #5). Host routing built 2026-10-08.
 
 ## Context
 Several tools (fitness, game servers, later recipes…) on one small server.
@@ -22,9 +22,9 @@ process per tool multiplies memory and deployment work.
   stops every tool.
 - Removing a tool = deleting its package, its web app and one line in
   `main.go`.
-- Today there is one tool, so `main.go` mounts everything on one mux and
-  serves the fitness UI for every host (`TODO(#5)`). Host routing is the
-  first step of tool #2 (`docs/adding-a-tool.md`).
+- Routing lives in `internal/hostroute`; each tool gets its own mux.
+  Local dev has no subdomains (`localhost`), so `-tool <name>` serves one
+  tool on every host (`make run TOOL=games`). A bare IP gets a 404.
 
 ## Rejected
 - A binary/container per tool: isolation we don't need, at several times

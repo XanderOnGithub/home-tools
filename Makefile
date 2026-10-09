@@ -1,7 +1,9 @@
 .PHONY: run web build test vet fmt check
 
+# Local dev serves one tool on every host (localhost has no subdomain).
+TOOL ?= fitness
 run:
-	go run ./cmd/home-tools
+	go run ./cmd/home-tools -tool $(TOOL)
 
 # Fitness UI dev server (http://localhost:5173); run `make run` alongside.
 web:

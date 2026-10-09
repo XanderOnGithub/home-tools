@@ -29,7 +29,7 @@ Needs Go 1.27+, Node 24+ and pnpm 10.
 
     pnpm --dir web install
     go run ./cmd/fitness-import -data data/fitness -users data/users   # catalog + photos, ~30 s
-    make run    # API on :8080 (data in ./data)
+    make run    # API on :8080 (data in ./data); one tool: TOOL=fitness (default)
     make web    # UI on http://localhost:5173 (proxies the API)
 
 Before committing: `make check` and `pnpm --dir web check`.

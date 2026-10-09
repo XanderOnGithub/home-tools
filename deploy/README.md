@@ -69,9 +69,10 @@ and reported ("kept …").
 - Phones must use the UniFi box for DNS: turn off Android "Private DNS";
   iCloud Private Relay may bypass it in Safari. A VPN on the phone (e.g.
   Google One VPN) sends DNS elsewhere too: "This site can't be reached"
-  while `http://<server IP>:8080` works means the VPN is on.
+  while `http://<server IP>:8080/healthz` answers means the VPN is on.
 - Keep the Caddy data folder: deleting it means re-issuing certificates
   (Let's Encrypt has rate limits).
 - The containers run as root so they can write to the CasaOS folders.
-- home-tools is also reachable as plain HTTP on `<server IP>:8080` (LAN
-  only); handy for debugging, but phones need the HTTPS name.
+- home-tools picks the tool by subdomain, so `http://<server IP>:8080`
+  answers 404 ("no tool here"); `/healthz` works on the IP. To debug
+  without Caddy: `curl -H "Host: fitness.<domain>" http://<server IP>:8080/`.
