@@ -9,9 +9,9 @@ import (
 	"time"
 )
 
-// queryTimeout bounds one player lookup, so a game that doesn't answer
-// can't hold up the server list.
-const queryTimeout = 2 * time.Second
+// queryTimeout bounds one player lookup. Games on the LAN answer in
+// milliseconds; one that doesn't answer at all costs this much per refresh.
+const queryTimeout = 1 * time.Second
 
 // Players is who's online. Names may be fewer than Online: Valheim often
 // reports a count without names.
