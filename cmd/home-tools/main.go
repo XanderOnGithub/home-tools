@@ -24,17 +24,28 @@ import (
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
 	"github.com/XanderOnGithub/home-tools/internal/users"
 	"github.com/XanderOnGithub/home-tools/tools/fitness"
+	"github.com/XanderOnGithub/home-tools/tools/games"
 	fitnessweb "github.com/XanderOnGithub/home-tools/web/apps/fitness"
 )
 
+// config is everything the command line sets.
+type config struct {
+	addr    string // listen address
+	dataDir string // one subfolder per tool
+	tool    string // serve only this tool (local dev); "" = route by subdomain
+	docker  string // Docker API socket for games (the socket proxy's); "" = none
+}
+
 func main() {
-	addr := flag.String("addr", ":8080", "listen address")
-	dataDir := flag.String("data", "data", "data folder (one subfolder per tool)")
-	tool := flag.String("tool", "", "serve only this tool, on every host (local dev: localhost has no subdomain); empty = route by subdomain")
+	var cfg config
+	flag.StringVar(&cfg.addr, "addr", ":8080", "listen address")
+	flag.StringVar(&cfg.dataDir, "data", "data", "data folder (one subfolder per tool)")
+	flag.StringVar(&cfg.tool, "tool", "", "serve only this tool, on every host (local dev: localhost has no subdomain); empty = route by subdomain")
+	flag.StringVar(&cfg.docker, "docker", "", "Docker API unix socket for the games tool (the socket proxy's); empty = games can't see or control servers")
 	flag.Parse()
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
-	if err := run(*addr, *dataDir, *tool, log); err != nil {
+	if err := run(cfg, log); err != nil {
 		log.Error("server stopped", "err", err)
 		os.Exit(1)
 	}
@@ -42,31 +53,42 @@ func main() {
 
 // run is main with errors as values: it returns instead of exiting, so
 // deferred cleanup runs and the logic stays testable.
-func run(addr, dataDir, only string, log *slog.Logger) error {
+func run(cfg config, log *slog.Logger) error {
 	// Cancelled on Ctrl-C (SIGINT) or `docker stop` (SIGTERM).
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
 	// Shared profiles first: tools check their data against them.
-	us, err := users.Open(filepath.Join(dataDir, "users"))
+	us, err := users.Open(filepath.Join(cfg.dataDir, "users"))
 	if err != nil {
 		return fmt.Errorf("open users store: %w", err)
 	}
-	store, err := fitness.Open(filepath.Join(dataDir, "fitness"), us)
+	store, err := fitness.Open(filepath.Join(cfg.dataDir, "fitness"), us)
 	if err != nil {
 		return fmt.Errorf("open fitness store: %w", err)
+	}
+	gameServers, err := games.Open(filepath.Join(cfg.dataDir, "games"))
+	if err != nil {
+		return fmt.Errorf("open games store: %w", err)
+	}
+	var docker *games.Docker
+	if cfg.docker != "" {
+		docker = games.NewDocker(cfg.docker)
 	}
 	log.Info("stores loaded", "users", len(us.Users()), "exercises", len(store.Exercises()), "plans", len(store.Plans()))
 
 	// Each tool gets its own mux on its own subdomain (#5, ADR 0003).
-	tools := hostroute.New(only)
+	tools := hostroute.New(cfg.tool)
 	tools.Handle("fitness", toolMux(us, fitnessweb.Dist, log, func(mux *http.ServeMux) {
 		fitness.Register(mux, store, log)
 	}))
-	if only != "" && !slices.Contains(tools.Names(), only) {
-		return fmt.Errorf("-tool %q: no such tool (have %v)", only, tools.Names())
+	tools.Handle("games", toolMux(us, nil, log, func(mux *http.ServeMux) {
+		games.Register(mux, gameServers, docker, log)
+	}))
+	if cfg.tool != "" && !slices.Contains(tools.Names(), cfg.tool) {
+		return fmt.Errorf("-tool %q: no such tool (have %v)", cfg.tool, tools.Names())
 	}
-	log.Info("tools mounted", "tools", tools.Names(), "only", only)
+	log.Info("tools mounted", "tools", tools.Names(), "only", cfg.tool, "docker", cfg.docker != "")
 
 	// Health checks answer on any host, including a bare IP.
 	root := http.NewServeMux()
@@ -76,7 +98,7 @@ func run(addr, dataDir, only string, log *slog.Logger) error {
 	root.Handle("/", tools)
 
 	srv := &http.Server{
-		Addr:    addr,
+		Addr:    cfg.addr,
 		Handler: root,
 		// Slow-client limits. No WriteTimeout: it would cut off long-lived
 		// responses like the games tool's live log stream.
@@ -89,7 +111,7 @@ func run(addr, dataDir, only string, log *slog.Logger) error {
 	// waits for either a server failure or a shutdown signal.
 	errc := make(chan error, 1)
 	go func() {
-		log.Info("listening", "addr", addr)
+		log.Info("listening", "addr", cfg.addr)
 		errc <- srv.ListenAndServe()
 	}()
 

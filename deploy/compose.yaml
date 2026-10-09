@@ -6,11 +6,26 @@ services:
     image: ghcr.io/xanderongithub/home-tools:latest
     build: ..
     restart: unless-stopped
+    command: ["-docker", "/run/docker-proxy/docker.sock"]
     volumes:
-      # Plain host folder (users/, fitness/), so it's backed up and
-      # editable like any other files.
+      # Plain host folder (users/, fitness/, games/), so it's backed up
+      # and editable like any other files.
       - ${DATA_DIR}:/data
+      - docker_proxy:/run/docker-proxy
     # Not published: only Caddy reaches it, over the compose network.
+
+  # Filtered Docker access for the games tool (decision #37).
+  docker-proxy:
+    image: wollomatic/socket-proxy:1.13.1
+    restart: unless-stopped
+    user: "65534:${DOCKER_GID}"
+    command:
+      - -proxysocketendpoint=/proxy/docker.sock
+      - -allowGET=/v1\.41/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/(json|logs)(\?.*)?
+      - -allowPOST=/v1\.41/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/(start|stop|restart)(\?.*)?
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - docker_proxy:/proxy
 
   caddy:
     image: ghcr.io/xanderongithub/home-tools-caddy:latest
@@ -27,5 +42,6 @@ services:
       - caddy_config:/config
 
 volumes:
+  docker_proxy:
   caddy_data:
   caddy_config:

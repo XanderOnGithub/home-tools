@@ -1,0 +1,39 @@
+# ZimaOS app 3 of 3: lets the games tool see and control game containers
+# without full Docker access (decision #37). Paste into App Store → Custom
+# Install → Import after filling in <docker group id>:
+#   stat -c %g /var/run/docker.sock      (over SSH)
+#
+# The proxy holds the real Docker socket (read-only mount) and offers a
+# filtered one at /run/home-tools-docker/docker.sock on the host, which the
+# Home Tools app mounts. Only these Docker API calls get through: container
+# inspect + logs (GET) and start/stop/restart (POST). Nothing listens on the
+# network, and the socket lives in /run (not a shared folder).
+name: home-tools-docker-proxy
+services:
+  docker-proxy:
+    image: wollomatic/socket-proxy:1.13.1
+    restart: unless-stopped
+    user: "65534:<docker group id>"
+    command:
+      - -proxysocketendpoint=/proxy/docker.sock
+      - -allowGET=/v1\.41/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/(json|logs)(\?.*)?
+      - -allowPOST=/v1\.41/containers/[a-zA-Z0-9][a-zA-Z0-9_.-]*/(start|stop|restart)(\?.*)?
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+      - type: bind
+        source: /run/home-tools-docker
+        target: /proxy
+
+x-casaos:
+  title:
+    custom: Home Tools Docker access
+  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/deploy/icons/https.png
+  main: docker-proxy
+  index: /

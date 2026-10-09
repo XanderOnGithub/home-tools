@@ -1,8 +1,9 @@
 # deploy
 
-Runs home-tools on ZimaOS: two containers, from images GitHub Actions
+Runs home-tools on ZimaOS: three apps, from images GitHub Actions
 publishes to GHCR on every push to `main` (decision #32,
-`.github/workflows/images.yml`). The server only pulls; it never builds.
+`.github/workflows/images.yml`), plus a public socket-proxy image. The
+server only pulls; it never builds.
 - **home-tools** (`ghcr.io/xanderongithub/home-tools`, root `Dockerfile`,
   #31): the Go server with the UI built in. Data is a plain host folder
   mounted at `/data`, never inside the container.
@@ -11,11 +12,16 @@ publishes to GHCR on every push to `main` (decision #32,
   TLS on :443 with a Let's Encrypt wildcard certificate for `*.<domain>`,
   proven through Cloudflare's API, and proxies to home-tools on plain HTTP.
   Nothing is exposed to the internet: no ports forwarded.
+- **docker-proxy** (`wollomatic/socket-proxy`, #37): gives the games tool
+  a filtered Docker socket that only allows inspecting, reading logs of,
+  starting, stopping and restarting containers.
 
-Files: `zimaos-home-tools.yaml` + `zimaos-caddy.yaml` (two ZimaOS apps:
-its importer keeps only one service per app, so Caddy reaches home-tools
-through the host's :8080), `compose.yaml` + `.env.example` (one-file setup
-over SSH or for a local test).
+Files: `zimaos-home-tools.yaml`, `zimaos-caddy.yaml`,
+`zimaos-docker-proxy.yaml` (three ZimaOS apps: its importer keeps only one
+service per app, so Caddy reaches home-tools through the host's :8080 and
+the proxy shares its socket through `/run/home-tools-docker`),
+`compose.yaml` + `.env.example` (one-file setup over SSH or for a local
+test).
 
 ## Setup (once)
 1. **Images public:** after the first workflow run, on GitHub → your
@@ -44,6 +50,22 @@ over SSH or for a local test).
 6. **Check:** `sudo docker ps` (SSH needs sudo for Docker on ZimaOS);
    `sudo docker logs <caddy container>` shows "certificate obtained";
    open `https://fitness.<domain>` on a phone on the home Wi-Fi.
+
+## Games (game server manager)
+Once, over SSH and in ZimaOS:
+1. Docker's group id: `stat -c %g /var/run/docker.sock`.
+2. Import `zimaos-docker-proxy.yaml` with that number in `user:`.
+3. Re-import (or edit) the Home Tools app from `zimaos-home-tools.yaml`:
+   it now mounts `/run/home-tools-docker` and starts with `-docker …`.
+4. The game containers' names: `sudo docker ps --format '{{.Names}}'`.
+5. One file per server in `Vault/Apps/HomeTools/games/servers/`, then
+   restart Home Tools:
+
+       minecraft.json  {"id": "minecraft", "name": "Minecraft", "game": "minecraft", "container": "<name from step 4>"}
+       valheim.json    {"id": "valheim", "name": "Valheim", "game": "valheim", "container": "<name from step 4>"}
+
+6. UniFi: DNS record `games.<domain>` → the server's LAN IP.
+7. Check: `https://games.<domain>/api/servers` lists both with a `state`.
 
 ## Update
 Merge to `main` → wait for the "images" workflow (GitHub → Actions) →
