@@ -1,6 +1,6 @@
 <!--
-  Home of the games tool: every configured game server with its status and
-  actions. Servers are configured in files (decision #37), so "none yet"
+  Home of the games tool: every configured game server as a card (status,
+  players). Servers are configured in files (decision #37), so "none yet"
   says where.
 -->
 <script lang="ts">
@@ -13,12 +13,12 @@
 </script>
 
 <div class="page">
-  <h1 tabindex="-1">Game servers</h1>
+  <h1 tabindex="-1">Servers</h1>
 
   {#if live.status === 'error'}
     <LoadError what="the servers" onretry={live.load} />
   {:else if live.status === 'ready' && shown.length === 0}
-    <p class="empty">
+    <p class="muted">
       No servers yet. Add one file per server in <code>games/servers/</code> in the data folder
       (see <code>deploy/README.md</code>), then restart Home Tools.
     </p>
@@ -39,7 +39,7 @@
   }
 
   h1 {
-    font-size: var(--text-3xl);
+    font-size: var(--text-2xl);
     font-weight: var(--weight-extrabold);
   }
 
@@ -49,7 +49,7 @@
     gap: var(--space-4);
   }
 
-  .empty {
+  .muted {
     margin: 0;
     color: var(--color-text-muted);
   }
