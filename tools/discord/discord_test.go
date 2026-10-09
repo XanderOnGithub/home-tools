@@ -393,6 +393,9 @@ func TestHandlers(t *testing.T) {
 	if again := do("GET", "/api/persona.gif", "", "If-None-Match", rec.Header().Get("ETag")); again.Code != 304 {
 		t.Errorf("revalidate = %d", again.Code)
 	}
+	if still := do("GET", "/api/persona.png", "", "If-None-Match", rec.Header().Get("ETag")); still.Code != 200 || still.Header().Get("Content-Type") != "image/png" {
+		t.Errorf("GET png = %d %v (the GIF's ETag must not match it)", still.Code, still.Header())
+	}
 
 	if err := b.store.AddRequest(AccessRequest{UserID: bob, Name: "Bob"}); err != nil {
 		t.Fatal(err)

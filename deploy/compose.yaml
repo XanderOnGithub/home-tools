@@ -7,11 +7,17 @@ services:
     build: ..
     restart: unless-stopped
     command: ["-docker", "/run/docker-proxy/docker.sock"]
+    environment:
+      # The Discord bot's token (decision #42); empty = bot offline.
+      DISCORD_TOKEN: ${DISCORD_TOKEN:-}
     volumes:
-      # Plain host folder (users/, fitness/, games/), so it's backed up
-      # and editable like any other files.
+      # Plain host folder (users/, fitness/, games/, discord/), so it's
+      # backed up and editable like any other files.
       - ${DATA_DIR}:/data
       - docker_proxy:/run/docker-proxy
+      # Valheim's whitelist (optional): the folder holding its
+      # permittedlist.txt, read-write. See tools/games/AGENTS.md.
+      # - ${VALHEIM_LISTS}:/valheim
     # Not published: only Caddy reaches it, over the compose network.
 
   # Filtered Docker access for the games tool (decision #37).

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
@@ -29,7 +30,8 @@ func Register(mux *http.ServeMux, store *Store, bot *Bot, log *slog.Logger) {
 	mux.HandleFunc("PUT /api/config", h.putConfig)
 	mux.HandleFunc("GET /api/bot", h.getBot)
 	mux.HandleFunc("DELETE /api/requests/{user}", h.deleteRequest)
-	mux.HandleFunc("GET /api/persona.gif", h.getPersonaGIF)
+	mux.HandleFunc("GET /api/persona.gif", h.getPersonaImage)
+	mux.HandleFunc("GET /api/persona.png", h.getPersonaImage) // still: for reduced motion
 }
 
 func (h *handlers) getConfig(w http.ResponseWriter, r *http.Request) {
@@ -108,25 +110,32 @@ func (h *handlers) deleteRequest(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// getPersonaGIF serves today's avatar, exactly what Discord gets. The
-// ETag is the persona, so browsers revalidate cheaply and pick up a new
-// day (or a renamed list) at once.
-func (h *handlers) getPersonaGIF(w http.ResponseWriter, r *http.Request) {
+// getPersonaImage serves today's avatar, exactly what Discord gets: the
+// animated GIF, or the still PNG at /api/persona.png. The ETag is the
+// persona, so browsers revalidate cheaply and pick up a new day (or a
+// renamed list) at once.
+func (h *handlers) getPersonaImage(w http.ResponseWriter, r *http.Request) {
 	p := h.bot.Persona()
+	still := strings.HasSuffix(r.URL.Path, ".png")
 	h32 := fnv.New32a()
 	h32.Write([]byte(p.Name)) // names may be non-ASCII; headers shouldn't be
-	etag := fmt.Sprintf(`"%s-%s-%x"`, p.Date, p.Color, h32.Sum32())
+	etag := fmt.Sprintf(`"%s-%s-%x-%t"`, p.Date, p.Color, h32.Sum32(), still)
 	w.Header().Set("ETag", etag)
 	w.Header().Set("Cache-Control", "no-cache") // always revalidate (cheap: 304)
 	if r.Header.Get("If-None-Match") == etag {
 		w.WriteHeader(http.StatusNotModified)
 		return
 	}
-	data, _, err := h.bot.avatars.get(p)
+	gifData, pngData, err := h.bot.avatars.get(p)
 	if err != nil {
 		httpx.ServerError(w, r, h.log, err)
 		return
 	}
+	if still {
+		w.Header().Set("Content-Type", "image/png")
+		w.Write(pngData)
+		return
+	}
 	w.Header().Set("Content-Type", "image/gif")
-	w.Write(data)
+	w.Write(gifData)
 }

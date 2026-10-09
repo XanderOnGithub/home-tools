@@ -15,6 +15,7 @@ COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 COPY web/packages/ui/package.json packages/ui/
 COPY web/apps/fitness/package.json apps/fitness/
 COPY web/apps/games/package.json apps/games/
+COPY web/apps/discord/package.json apps/discord/
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
 RUN pnpm build
@@ -29,10 +30,12 @@ RUN go mod download
 COPY . .
 COPY --from=web /src/web/apps/fitness/dist web/apps/fitness/dist
 COPY --from=web /src/web/apps/games/dist web/apps/games/dist
+COPY --from=web /src/web/apps/discord/dist web/apps/discord/dist
 RUN go build -tags webembed -trimpath -ldflags="-s -w" -o /out/home-tools ./cmd/home-tools \
  && go build -trimpath -ldflags="-s -w" -o /out/fitness-import ./cmd/fitness-import
 
-# 3. Runtime: no shell, no package manager; CA certs for the importer.
+# 3. Runtime: no shell, no package manager; CA certs for the importer
+#    and the Discord bot (HTTPS + websocket to Discord).
 FROM gcr.io/distroless/static-debian12
 COPY --from=go /out/ /usr/local/bin/
 EXPOSE 8080

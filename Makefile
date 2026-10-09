@@ -1,4 +1,4 @@
-.PHONY: run web web-games build test vet fmt check
+.PHONY: run web web-games web-discord build test vet fmt check
 
 # Local dev serves one tool on every host (localhost has no subdomain).
 TOOL ?= fitness
@@ -11,6 +11,9 @@ web:        # fitness on http://localhost:5173
 
 web-games:  # games on http://localhost:5174
 	pnpm --dir web dev:games
+
+web-discord:  # Discord settings on http://localhost:5175
+	pnpm --dir web dev:discord
 
 # Production binary with the UI built in.
 build:

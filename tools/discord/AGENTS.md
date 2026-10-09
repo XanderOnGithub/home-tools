@@ -1,0 +1,85 @@
+# Discord tool: agent guide
+
+The household's Discord bot and its settings page at `discord.<domain>`
+(decision #42, ADR 0012). "Discord" is a working name; the tool will be
+renamed. Read the root `AGENTS.md` first; this file is what's specific
+to the bot.
+
+## What it does
+- `/sens`: mouse sensitivity between 17 games (+ DPI, cm/360°). Anyone.
+- `/restart <server>`: verified people only; one at a time per server
+  (games answers 409), and not again within 2 minutes (`restartCooldown`).
+- `/whitelist add|remove|list <server> [player]`: verified people only.
+  Minecraft names over RCON; Valheim SteamID64s (or a
+  `steamcommunity.com/profiles/…` link) on its permitted list, applied at
+  the next restart (the reply says so).
+- **Status boards:** per (server, channel) one message the bot keeps
+  editing. Set on the settings page only.
+- **Persona:** a new name (from the config's list) and color (the 4
+  profile colors) every local midnight, as a per-server nickname + avatar.
+  The avatar is the household blob (decision #22) for that name, animated.
+- Unverified people who try a verified-only command become **access
+  requests** on the People page (Verify / Dismiss).
+
+## Where things are
+| File | What |
+|---|---|
+| `model.go` | `Config` (`revision`, `status_boards`, `verified`, `names`), limits, `Validate`. |
+| `store.go` | `config.json` (people edit) + `state.json` (bot writes: board message IDs, access requests ≤ 20). Verified IDs in a set (O(1) per command). |
+| `bot.go` | Gateway connection (guilds intent only), command registration, persona loop, caches (games list, avatars), cooldowns, `View` for the page. |
+| `commands.go` | Slash command definitions; handlers on plain values (`invocation` → `responder`), so they're tested without Discord; autocomplete. |
+| `boards.go` | Status board sync: one games request per tick, edit only when an embed's hash changed. |
+| `games.go` | Client for the games HTTP API (`Games` interface; fakes in tests). |
+| `sens.go` | The conversion table (from Starport-Assistant) and math. |
+| `persona.go` | `PersonaFor(date, names)`: pure; shuffled names per pass, no repeats on consecutive days. Shares the blob's seeded generator. |
+| `blob.go` | Go port of the frontend blob (shape + face); tested against the TypeScript's numbers. |
+| `raster.go` | Scanline polygon fill with anti-aliasing (edge table + active list). |
+| `avatar.go` | The animation script (rest → blink ×2 → look left → right → back) → GIF, plus a still PNG. |
+| `handlers.go` | Settings API. |
+
+UI: `web/apps/discord` (Svelte, shared `AppShell`): `features/bot/`:
+`settings` (shared state, polls the bot every 15 s while visible; saves
+with the revision, reloads on 409), `today-card`, `status-boards`,
+`name-list`, `commands-help`, `overview-page` (`/`), `people-page`
+(`/people`).
+
+## Configuration
+- **Token:** `DISCORD_TOKEN` env var only (never in files, flags or the
+  UI). Without it the bot stays offline; the page says so.
+- `data/discord/config.json`: hand-editable, loaded strictly; the bot
+  reads the store on every use, so saves apply at once.
+- `-games-url`: where the games API is. Default: this same server
+  (`http://127.0.0.1:<port>`, `Host: games.internal`; host routing only
+  looks at the first label).
+- Discord developer portal: a bot with **no privileged intents**.
+  Invite with the link on the page (view channels, send messages, embed
+  links, read history, change nickname; no admin).
+
+## API
+| Method + path | Does |
+|---|---|
+| `GET /api/config` | The config. |
+| `PUT /api/config` | Replace it. Body's `revision` must be current: 409 otherwise (someone else saved). 400 = a rule broke. Answers with the new revision. |
+| `GET /api/bot` | Connection (`connected`, `error`, `user`, `invite_url`), `guilds` with postable text channels, today's `persona`, `requests`, games `servers` (+ `servers_error`). |
+| `DELETE /api/requests/{user}` | Dismiss an access request. |
+| `GET /api/persona.gif` / `.png` | Today's avatar, animated / still (ETag per persona). |
+
+## Gotchas
+- **Discord answers within 3 s or the command fails.** Slow work
+  (restart, whitelist) replies first, then edits that reply (valid 15 min).
+- **Commands are registered globally on every connect** (bulk overwrite:
+  idempotent; removed commands disappear). New options can take a moment
+  to show in Discord's client.
+- **Autocomplete isn't enforced by Discord:** people can type any server;
+  `pickServer` checks it.
+- **Per-server avatars:** Modify Current Member with `avatar`. If an
+  animated one is refused, the still PNG is tried, then nickname only.
+  Unverified at the time of writing (2026-10-09): check the bot log on
+  first deploy.
+- **Status boards survive restarts** through `state.json`; a message
+  deleted in Discord is posted again; a board removed in the UI has its
+  message deleted.
+- **Local dev:** `make run TOOL=discord` serves only Discord, so its games
+  calls 404. Run games separately (`go run ./cmd/home-tools -tool games
+  -addr :8081`) and start Discord with `-games-url http://127.0.0.1:8081`.
+  A test bot (own token, own test server) avoids touching the real one.

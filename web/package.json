@@ -5,6 +5,7 @@
     "dev:fitness": "pnpm --filter @home-tools/fitness dev",
     "build": "pnpm -r build",
     "check": "pnpm -r check",
-    "dev:games": "pnpm --filter @home-tools/games dev"
+    "dev:games": "pnpm --filter @home-tools/games dev",
+    "dev:discord": "pnpm --filter @home-tools/discord dev"
   }
 }
