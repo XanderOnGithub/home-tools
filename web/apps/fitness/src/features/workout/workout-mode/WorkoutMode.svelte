@@ -18,6 +18,7 @@
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
   import { getCatalog, getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
+  import { ExercisePhotos } from '@/features/exercises/exercise-photos'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
@@ -445,17 +446,26 @@
         </section>
       {:else}
         <div class="exercise">
-          {#if current.exercise?.images?.[0]}
-            <img src="/images/{current.exercise.images[0]}" alt="" width="72" height="72" />
+          <p class="step-count">Exercise {step + 1} of {steps.length}</p>
+          <h1 bind:this={heading} tabindex="-1">{current.exercise?.name ?? current.exerciseId}</h1>
+          {#if current.exercise}
+            <p class="muscles">{primaryMuscles(current.exercise).map(label).join(', ')}</p>
           {/if}
-          <div>
-            <p class="step-count">Exercise {step + 1} of {steps.length}</p>
-            <h1 bind:this={heading} tabindex="-1">{current.exercise?.name ?? current.exerciseId}</h1>
-            {#if current.exercise}
-              <p class="muscles">{primaryMuscles(current.exercise).map(label).join(', ')}</p>
-            {/if}
-          </div>
         </div>
+
+        {#if current.exercise}
+          {#key current.exerciseId}
+            <ExercisePhotos images={current.exercise.images ?? []} name={current.exercise.name} />
+          {/key}
+          {#if current.exercise.instructions?.length}
+            <details class="how">
+              <summary>How to do it</summary>
+              <ol>
+                {#each current.exercise.instructions as line, i (i)}<li>{line}</li>{/each}
+              </ol>
+            </details>
+          {/if}
+        {/if}
 
         <ol class="sets">
           {#each current.rows as row, i (i)}
@@ -641,16 +651,27 @@
 
   .exercise {
     display: flex;
-    align-items: center;
-    gap: var(--space-4);
+    flex-direction: column;
+    gap: var(--space-1);
   }
 
-  .exercise img {
-    flex: none;
-    width: 4.5rem;
-    height: 4.5rem;
-    border-radius: var(--radius-md);
-    object-fit: cover;
+  /* Closed by default: one line, so the sets stay close to the photos. */
+  .how summary {
+    min-height: var(--touch-target);
+    display: flex;
+    align-items: center;
+    color: var(--color-accent-text);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+
+  .how ol {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    margin: 0 0 var(--space-2);
+    padding-left: var(--space-5);
+    line-height: var(--leading-normal);
   }
 
   .step-count,
