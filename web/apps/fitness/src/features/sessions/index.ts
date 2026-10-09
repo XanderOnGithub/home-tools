@@ -4,7 +4,7 @@ import { api } from '@/api'
 export type Session = {
   id: string
   user_id: string
-  routine_id?: string
+  plan_id?: string
   started_at: string // RFC 3339 timestamp
   ended_at?: string // missing = still in progress
   entries: Entry[]
@@ -20,14 +20,14 @@ export const getRecentSessions = (userId: string, limit = 100) =>
   api.get<Session[]>(`/api/users/${userId}/sessions?limit=${limit}`)
 
 /** Starts a session now; the server assigns its ID from started_at. */
-export function startSession(userId: string, routineId: string | undefined, exerciseIds: string[]) {
+export function startSession(userId: string, planId: string | undefined, exerciseIds: string[]) {
   const session: Omit<Session, 'id'> = {
     user_id: userId,
     // Whole seconds: the ID is derived from this, at one-second precision.
     started_at: new Date(Math.floor(Date.now() / 1000) * 1000).toISOString(),
     entries: exerciseIds.map((exercise_id) => ({ exercise_id, sets: [] })),
   }
-  if (routineId) session.routine_id = routineId
+  if (planId) session.plan_id = planId
   return api.post<Session>(`/api/users/${userId}/sessions`, session)
 }
 

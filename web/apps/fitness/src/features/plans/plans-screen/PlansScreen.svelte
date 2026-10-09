@@ -1,64 +1,64 @@
 <!--
-  Routines: this person's weekly plan, then the household's shared list of
-  routines (decision #30). Anyone can create or edit a routine; each person
-  decides on their own week which routine falls on which day.
+  Plans: this person's routine (which plan on which weekday), then the
+  household's shared list of plans (decisions #30, #33). Anyone can create
+  or edit a plan; each person's routine decides which plan falls on which day.
 -->
 <script lang="ts">
   import { api } from '@/api'
   import type { FitnessProfile } from '@/features/fitness-profile'
   import type { Profile } from '@/features/profiles/types'
-  import { getRoutines, type Routine } from '@/features/routines'
-  import { WeekPlanner } from '@/features/routines/week-planner'
+  import { getPlans, type Plan } from '@/features/plans'
+  import { WeekPlanner } from '@/features/plans/week-planner'
 
   let { fitness = $bindable() }: { fitness: FitnessProfile } = $props()
 
-  let routines = $state<Routine[]>([])
+  let plans = $state<Plan[]>([])
   let people = $state<Profile[]>([])
   let status = $state<'loading' | 'ready' | 'error'>('loading')
 
   async function load() {
     status = 'loading'
     try {
-      ;[routines, people] = await Promise.all([getRoutines(), api.get<Profile[]>('/api/users')])
+      ;[plans, people] = await Promise.all([getPlans(), api.get<Profile[]>('/api/users')])
       status = 'ready'
     } catch (err) {
-      console.error('Loading routines failed:', err)
+      console.error('Loading plans failed:', err)
       status = 'error'
     }
   }
   load()
 
-  let active = $derived(routines.filter((r) => !r.archived))
+  let active = $derived(plans.filter((r) => !r.archived))
 
-  const author = (r: Routine) => people.find((p) => p.id === r.created_by)?.name
+  const author = (r: Plan) => people.find((p) => p.id === r.created_by)?.name
   // Days of this person's week that use r, in week order ("Tue, Sat").
   const WEEK = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const
-  const myDays = (r: Routine) =>
+  const myDays = (r: Plan) =>
     WEEK.filter((day) => fitness.schedule?.[day] === r.id).map((day) => day[0].toUpperCase() + day.slice(1, 3))
 </script>
 
 <div class="page">
   <div class="title-row">
-    <h1 tabindex="-1">Routines</h1>
-    <a class="btn btn-primary" href="/routines/new">New routine</a>
+    <h1 tabindex="-1">Plans</h1>
+    <a class="btn btn-primary" href="/plans/new">New plan</a>
   </div>
 
   {#if status === 'error'}
     <div role="alert">
-      <p>Couldn't load routines. Check that the server is running.</p>
+      <p>Couldn't load plans. Check that the server is running.</p>
       <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
     </div>
   {:else if status === 'ready'}
     <div class="grid">
       <section class="list" aria-labelledby="list-title">
-        <h2 id="list-title">All routines</h2>
+        <h2 id="list-title">All plans</h2>
         {#if active.length === 0}
-          <p class="muted">No routines yet. Create one, then plan it into your week.</p>
+          <p class="muted">No plans yet. Create one, then add it to your routine.</p>
         {:else}
           <ul>
             {#each active as r (r.id)}
               <li>
-                <a class="routine" href="/routines/{r.id}">
+                <a class="plan" href="/plans/{r.id}">
                   <span class="name">{r.name}</span>
                   <span class="meta">
                     {[`${r.exercises.length} ${r.exercises.length === 1 ? 'exercise' : 'exercises'}`, author(r) && `by ${author(r)}`]
@@ -75,7 +75,7 @@
         {/if}
       </section>
 
-      <WeekPlanner bind:fitness {routines} />
+      <WeekPlanner bind:fitness {plans} />
     </div>
   {/if}
 </div>
@@ -111,7 +111,7 @@
     align-items: start;
   }
 
-  /* Wide screens: the list, with your week beside it. */
+  /* Wide screens: the list, with your routine beside it. */
   @media (min-width: 56rem) {
     .grid {
       grid-template-columns: 3fr 2fr;
@@ -129,7 +129,7 @@
   }
 
   /* The whole row is the link to the editor. */
-  .routine {
+  .plan {
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -143,7 +143,7 @@
   }
 
   @media (hover: hover) {
-    .routine:hover {
+    .plan:hover {
       border-color: var(--color-border-strong);
     }
   }

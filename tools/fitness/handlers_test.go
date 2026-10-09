@@ -95,7 +95,7 @@ func TestPutExercise(t *testing.T) {
 	}
 }
 
-func TestRoutineHandlers(t *testing.T) {
+func TestPlanHandlers(t *testing.T) {
 	const legs = `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`
 	tests := []struct {
 		name       string
@@ -103,11 +103,11 @@ func TestRoutineHandlers(t *testing.T) {
 		body       string
 		wantStatus int
 	}{
-		{"create", "/api/routines/legs", legs, http.StatusOK},
-		{"id mismatch", "/api/routines/arms", legs, http.StatusBadRequest},
-		{"unknown exercise", "/api/routines/legs",
+		{"create", "/api/plans/legs", legs, http.StatusOK},
+		{"id mismatch", "/api/plans/arms", legs, http.StatusBadRequest},
+		{"unknown exercise", "/api/plans/legs",
 			`{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"nope"}]}`, http.StatusBadRequest},
-		{"fails validation", "/api/routines/legs",
+		{"fails validation", "/api/plans/legs",
 			`{"id":"legs","name":"Legs","created_by":"xander","exercises":[]}`, http.StatusBadRequest},
 	}
 	for _, tt := range tests {
@@ -121,20 +121,20 @@ func TestRoutineHandlers(t *testing.T) {
 		})
 	}
 
-	// Empty list is 200 + [], then the created routine shows up.
+	// Empty list is 200 + [], then the created plan shows up.
 	srv := newTestServer(t)
 	list := func() string {
 		rec := httptest.NewRecorder()
-		srv.ServeHTTP(rec, httptest.NewRequest("GET", "/api/routines", nil))
+		srv.ServeHTTP(rec, httptest.NewRequest("GET", "/api/plans", nil))
 		if rec.Code != http.StatusOK {
-			t.Fatalf("GET /api/routines = %d, want 200", rec.Code)
+			t.Fatalf("GET /api/plans = %d, want 200", rec.Code)
 		}
 		return rec.Body.String()
 	}
 	if got := list(); got != "[]" {
 		t.Errorf("empty list = %s, want []", got)
 	}
-	srv.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("PUT", "/api/routines/legs", strings.NewReader(legs)))
+	srv.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest("PUT", "/api/plans/legs", strings.NewReader(legs)))
 	if got := list(); !strings.Contains(got, `"id":"legs"`) {
 		t.Errorf("list after PUT = %s, want it to contain legs", got)
 	}
@@ -194,6 +194,8 @@ func TestSessionHandlers(t *testing.T) {
 		{"POST unknown exercise", "POST", "/api/users/xander/sessions",
 			`{"user_id":"xander","started_at":"2026-10-09T18:00:00Z","entries":[{"exercise_id":"nope","sets":[]}]}`, http.StatusBadRequest},
 		{"PUT id mismatch", "PUT", "/api/users/xander/sessions/other", update, http.StatusBadRequest},
+		// Same second as the session above: must not overwrite it.
+		{"POST same second", "POST", "/api/users/xander/sessions", start, http.StatusConflict},
 	}
 	for _, tt := range errorCases {
 		t.Run(tt.name, func(t *testing.T) {

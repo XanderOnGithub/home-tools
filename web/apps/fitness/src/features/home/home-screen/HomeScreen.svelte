@@ -10,7 +10,7 @@
   import { WeightCheckIn } from '@/features/home/weight-check-in'
   import { ProfileAvatar } from '@/features/profiles/profile-avatar'
   import type { Profile } from '@/features/profiles/types'
-  import { getRoutines, type Routine } from '@/features/routines'
+  import { getPlans, type Plan } from '@/features/plans'
   import { getRecentSessions, inProgress, type Session } from '@/features/sessions'
 
   let { profile, fitness = $bindable() }: { profile: Profile; fitness: FitnessProfile } = $props()
@@ -24,7 +24,7 @@
   const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 17 ? 'Good afternoon' : 'Good evening'
 
   let sessions = $state<Session[]>([])
-  let routines = $state<Routine[]>([])
+  let plans = $state<Plan[]>([])
   let weights = $state<WeightEntry[]>([])
   let status = $state<'loading' | 'ready' | 'error'>('loading')
 
@@ -32,9 +32,9 @@
     status = 'loading'
     try {
       // Independent requests: fetch in parallel.
-      ;[sessions, routines, weights] = await Promise.all([
+      ;[sessions, plans, weights] = await Promise.all([
         getRecentSessions(profile.id),
-        getRoutines(),
+        getPlans(),
         getWeights(profile.id),
       ])
       status = 'ready'
@@ -81,8 +81,10 @@
       <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
     {/if}
     <div class="grid">
-      <UpNext {profile} {fitness} sessions={thisWeek} {routines} active={inProgress(sessions)} />
-      <ThisWeek {profile} {fitness} sessions={thisWeek} {routines} />
+      <UpNext {profile} {fitness} sessions={thisWeek} {plans} active={inProgress(sessions)}
+        ondiscarded={(id) => (sessions = sessions.filter((s) => s.id !== id))}
+      />
+      <ThisWeek {profile} {fitness} sessions={thisWeek} {plans} />
     </div>
   {/if}
 </div>

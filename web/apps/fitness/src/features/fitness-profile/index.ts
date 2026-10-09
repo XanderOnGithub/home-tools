@@ -6,7 +6,7 @@ export type FitnessProfile = {
   user_id: string
   goal?: Goal // optional; not asked in onboarding
   height_m?: number
-  schedule?: Partial<Record<Weekday, string>> // weekday → routine ID; missing = rest
+  schedule?: Partial<Record<Weekday, string>> // weekday → plan ID; missing = rest
   weight_prompt_skipped?: string // ISO week, e.g. "2026-W41"
 }
 

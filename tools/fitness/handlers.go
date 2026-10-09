@@ -29,8 +29,8 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	mux.HandleFunc("GET /api/exercises/{id}", h.getExercise)
 	mux.HandleFunc("GET /api/exercises", h.getExercises)
 	mux.HandleFunc("PUT /api/exercises/{id}", h.putExercise)
-	mux.HandleFunc("GET /api/routines", h.getRoutines)
-	mux.HandleFunc("PUT /api/routines/{id}", h.putRoutine)
+	mux.HandleFunc("GET /api/plans", h.getPlans)
+	mux.HandleFunc("PUT /api/plans/{id}", h.putPlan)
 	// Profiles themselves (GET/PUT /api/users) come from internal/users.
 	mux.HandleFunc("GET /api/users/{user}/sessions", h.getSessions)
 	mux.HandleFunc("POST /api/users/{user}/sessions", h.postSession)
@@ -112,17 +112,17 @@ func (h *handlers) getExercises(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, h.store.Exercises())
 }
 
-// getRoutines returns all routines sorted by name, archived included.
+// getPlans returns all plans sorted by name, archived included.
 // An empty list is still a success: 200 with [].
-func (h *handlers) getRoutines(w http.ResponseWriter, r *http.Request) {
-	httpx.WriteJSON(w, http.StatusOK, h.store.Routines())
+func (h *handlers) getPlans(w http.ResponseWriter, r *http.Request) {
+	httpx.WriteJSON(w, http.StatusOK, h.store.Plans())
 }
 
-// putRoutine creates or replaces the routine at /api/routines/{id}.
-// Same shape as putExercise; SaveRoutine also rejects unknown exercise
+// putPlan creates or replaces the plan at /api/plans/{id}.
+// Same shape as putExercise; SavePlan also rejects unknown exercise
 // IDs with ErrInvalid, so those become 400s through the same check.
-func (h *handlers) putRoutine(w http.ResponseWriter, r *http.Request) {
-	var rt Routine // not "r": that name is taken by the request
+func (h *handlers) putPlan(w http.ResponseWriter, r *http.Request) {
+	var rt Plan // not "r": that name is taken by the request
 	if err := httpx.DecodeJSON(w, r, &rt); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
 		return
@@ -131,7 +131,7 @@ func (h *handlers) putRoutine(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusBadRequest, "body id "+rt.ID+" does not match URL id "+id)
 		return
 	}
-	if err := h.store.SaveRoutine(rt); err != nil {
+	if err := h.store.SavePlan(rt); err != nil {
 		if errors.Is(err, ErrInvalid) {
 			httpx.WriteError(w, http.StatusBadRequest, err.Error())
 			return
@@ -202,11 +202,14 @@ func (h *handlers) saveSession(w http.ResponseWriter, r *http.Request, sess Sess
 	}
 	saved, err := h.store.SaveSession(sess)
 	if err != nil {
-		if errors.Is(err, ErrInvalid) {
+		switch {
+		case errors.Is(err, ErrInvalid):
 			httpx.WriteError(w, http.StatusBadRequest, err.Error())
-			return
+		case errors.Is(err, ErrConflict):
+			httpx.WriteError(w, http.StatusConflict, "a workout already started at this time; try again in a second")
+		default:
+			httpx.ServerError(w, r, h.log, err)
 		}
-		httpx.ServerError(w, r, h.log, err)
 		return
 	}
 	httpx.WriteJSON(w, status, saved) // saved has the server-assigned ID

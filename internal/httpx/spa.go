@@ -9,7 +9,7 @@ import (
 
 // SPA serves a built single-page app from fsys (the folder holding
 // index.html). Real files are served as-is; any other path gets index.html,
-// so the app's own router handles URLs like /routines/abc on a reload.
+// so the app's own router handles URLs like /plans/abc on a reload.
 //
 // Vite puts content-hashed files under assets/, so they never change and
 // may be cached forever; index.html must always be revalidated, or a

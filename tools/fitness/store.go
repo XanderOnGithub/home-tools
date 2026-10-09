@@ -20,11 +20,11 @@ import (
 // (a copied mutex protects nothing).
 type Store struct {
 	dir   string
-	users *users.Store // shared profiles; sessions and routines must name one
+	users *users.Store // shared profiles; sessions and plans must name one
 
 	mu        sync.RWMutex
 	exercises map[string]Exercise      // by ID
-	routines  map[string]Routine       // by ID
+	plans     map[string]Plan          // by ID
 	sessions  map[string][]Session     // by user ID, sorted oldest → newest
 	profiles  map[string]Profile       // by user ID; missing = not onboarded
 	weights   map[string][]WeightEntry // by user ID, sorted by date
@@ -33,7 +33,7 @@ type Store struct {
 // Open loads all fitness data under dir into memory. Missing folders mean
 // no data yet; any unreadable or invalid file fails the whole open.
 // us is the shared profile store: every users/<id>/ folder, session and
-// routine creator must name a profile in it.
+// plan creator must name a profile in it.
 func Open(dir string, us *users.Store) (*Store, error) {
 	// Load Exercises
 	exercises, err := jsonfile.LoadDir(filepath.Join(dir, "exercises"), func(e Exercise) string { return e.ID })
@@ -41,8 +41,8 @@ func Open(dir string, us *users.Store) (*Store, error) {
 		return nil, err
 	}
 
-	// Load Routines
-	routines, err := jsonfile.LoadDir(filepath.Join(dir, "routines"), func(r Routine) string { return r.ID })
+	// Load Plans
+	plans, err := jsonfile.LoadDir(filepath.Join(dir, "plans"), func(r Plan) string { return r.ID })
 	if err != nil {
 		return nil, err
 	}
@@ -58,22 +58,22 @@ func Open(dir string, us *users.Store) (*Store, error) {
 		dir:       dir,
 		users:     us,
 		exercises: make(map[string]Exercise, len(exercises)),
-		routines:  make(map[string]Routine, len(routines)),
+		plans:     make(map[string]Plan, len(plans)),
 		sessions:  make(map[string][]Session, len(userDirs)),
 		profiles:  make(map[string]Profile, len(userDirs)),
 		weights:   make(map[string][]WeightEntry, len(userDirs)),
 	}
 
-	// Fill the maps in dependency order: exercises first, since routines
+	// Fill the maps in dependency order: exercises first, since plans
 	// and sessions are checked against them (and against us).
 	for _, ex := range exercises {
 		s.exercises[ex.ID] = ex
 	}
-	for _, r := range routines {
-		if err := s.checkRoutineRefs(r); err != nil {
-			return nil, fmt.Errorf("load routine %s: %w", r.ID, err)
+	for _, r := range plans {
+		if err := s.checkPlanRefs(r); err != nil {
+			return nil, fmt.Errorf("load plan %s: %w", r.ID, err)
 		}
-		s.routines[r.ID] = r
+		s.plans[r.ID] = r
 	}
 
 	// Load each user's sessions; ReadDir order keeps them sorted.
@@ -123,10 +123,13 @@ func NewSessionID(t time.Time) string {
 }
 
 // SaveSession validates sess and writes it to disk, then to memory.
-// An empty ID means a new session; its ID is derived from StartedAt.
+// An empty ID means a new session; its ID is derived from StartedAt, and
+// if a session with that ID already exists (two started in the same
+// second) it fails with ErrConflict instead of overwriting it.
 // It returns the saved session (with its ID filled in).
 func (s *Store) SaveSession(sess Session) (Session, error) {
-	if sess.ID == "" {
+	create := sess.ID == ""
+	if create {
 		sess.ID = NewSessionID(sess.StartedAt)
 	}
 	if err := sess.Validate(); err != nil {
@@ -140,21 +143,27 @@ func (s *Store) SaveSession(sess Session) (Session, error) {
 		return Session{}, err
 	}
 
-	path := filepath.Join(s.dir, "users", sess.UserID, "sessions", sess.ID+".json")
-	if err := jsonfile.Write(path, sess); err != nil {
-		return Session{}, err
-	}
-
-	// Disk succeeded; now memory. Scan backwards from the newest session:
-	// edits almost always target the latest one, so this usually stops
-	// after one step. The same scan finds the insert point for a session
-	// logged after the fact, keeping the slice sorted.
+	// Scan backwards from the newest session: edits almost always target
+	// the latest one, so this usually stops after one step. The same scan
+	// finds the insert point for a session logged after the fact, keeping
+	// the slice sorted.
 	list := s.sessions[sess.UserID]
 	i := len(list)
 	for i > 0 && list[i-1].ID >= sess.ID {
 		i--
 	}
-	if i < len(list) && list[i].ID == sess.ID {
+	exists := i < len(list) && list[i].ID == sess.ID
+	if create && exists {
+		return Session{}, fmt.Errorf("%w: session %s already exists", ErrConflict, sess.ID)
+	}
+
+	path := filepath.Join(s.dir, "users", sess.UserID, "sessions", sess.ID+".json")
+	if err := jsonfile.Write(path, sess); err != nil {
+		return Session{}, err
+	}
+
+	// Disk succeeded; now memory.
+	if exists {
 		list[i] = sess // update in place
 	} else {
 		list = slices.Insert(list, i, sess) // i == len(list) is a plain append
@@ -211,29 +220,29 @@ func (s *Store) SaveExercise(ex Exercise) error {
 	return nil
 }
 
-// Routines returns all routines sorted by name, archived included.
-func (s *Store) Routines() []Routine {
+// Plans returns all plans sorted by name, archived included.
+func (s *Store) Plans() []Plan {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
-	return sortedByName(s.routines, func(r Routine) string { return r.Name })
+	return sortedByName(s.plans, func(r Plan) string { return r.Name })
 }
 
-// SaveRoutine validates r, checks its exercises exist, and writes it to
+// SavePlan validates r, checks its exercises exist, and writes it to
 // disk, then to memory. Archiving is a save with Archived set.
-func (s *Store) SaveRoutine(r Routine) error {
+func (s *Store) SavePlan(r Plan) error {
 	if err := r.Validate(); err != nil {
 		return err
 	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if err := s.checkRoutineRefs(r); err != nil {
+	if err := s.checkPlanRefs(r); err != nil {
 		return err
 	}
-	if err := jsonfile.Write(filepath.Join(s.dir, "routines", r.ID+".json"), r); err != nil {
+	if err := jsonfile.Write(filepath.Join(s.dir, "plans", r.ID+".json"), r); err != nil {
 		return err
 	}
-	s.routines[r.ID] = r
+	s.plans[r.ID] = r
 	return nil
 }
 
@@ -259,16 +268,16 @@ func (s *Store) checkSessionRefs(sess Session) error {
 	return nil
 }
 
-// checkRoutineRefs checks that r's creator is a known user and every
+// checkPlanRefs checks that r's creator is a known user and every
 // exercise it lists exists in the catalog. Same locking rule as
 // checkSessionRefs.
-func (s *Store) checkRoutineRefs(r Routine) error {
+func (s *Store) checkPlanRefs(r Plan) error {
 	if _, ok := s.users.User(r.CreatedBy); !ok {
-		return fmt.Errorf("%w routine %s: unknown created_by user %q", ErrInvalid, r.ID, r.CreatedBy)
+		return fmt.Errorf("%w plan %s: unknown created_by user %q", ErrInvalid, r.ID, r.CreatedBy)
 	}
 	for _, re := range r.Exercises {
 		if _, ok := s.exercises[re.ExerciseID]; !ok {
-			return fmt.Errorf("%w routine %s: unknown exercise %q", ErrInvalid, r.ID, re.ExerciseID)
+			return fmt.Errorf("%w plan %s: unknown exercise %q", ErrInvalid, r.ID, re.ExerciseID)
 		}
 	}
 	return nil

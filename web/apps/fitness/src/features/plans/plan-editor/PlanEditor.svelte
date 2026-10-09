@@ -1,7 +1,7 @@
 <!--
-  Create (id = null) or edit a shared routine: a name and an ordered list
-  of exercises, each with an optional suggested number of sets (a hint,
-  never enforced; decision #7). Reorder with up/down buttons (keyboard and
+  Create (id = null) or edit a shared plan: a name and an ordered list
+  of exercises, each with an optional suggested number of sets and rest
+  between sets (hints, never enforced; decisions #7, #35). Reorder with up/down buttons (keyboard and
   touch friendly; the moved row keeps focus). Archive instead of delete.
 -->
 <script lang="ts">
@@ -9,17 +9,19 @@
   import { getCatalog, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
-  import { getRoutines, saveRoutine, type Routine } from '@/features/routines'
+  import { getPlans, savePlan, type Plan } from '@/features/plans'
   import { idFromName } from '@/ids'
   import { router } from '@/router'
 
   let { profile, id }: { profile: Profile; id: string | null } = $props()
 
-  type Item = { exercise_id: string; sets: string } // sets as typed ('' = no hint)
+  // As typed ('' = no hint). Rest is in seconds: phone number pads have
+  // no ":" key, so "1:30" couldn't be typed there.
+  type Item = { exercise_id: string; sets: string; rest: string }
 
-  let routines = $state<Routine[]>([])
+  let plans = $state<Plan[]>([])
   let catalog = $state<Exercise[]>([])
-  let original = $state<Routine | null>(null)
+  let original = $state<Plan | null>(null)
   let name = $state('')
   let items = $state<Item[]>([])
   let status = $state<'loading' | 'ready' | 'missing' | 'error'>('loading')
@@ -32,9 +34,9 @@
   async function load() {
     status = 'loading'
     try {
-      ;[routines, catalog] = await Promise.all([getRoutines(), getCatalog()])
+      ;[plans, catalog] = await Promise.all([getPlans(), getCatalog()])
       if (id) {
-        original = routines.find((r) => r.id === id) ?? null
+        original = plans.find((r) => r.id === id) ?? null
         if (!original) {
           status = 'missing'
           return
@@ -43,11 +45,12 @@
         items = original.exercises.map((e) => ({
           exercise_id: e.exercise_id,
           sets: e.suggested_sets ? String(e.suggested_sets) : '',
+          rest: e.rest_sec ? String(e.rest_sec) : '',
         }))
       }
       status = 'ready'
     } catch (err) {
-      console.error('Loading routine failed:', err)
+      console.error('Loading plan failed:', err)
       status = 'error'
     }
   }
@@ -59,7 +62,7 @@
 
   function toggle(ex: Exercise) {
     const i = items.findIndex((it) => it.exercise_id === ex.id)
-    if (i === -1) items.push({ exercise_id: ex.id, sets: '' })
+    if (i === -1) items.push({ exercise_id: ex.id, sets: '', rest: '' })
     else items.splice(i, 1)
   }
 
@@ -79,7 +82,7 @@
     nameError = ''
     formError = ''
     if (!name.trim()) {
-      nameError = 'Give the routine a name.'
+      nameError = 'Give the plan a name.'
       return
     }
     if (items.length === 0) {
@@ -91,25 +94,33 @@
       formError = `Sets for ${byId.get(bad.exercise_id)?.name ?? 'an exercise'} should be 1 to 20, or empty.`
       return
     }
+    const badRest = items.find((i) => i.rest.trim() && !(Number.isInteger(Number(i.rest)) && Number(i.rest) >= 1 && Number(i.rest) <= 3600))
+    if (badRest) {
+      formError = `Rest for ${byId.get(badRest.exercise_id)?.name ?? 'an exercise'} should be 1 to 3600 seconds, or empty.`
+      return
+    }
 
-    // "new" is reserved: /routines/new is the create page, not a routine.
-    const taken = new Set([...routines.map((r) => r.id), 'new'])
-    const routine: Routine = {
+    // "new" is reserved: /plans/new is the create page, not a plan.
+    const taken = new Set([...plans.map((r) => r.id), 'new'])
+    const plan: Plan = {
       id: original?.id ?? idFromName(name, taken),
       name: name.trim(),
       created_by: original?.created_by ?? profile.id,
-      exercises: items.map((i) =>
-        i.sets.trim() ? { exercise_id: i.exercise_id, suggested_sets: Number(i.sets) } : { exercise_id: i.exercise_id },
-      ),
+      // Empty hints are left out (the server omits zeros too).
+      exercises: items.map((i) => ({
+        exercise_id: i.exercise_id,
+        ...(i.sets.trim() && { suggested_sets: Number(i.sets) }),
+        ...(i.rest.trim() && { rest_sec: Number(i.rest) }),
+      })),
     }
-    if (!routine.id) {
+    if (!plan.id) {
       nameError = 'Use at least one letter or number.'
       return
     }
     saving = true
     try {
-      await saveRoutine(routine)
-      router.navigate('/routines')
+      await savePlan(plan)
+      router.navigate('/plans')
     } catch (err) {
       formError = `Couldn't save. ${(err as Error).message}`
     } finally {
@@ -121,8 +132,8 @@
     if (!original) return
     saving = true
     try {
-      await saveRoutine({ ...original, archived: true })
-      router.navigate('/routines')
+      await savePlan({ ...original, archived: true })
+      router.navigate('/plans')
     } catch (err) {
       formError = `Couldn't archive. ${(err as Error).message}`
       saving = false
@@ -131,15 +142,15 @@
 </script>
 
 <div class="page">
-  <a class="back" href="/routines">
+  <a class="back" href="/plans">
     <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-    Routines
+    Plans
   </a>
 
-  <h1 tabindex="-1">{id ? 'Edit routine' : 'New routine'}</h1>
+  <h1 tabindex="-1">{id ? 'Edit plan' : 'New plan'}</h1>
 
   {#if status === 'missing'}
-    <p>That routine doesn't exist. <a href="/routines">Back to routines</a></p>
+    <p>That plan doesn't exist. <a href="/plans">Back to plans</a></p>
   {:else if status === 'error'}
     <div role="alert">
       <p>Couldn't load. Check that the server is running.</p>
@@ -148,24 +159,24 @@
   {:else if status === 'ready'}
     <form class="form" onsubmit={save} novalidate>
       <div class="field">
-        <label for="routine-name">Name</label>
+        <label for="plan-name">Name</label>
         <input
-          id="routine-name"
+          id="plan-name"
           type="text"
           bind:value={name}
           maxlength="40"
           placeholder="e.g. Upper body"
           autocomplete="off"
           aria-invalid={nameError ? 'true' : undefined}
-          aria-describedby={nameError ? 'routine-name-error' : undefined}
+          aria-describedby={nameError ? 'plan-name-error' : undefined}
         />
-        {#if nameError}<p id="routine-name-error" class="error">{nameError}</p>{/if}
+        {#if nameError}<p id="plan-name-error" class="error">{nameError}</p>{/if}
       </div>
 
       <section class="exercises" aria-labelledby="exercises-title">
         <div class="section-head">
           <h2 id="exercises-title">Exercises</h2>
-          <span class="hint">Sets are a suggestion</span>
+          <span class="hint">Sets and rest are suggestions</span>
         </div>
 
         {#if items.length === 0}
@@ -186,6 +197,10 @@
                 <label class="sets">
                   <input type="text" inputmode="numeric" maxlength="2" placeholder="–" bind:value={item.sets} />
                   <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
+                </label>
+                <label class="sets rest">
+                  <input type="text" inputmode="numeric" maxlength="4" placeholder="–" bind:value={item.rest} />
+                  <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
                 </label>
                 <span class="tools">
                   <button
@@ -247,9 +262,9 @@
             </button>
             <span class="spacer"></span>
           {/if}
-          <a class="btn btn-quiet" href="/routines">Cancel</a>
+          <a class="btn btn-quiet" href="/plans">Cancel</a>
           <button type="submit" class="btn btn-primary" disabled={saving}>
-            {saving ? 'Saving…' : id ? 'Save' : 'Create routine'}
+            {saving ? 'Saving…' : id ? 'Save' : 'Create plan'}
           </button>
         </div>
       {/if}
@@ -422,6 +437,10 @@
     background: var(--color-bg);
     font-weight: var(--weight-semibold);
     text-align: center;
+  }
+
+  .rest input {
+    width: 3.5rem;
   }
 
   .tools {

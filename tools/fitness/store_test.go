@@ -37,8 +37,8 @@ func TestOpenRejectsBadData(t *testing.T) {
 		{"invalid exercise", map[string]string{
 			"exercises/squat.json": `{"id":"squat","name":"Squat","activation":{"quads":1},"metrics":["reps"]}`,
 		}},
-		{"routine with unknown exercise", map[string]string{
-			"routines/legs.json": `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`,
+		{"plan with unknown exercise", map[string]string{
+			"plans/legs.json": `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`,
 		}},
 		{"session with unknown exercise", map[string]string{
 			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5}]}]}`,
@@ -47,9 +47,9 @@ func TestOpenRejectsBadData(t *testing.T) {
 			"exercises/squat.json":                            squat,
 			"users/xander/sessions/2026-10-08T18-00-00Z.json": `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[{"exercise_id":"squat","sets":[{"reps":5,"weight_kg":-1}]}]}`,
 		}},
-		{"routine with unknown creator", map[string]string{
+		{"plan with unknown creator", map[string]string{
 			"exercises/squat.json": squat,
-			"routines/legs.json":   `{"id":"legs","name":"Legs","created_by":"nobody","exercises":[{"exercise_id":"squat"}]}`,
+			"plans/legs.json":      `{"id":"legs","name":"Legs","created_by":"nobody","exercises":[{"exercise_id":"squat"}]}`,
 		}},
 	}
 	for _, tt := range tests {
@@ -99,7 +99,7 @@ func TestOpen(t *testing.T) {
 		}
 	}
 	write("exercises/squat.json", `{"id":"squat","name":"Squat","activation":{"quadriceps":1},"metrics":["reps","weight"]}`)
-	write("routines/legs.json", `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`)
+	write("plans/legs.json", `{"id":"legs","name":"Legs","created_by":"xander","exercises":[{"exercise_id":"squat"}]}`)
 	write("users/xander/sessions/2026-10-08T18-00-00Z.json", `{"id":"2026-10-08T18-00-00Z","user_id":"xander","started_at":"2026-10-08T18:00:00Z","entries":[]}`)
 	write("users/xander/sessions/2026-10-07T18-00-00Z.json", `{"id":"2026-10-07T18-00-00Z","user_id":"xander","started_at":"2026-10-07T18:00:00Z","entries":[]}`)
 
@@ -110,8 +110,8 @@ func TestOpen(t *testing.T) {
 	if _, ok := s.exercises["squat"]; !ok {
 		t.Error("exercise squat not loaded")
 	}
-	if _, ok := s.routines["legs"]; !ok {
-		t.Error("routine legs not loaded")
+	if _, ok := s.plans["legs"]; !ok {
+		t.Error("plan legs not loaded")
 	}
 	got := s.sessions["xander"]
 	if len(got) != 2 || got[0].ID != "2026-10-07T18-00-00Z" {
@@ -124,7 +124,7 @@ func TestOpenEmptyDir(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(s.exercises)+len(s.routines)+len(s.sessions) != 0 {
+	if len(s.exercises)+len(s.plans)+len(s.sessions) != 0 {
 		t.Error("fresh store should be empty")
 	}
 }
@@ -227,6 +227,22 @@ func TestSaveSessionRejects(t *testing.T) {
 	}
 }
 
+func TestSaveSessionNoOverwrite(t *testing.T) {
+	s := newTestStore(t)
+	first := Session{UserID: "xander", StartedAt: at(7, 18), Entries: []Entry{{ExerciseID: "squat"}}}
+	if _, err := s.SaveSession(first); err != nil {
+		t.Fatal(err)
+	}
+	// A second new session in the same second gets the same ID.
+	_, err := s.SaveSession(Session{UserID: "xander", StartedAt: at(7, 18)})
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("err = %v, want ErrConflict", err)
+	}
+	if got := s.sessions["xander"]; len(got) != 1 || len(got[0].Entries) != 1 {
+		t.Errorf("sessions = %+v, want the first one untouched", got)
+	}
+}
+
 func TestRecentSessions(t *testing.T) {
 	s := newTestStore(t)
 	for day := 1; day <= 5; day++ {
@@ -314,23 +330,23 @@ func TestSaveExerciseAndList(t *testing.T) {
 	}
 }
 
-func TestSaveRoutineChecksCatalog(t *testing.T) {
+func TestSavePlanChecksCatalog(t *testing.T) {
 	s := newTestStore(t)
-	legs := Routine{ID: "legs", Name: "Legs", CreatedBy: "xander",
-		Exercises: []RoutineExercise{{ExerciseID: "squat", SuggestedSets: 4}}}
-	if err := s.SaveRoutine(legs); err != nil {
+	legs := Plan{ID: "legs", Name: "Legs", CreatedBy: "xander",
+		Exercises: []PlanExercise{{ExerciseID: "squat", SuggestedSets: 4}}}
+	if err := s.SavePlan(legs); err != nil {
 		t.Fatal(err)
 	}
-	legs.Exercises = append(legs.Exercises, RoutineExercise{ExerciseID: "nope"})
-	if err := s.SaveRoutine(legs); !errors.Is(err, ErrInvalid) {
+	legs.Exercises = append(legs.Exercises, PlanExercise{ExerciseID: "nope"})
+	if err := s.SavePlan(legs); !errors.Is(err, ErrInvalid) {
 		t.Errorf("unknown exercise: err = %v, want ErrInvalid", err)
 	}
-	stranger := Routine{ID: "arms", Name: "Arms", CreatedBy: "nobody",
-		Exercises: []RoutineExercise{{ExerciseID: "squat"}}}
-	if err := s.SaveRoutine(stranger); !errors.Is(err, ErrInvalid) {
+	stranger := Plan{ID: "arms", Name: "Arms", CreatedBy: "nobody",
+		Exercises: []PlanExercise{{ExerciseID: "squat"}}}
+	if err := s.SavePlan(stranger); !errors.Is(err, ErrInvalid) {
 		t.Errorf("unknown creator: err = %v, want ErrInvalid", err)
 	}
-	if got := s.Routines(); len(got) != 1 || len(got[0].Exercises) != 1 {
+	if got := s.Plans(); len(got) != 1 || len(got[0].Exercises) != 1 {
 		t.Errorf("rejected save changed memory: %+v", got)
 	}
 }

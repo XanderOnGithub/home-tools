@@ -146,22 +146,24 @@ var AllLevels = []Level{LevelBeginner, LevelIntermediate, LevelExpert}
 
 // ---- Planning ----
 
-// Routine is a shared, reusable workout template, stored as
-// routines/<id>.json. It suggests what to do; it never constrains a session.
-// Starting a session from a routine pre-fills the session's entries.
-type Routine struct {
-	ID        string            `json:"id"`
-	Name      string            `json:"name"`
-	CreatedBy string            `json:"created_by"` // user ID
-	Exercises []RoutineExercise `json:"exercises"`  // in suggested order
-	Archived  bool              `json:"archived,omitempty"`
+// Plan is a shared, reusable workout template, stored as
+// plans/<id>.json. It suggests what to do; it never constrains a session.
+// Starting a session from a plan pre-fills the session's entries.
+type Plan struct {
+	ID        string         `json:"id"`
+	Name      string         `json:"name"`
+	CreatedBy string         `json:"created_by"` // user ID
+	Exercises []PlanExercise `json:"exercises"`  // in suggested order
+	Archived  bool           `json:"archived,omitempty"`
 }
 
-// RoutineExercise is one step of a routine. SuggestedSets is a hint shown
-// in the UI (0 = no suggestion); sessions may log any number of sets.
-type RoutineExercise struct {
+// PlanExercise is one step of a plan. SuggestedSets and RestSec are
+// hints for the UI (0 = no suggestion / the default rest); sessions may
+// log any number of sets and rest as long as they like.
+type PlanExercise struct {
 	ExerciseID    string `json:"exercise_id"`
 	SuggestedSets int    `json:"suggested_sets,omitempty"`
+	RestSec       int    `json:"rest_sec,omitempty"` // between sets
 }
 
 // ---- Logging ----
@@ -172,7 +174,7 @@ type RoutineExercise struct {
 type Session struct {
 	ID        string    `json:"id"`
 	UserID    string    `json:"user_id"`
-	RoutineID string    `json:"routine_id,omitempty"`
+	PlanID    string    `json:"plan_id,omitempty"`
 	StartedAt time.Time `json:"started_at"`
 	EndedAt   time.Time `json:"ended_at,omitzero"`
 	Entries   []Entry   `json:"entries"`
@@ -203,10 +205,11 @@ type Set struct {
 // lives in internal/users; this holds only what fitness needs. No file yet
 // means the user hasn't done onboarding.
 type Profile struct {
-	UserID   string             `json:"user_id"`
-	Goal     Goal               `json:"goal,omitempty"` // optional; not asked in onboarding
-	HeightM  float64            `json:"height_m,omitempty"`
-	Schedule map[Weekday]string `json:"schedule,omitempty"` // weekday → routine ID; missing = rest day
+	UserID  string  `json:"user_id"`
+	Goal    Goal    `json:"goal,omitempty"` // optional; not asked in onboarding
+	HeightM float64 `json:"height_m,omitempty"`
+	// Schedule is the person's routine: weekday → plan ID; missing = rest day.
+	Schedule map[Weekday]string `json:"schedule,omitempty"`
 	// WeightPromptSkipped is the ISO week ("2026-W41") whose weight
 	// check-in was skipped, so home doesn't ask again that week.
 	WeightPromptSkipped string `json:"weight_prompt_skipped,omitempty"`

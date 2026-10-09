@@ -69,7 +69,7 @@ textarea {
 }
 
 /* Buttons. Shared by every screen: .btn + one variant. Links styled as
- * buttons (e.g. "New routine" navigates) use the same classes on <a>. */
+ * buttons (e.g. "New plan" navigates) use the same classes on <a>. */
 .btn {
   display: inline-flex;
   align-items: center;

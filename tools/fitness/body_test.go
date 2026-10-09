@@ -35,7 +35,7 @@ func TestProfileValidate(t *testing.T) {
 		{"height in cm by mistake", with(func(p *Profile) { p.HeightM = 180 }), true},
 		{"negative height", with(func(p *Profile) { p.HeightM = -1 }), true},
 		{"unknown weekday", with(func(p *Profile) { p.Schedule["funday"] = "upper" }), true},
-		{"bad routine id", with(func(p *Profile) { p.Schedule["monday"] = "a/b" }), true},
+		{"bad plan id", with(func(p *Profile) { p.Schedule["monday"] = "a/b" }), true},
 		{"bad week", with(func(p *Profile) { p.WeightPromptSkipped = "2026-41" }), true},
 		{"week 54", with(func(p *Profile) { p.WeightPromptSkipped = "2026-W54" }), true},
 	}
@@ -69,13 +69,13 @@ func TestWeightEntryValidate(t *testing.T) {
 	}
 }
 
-// newBodyStore is newTestStore plus one routine ("upper") to schedule.
+// newBodyStore is newTestStore plus one plan ("upper") to schedule.
 func newBodyStore(t *testing.T) *Store {
 	t.Helper()
 	s := newTestStore(t)
-	upper := Routine{ID: "upper", Name: "Upper", CreatedBy: "xander",
-		Exercises: []RoutineExercise{{ExerciseID: "squat"}}}
-	if err := s.SaveRoutine(upper); err != nil {
+	upper := Plan{ID: "upper", Name: "Upper", CreatedBy: "xander",
+		Exercises: []PlanExercise{{ExerciseID: "squat"}}}
+	if err := s.SavePlan(upper); err != nil {
 		t.Fatal(err)
 	}
 	return s
@@ -98,8 +98,8 @@ func TestSaveProfile(t *testing.T) {
 	}
 
 	for name, bad := range map[string]Profile{
-		"unknown routine": {UserID: "xander", Goal: GoalStrength, Schedule: map[Weekday]string{"friday": "nope"}},
-		"unknown user":    {UserID: "nobody", Goal: GoalStrength},
+		"unknown plan": {UserID: "xander", Goal: GoalStrength, Schedule: map[Weekday]string{"friday": "nope"}},
+		"unknown user": {UserID: "nobody", Goal: GoalStrength},
 	} {
 		if err := s.SaveProfile(bad); !errors.Is(err, ErrInvalid) {
 			t.Errorf("%s: err = %v, want ErrInvalid", name, err)
@@ -147,7 +147,7 @@ func TestOpenRejectsBadBodyFiles(t *testing.T) {
 	tests := map[string]struct{ file, body string }{
 		"profile user mismatch": {"fitness.json", `{"user_id":"missy","goal":"strength"}`},
 		"profile invalid":       {"fitness.json", `{"user_id":"xander","goal":"bulk"}`},
-		"profile unknown routine": {"fitness.json",
+		"profile unknown plan": {"fitness.json",
 			`{"user_id":"xander","goal":"strength","schedule":{"monday":"nope"}}`},
 		"duplicate weight dates": {"weights.json",
 			`[{"date":"2026-10-05","weight_kg":80},{"date":"2026-10-05","weight_kg":81}]`},

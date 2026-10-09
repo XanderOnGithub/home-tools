@@ -13,6 +13,10 @@ import (
 // errors.Is (e.g. to answer HTTP 400 instead of 500).
 var ErrInvalid = errors.New("invalid")
 
+// ErrConflict marks a create that would overwrite existing data
+// (HTTP 409).
+var ErrConflict = errors.New("conflict")
+
 // Validate checks s against the metrics ex tracks:
 //   - no value may be negative
 //   - a tracked metric must be > 0, except weight on bodyweight exercises
@@ -95,32 +99,40 @@ func (e Exercise) Validate() error {
 	return nil
 }
 
+// maxRestSec caps a plan's rest hint; anything longer is a typo
+// (9000 for 90), not a rest.
+const maxRestSec = 3600
+
 // Validate checks r's own rules:
 //   - ID, Name and CreatedBy are required
 //   - at least one exercise, each with an ExerciseID
 //   - SuggestedSets is not negative (0 means no suggestion)
+//   - RestSec is 0 (default rest) to maxRestSec
 //
 // Whether each ExerciseID exists in the catalog is checked by the store,
-// which has the catalog; Validate only sees the routine itself.
-func (r Routine) Validate() error {
+// which has the catalog; Validate only sees the plan itself.
+func (r Plan) Validate() error {
 	if !jsonfile.ValidID(r.ID) {
-		return fmt.Errorf("%w routine: bad ID %q", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan: bad ID %q", ErrInvalid, r.ID)
 	}
 	if r.Name == "" {
-		return fmt.Errorf("%w routine %s: missing name", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan %s: missing name", ErrInvalid, r.ID)
 	}
 	if r.CreatedBy == "" {
-		return fmt.Errorf("%w routine %s: missing created_by", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan %s: missing created_by", ErrInvalid, r.ID)
 	}
 	if len(r.Exercises) == 0 {
-		return fmt.Errorf("%w routine %s: no exercises", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan %s: no exercises", ErrInvalid, r.ID)
 	}
 	for i, ex := range r.Exercises {
 		if ex.ExerciseID == "" {
-			return fmt.Errorf("%w routine %s: exercise %d missing exercise_id", ErrInvalid, r.ID, i)
+			return fmt.Errorf("%w plan %s: exercise %d missing exercise_id", ErrInvalid, r.ID, i)
 		}
 		if ex.SuggestedSets < 0 {
-			return fmt.Errorf("%w routine %s: exercise %d has negative suggested_sets", ErrInvalid, r.ID, i)
+			return fmt.Errorf("%w plan %s: exercise %d has negative suggested_sets", ErrInvalid, r.ID, i)
+		}
+		if ex.RestSec < 0 || ex.RestSec > maxRestSec {
+			return fmt.Errorf("%w plan %s: exercise %d rest_sec must be 0 to %d", ErrInvalid, r.ID, i, maxRestSec)
 		}
 	}
 	return nil
@@ -158,10 +170,10 @@ func (s Session) Validate() error {
 //   - UserID is a valid ID
 //   - Goal, if set, is a known value
 //   - HeightM is 0 (not set) or a plausible human height (0.5 to 2.75 m)
-//   - Schedule keys are weekdays and values are valid routine IDs
+//   - Schedule keys are weekdays and values are valid plan IDs
 //   - WeightPromptSkipped, if set, is an ISO week like "2026-W41"
 //
-// Whether scheduled routines exist is checked by the store.
+// Whether scheduled plans exist is checked by the store.
 func (p Profile) Validate() error {
 	if !jsonfile.ValidID(p.UserID) {
 		return fmt.Errorf("%w fitness profile: bad user_id %q", ErrInvalid, p.UserID)
@@ -172,12 +184,12 @@ func (p Profile) Validate() error {
 	if p.HeightM != 0 && (p.HeightM < 0.5 || p.HeightM > 2.75) {
 		return fmt.Errorf("%w fitness profile %s: height_m %g is not between 0.5 and 2.75", ErrInvalid, p.UserID, p.HeightM)
 	}
-	for day, routineID := range p.Schedule {
+	for day, planID := range p.Schedule {
 		if !slices.Contains(AllWeekdays, day) {
 			return fmt.Errorf("%w fitness profile %s: unknown weekday %q", ErrInvalid, p.UserID, day)
 		}
-		if !jsonfile.ValidID(routineID) {
-			return fmt.Errorf("%w fitness profile %s: %s has bad routine ID %q", ErrInvalid, p.UserID, day, routineID)
+		if !jsonfile.ValidID(planID) {
+			return fmt.Errorf("%w fitness profile %s: %s has bad plan ID %q", ErrInvalid, p.UserID, day, planID)
 		}
 	}
 	if p.WeightPromptSkipped != "" && !validISOWeek(p.WeightPromptSkipped) {
