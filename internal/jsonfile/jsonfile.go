@@ -44,8 +44,9 @@ func Write(path string, v any) error {
 // It writes to a temp file in the same directory, flushes it to disk, then
 // renames it over path. Rename within one directory is atomic, so path is
 // never half-written. Temp files start with "." so directory scans can skip
-// any left behind by a crash. (A bind-mounted single file can't be renamed
-// over: mount its folder instead.)
+// any left behind by a crash. Replacing an existing file keeps its owner
+// when we're allowed to (root). (A bind-mounted single file can't be
+// renamed over: mount its folder instead.)
 func WriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -69,6 +70,7 @@ func WriteFile(path string, data []byte, perm os.FileMode) error {
 		tmp.Close()
 		return err
 	}
+	keepOwner(tmp, path)
 	if err := tmp.Sync(); err != nil {
 		tmp.Close()
 		return err
