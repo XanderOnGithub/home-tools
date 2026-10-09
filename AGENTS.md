@@ -223,3 +223,14 @@ got here: `git log`.
   accent color when a profile is tapped (respect reduced motion: fade or
   instant). Likely the View Transitions API or a full-screen accent
   overlay that sweeps across, then reveals home.
+- Games, Valheim players: its Steam query (A2S) doesn't answer on the
+  real server, so it shows no players. Fallback: follow its log, where a
+  join is logged as "Got character ZDOID from <character name>" (plus a
+  periodic "Connections N" count). Less reliable than a query (restarts,
+  missed leaves). Use made-up names in tests and docs, never real players'.
+- Games, Minecraft console: send commands over the RCON connection that
+  already works (`say`, `whitelist add`, …) from the server page; needs a
+  decision on who may run what (§5 permissions).
+- Fitness Progress: charts per exercise from logged sessions (weight ×
+  reps, volume, time/distance for cardio); the last big piece of the
+  fitness brief (§5).
