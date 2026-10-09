@@ -25,6 +25,7 @@ export type Server = {
   error?: string
   players?: Players // only while running and if a query address is set
   players_error?: string
+  console?: boolean // Minecraft with RCON set up: commands work
   activity?: ActivityEvent[] // newest first, ≤ 50; since Home Tools started reading
 }
 
@@ -38,6 +39,10 @@ export const getServers = () => api.get<Server[]>('/api/servers')
 /** Starts/stops/restarts; answers with the new state. Stop can take a minute. */
 export const runAction = (id: string, action: Action) =>
   api.post<Server>(`/api/servers/${encodeURIComponent(id)}/${action}`, undefined)
+
+/** Runs a Minecraft command over RCON ("say hi", "/whitelist add Steve"). */
+export const runCommand = (id: string, command: string) =>
+  api.post<{ output: string }>(`/api/servers/${encodeURIComponent(id)}/console`, { command })
 
 /** A Minecraft player's face, 8×8 PNG (scale it up pixelated); 404 when there's none. */
 export const headUrl = (id: string, player: string) =>

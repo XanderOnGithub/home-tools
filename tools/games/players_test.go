@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 )
@@ -66,15 +67,23 @@ func TestServerValidateQuery(t *testing.T) {
 	}
 }
 
-// fakeRCON answers one connection like Minecraft: auth (id -1 if the
-// password is wrong), then `list`.
+// fakeRCON answers like Minecraft: auth (id -1 if the password is
+// wrong), then `list` / `list uuids` with listReply.
 func fakeRCON(t *testing.T, password, listReply string) string {
+	addr, _ := fakeRCONReplies(t, password, map[string]string{"list": listReply, "list uuids": listReply})
+	return addr
+}
+
+// fakeRCONReplies answers each command in replies with its reply, and
+// anything else with "Unknown command". It records the commands it got.
+func fakeRCONReplies(t *testing.T, password string, replies map[string]string) (string, *commandLog) {
 	t.Helper()
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { l.Close() })
+	got := &commandLog{}
 	go func() {
 		for {
 			conn, err := l.Accept()
@@ -83,24 +92,48 @@ func fakeRCON(t *testing.T, password, listReply string) string {
 			}
 			go func() {
 				defer conn.Close()
+				authed := false
 				for {
 					id, body, err := rconRead(conn)
 					if err != nil {
 						return
 					}
-					switch body {
-					case password:
+					switch {
+					case !authed && body == password:
+						authed = true
 						rconWrite(conn, id, 2, "")
-					case "list", "list uuids":
-						rconWrite(conn, id, 0, listReply)
-					default:
+					case !authed:
 						rconWrite(conn, -1, 2, "")
+					default:
+						got.add(body)
+						reply, ok := replies[body]
+						if !ok {
+							reply = "Unknown or incomplete command"
+						}
+						rconWrite(conn, id, 0, reply)
 					}
 				}
 			}()
 		}
 	}()
-	return l.Addr().String()
+	return l.Addr().String(), got
+}
+
+type commandLog struct {
+	mu   sync.Mutex
+	cmds []string
+}
+
+func (c *commandLog) add(cmd string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.cmds = append(c.cmds, cmd)
+}
+
+func (c *commandLog) all() []string {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	return slices.Clone(c.cmds)
 }
 
 func TestRCON(t *testing.T) {

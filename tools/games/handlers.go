@@ -37,6 +37,11 @@ func Register(mux *http.ServeMux, store *Store, docker *Docker, log *slog.Logger
 	mux.HandleFunc("POST /api/servers/{id}/{action}", h.postAction)
 	mux.HandleFunc("GET /api/servers/{id}/logs", h.getLogs)
 	mux.HandleFunc("GET /api/servers/{id}/heads/{name}", h.getHead)
+	// Minecraft over RCON (console.go); more specific than {action} above.
+	mux.HandleFunc("POST /api/servers/{id}/console", h.postConsole)
+	mux.HandleFunc("GET /api/servers/{id}/whitelist", h.getWhitelist)
+	mux.HandleFunc("PUT /api/servers/{id}/whitelist/{player}", h.putWhitelist)
+	mux.HandleFunc("DELETE /api/servers/{id}/whitelist/{player}", h.deleteWhitelist)
 }
 
 // serverView is what the browser gets about a server: its config minus
@@ -54,10 +59,12 @@ type serverView struct {
 	Players      *Players `json:"players,omitempty"`
 	PlayersError string   `json:"players_error,omitempty"`
 	Activity     []Event  `json:"activity,omitempty"` // joins and leaves, newest first
+	Console      bool     `json:"console,omitempty"`  // Minecraft with RCON set up: commands work
 }
 
 func viewOf(srv Server) serverView {
-	return serverView{ID: srv.ID, Name: srv.Name, Game: srv.Game, Container: srv.Container, Archived: srv.Archived}
+	return serverView{ID: srv.ID, Name: srv.Name, Game: srv.Game, Container: srv.Container, Archived: srv.Archived,
+		Console: srv.Game == GameMinecraft && srv.Query != ""}
 }
 
 // fill asks Docker for srv's state and, if it's running, who's online:

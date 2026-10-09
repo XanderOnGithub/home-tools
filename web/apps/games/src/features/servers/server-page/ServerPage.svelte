@@ -1,12 +1,13 @@
 <!--
   One server: header (icon, name, status, ⋯ menu), who's online, who
-  joined and left, and the live log. After an action the log reconnects, since a stop or restart
+  joined and left, the console (Minecraft with RCON), and the live log. After an action the log reconnects, since a stop or restart
   ends the stream.
 -->
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { GAMES, details, type Action, type Server } from '@/features/servers'
   import { ActivityList } from '@/features/servers/activity-list'
+  import { ConsoleView } from '@/features/servers/console-view'
   import { GameIcon } from '@/features/servers/game-icon'
   import { liveServers } from '@/features/servers/live-servers'
   import { LogView } from '@/features/servers/log-view'
@@ -56,6 +57,7 @@
     <div class="sections">
       <PlayerList {server} />
       {#if server.state}<ActivityList {server} />{/if}
+      {#if server.console && server.state?.running}<ConsoleView {id} />{/if}
       {#if server.state}
         {#key logKey}
           <LogView {id} />
