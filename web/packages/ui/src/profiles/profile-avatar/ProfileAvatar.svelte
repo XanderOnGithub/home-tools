@@ -3,7 +3,7 @@
   glance around (and the blob leans a little when they do). Shape, face
   and timing all come from the ID, so each person is consistent everywhere.
   Decorative: the surrounding UI always shows the name, so it's aria-hidden.
-  Color comes from the nearest [data-accent] (--color-accent).
+  Color comes from the nearest [data-accent] (--color-avatar).
 
   When `id` changes (e.g. live preview while typing a name), the shape and
   eyes morph smoothly to the new ones instead of jumping.
@@ -77,7 +77,7 @@
   }
 
   .skin {
-    fill: var(--color-accent);
+    fill: var(--color-avatar);
   }
 
   /* Simple dark ovals. Same in light and dark mode: they're the
