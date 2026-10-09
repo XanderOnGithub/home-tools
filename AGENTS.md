@@ -139,6 +139,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 37 | Game server manager v1: status, start/stop/restart, live logs (players + console later). Servers are config files `data/games/servers/<id>.json` (`{id, name, game: minecraft\|valheim, container}`), one per server like every other store. Docker via its HTTP API with `net/http` over a unix socket (no SDK), through **wollomatic/socket-proxy** (own ZimaOS app; allowlist: container inspect/logs GET, start/stop/restart POST; socket in `/run/home-tools-docker`, not on a share). Logs stream as **Server-Sent Events** (last 200 lines, then live). Stop/restart wait up to 60 s for the world to save. Local dev: `-tool <name>`; host routing in `internal/hostroute` | ✅ | 2026-10-08. Xander chose file config, the proxy (the raw socket is root on the server and the app has no auth), SSE and the small v1. |
 | 38 | Games v2: same look as fitness (shared `AppShell` in `@home-tools/ui`, nav links per tool, no phone tab bar with one link). Cards: game icon (own drawings in the accent color, not the games' logos), name, status, "Up 2 h · 2 of 20 online"; the whole card opens the server page; a ⋯ menu top-right holds Start or Stop + Restart (confirm dialog). Server page: header, Players, Log. **Players online:** Minecraft via **RCON** (`list`; password in the server file as `rcon_password`, never sent to browsers), Valheim via Steam **A2S**; address = a `query` field per server | ✅ | 2026-10-08. Xander chose RCON over Server List Ping (it also opens the door to console commands), a query field over guessing from Docker, and the menu top-right. |
 | 39 | Fitness Progress replaces the History tab (Home · Plans · Progress): summary, weight journey chart, logged exercises → per-exercise journey (`/progress/<exercise>`), then the workout history list. Journey charts: weight + reps → heaviest set per workout (+ records), timed → longest duration, distance cardio → distance and pace; every logged set below. Charts are hand-rolled SVG (no dependency); swap for a library only if they turn out hard to read or not responsive enough. All derived from sessions + weight log, nothing new stored; all-time data via `GET /api/users/{u}/exercise-log[/{exercise}]` (finished workouts only; the sessions list stays capped at 100) | ✅ | 2026-10-09. Must be easy to read and follow; for looking at progress before and after a workout, nothing added to workout mode. |
+| 40 | Games activity + heads. **Joins/leaves** read from each server's Docker log, on demand and incremental (only while someone looks: lines since the last read, `timestamps` + `since`; first look catches up from the container's start), last 50 events + who's online in memory, reset per container run; shown as an Activity list on the server page. **Valheim players** come from that log (character names; `query`/A2S now only gives slots). **Minecraft heads**: RCON `list uuids` → Mojang session server → skin → 8×8 face + hat layer cropped in Go (`image/png`), cached a day (failures an hour), served at `/api/servers/{id}/heads/{name}`; browsers never call a third party. Skin downloads only from `textures.minecraft.net` | ✅ | 2026-10-09. Xander chose Mojang-direct over mc-heads.net/crafatar (privacy, no third party) and on-demand over an always-on watcher. NameMC has no public API. Valheim leave line ("Destroying abandoned non persistent zdo … owner <id>") unverified against the real server; "Connections 0" clears anyone missed. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
@@ -206,14 +207,15 @@ got here: `git log`.
 - **Games (#37, #38, ADR 0011):** server cards with status and players,
   ⋯ menu for start/stop/restart, server page with players and live log;
   runs on the real server via the socket proxy. Minecraft players via
-  RCON set up on the server (2026-10-09); Valheim's query doesn't answer (§8).
+  RCON with heads; Valheim players and both games' joins/leaves from the
+  log (#40).
 - **Progress (#39):** summary, weight chart, per-exercise journeys
   (chart, records, every workout's sets), recent workouts. Replaces History.
 - **Not built yet:** games console commands, permissions, server
   config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
-- **Next:** Valheim players from the log, Minecraft console.
+- **Next:** check Valheim joins/leaves against the real log; Minecraft console.
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
@@ -225,11 +227,6 @@ got here: `git log`.
   accent color when a profile is tapped (respect reduced motion: fade or
   instant). Likely the View Transitions API or a full-screen accent
   overlay that sweeps across, then reveals home.
-- Games, Valheim players: its Steam query (A2S) doesn't answer on the
-  real server, so it shows no players. Fallback: follow its log, where a
-  join is logged as "Got character ZDOID from <character name>" (plus a
-  periodic "Connections N" count). Less reliable than a query (restarts,
-  missed leaves). Use made-up names in tests and docs, never real players'.
 - Games, Minecraft console: send commands over the RCON connection that
   already works (`say`, `whitelist add`, …) from the server page; needs a
   decision on who may run what (§5 permissions).

@@ -9,8 +9,11 @@ export type ServerState = {
   started_at?: string // while running
 }
 
-/** Who's online. names can be shorter than online (Valheim often has none). */
+/** Who's online. max is 0 when the game didn't say (Valheim's query often doesn't answer). */
 export type Players = { online: number; max: number; names: string[] }
+
+/** A join or leave, read from the server's log (decision #40). */
+export type ActivityEvent = { at: string; player: string; kind: 'join' | 'leave' }
 
 export type Server = {
   id: string
@@ -22,6 +25,7 @@ export type Server = {
   error?: string
   players?: Players // only while running and if a query address is set
   players_error?: string
+  activity?: ActivityEvent[] // newest first, ≤ 50; since Home Tools started reading
 }
 
 export type Action = 'start' | 'stop' | 'restart'
@@ -34,6 +38,10 @@ export const getServers = () => api.get<Server[]>('/api/servers')
 /** Starts/stops/restarts; answers with the new state. Stop can take a minute. */
 export const runAction = (id: string, action: Action) =>
   api.post<Server>(`/api/servers/${encodeURIComponent(id)}/${action}`, undefined)
+
+/** A Minecraft player's face, 8×8 PNG (scale it up pixelated); 404 when there's none. */
+export const headUrl = (id: string, player: string) =>
+  `/api/servers/${encodeURIComponent(id)}/heads/${encodeURIComponent(player)}`
 
 /** Server-Sent Events: the last 200 lines, then live (see LogView). */
 export const logsUrl = (id: string) => `/api/servers/${encodeURIComponent(id)}/logs`
@@ -50,12 +58,13 @@ export function uptime(startedAt: string, now = Date.now()): string {
   return `${m} min`
 }
 
-/** "2 of 20 online", "Nobody online (max 20)", "Players unknown", or null
+/** "2 of 20 online", "Nobody online · 20 slots", "2 online" (slots unknown), "Players unknown", or null
  * when there's nothing to say (stopped, or no query address configured). */
 export function playersSummary(s: Server): string | null {
   if (!s.state?.running) return null
   if (s.players) {
     const { online, max } = s.players
+    if (!max) return online === 0 ? 'Nobody online' : `${online} online`
     return online === 0 ? `Nobody online · ${max} slots` : `${online} of ${max} online`
   }
   return s.players_error ? 'Players unknown' : null

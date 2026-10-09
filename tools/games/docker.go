@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -110,11 +111,32 @@ func (d *Docker) Do(ctx context.Context, container string, a Action) error {
 // lines as they come, until ctx is cancelled or the container stops.
 // Each line goes to line (without its newline).
 func (d *Docker) Logs(ctx context.Context, container string, tail int, line func(string) error) error {
+	q := url.Values{"follow": {"1"}, "stdout": {"1"}, "stderr": {"1"}, "tail": {fmt.Sprint(tail)}}
+	return d.logs(ctx, container, q, line)
+}
+
+// LogsSince reads the lines written after since, each with Docker's
+// timestamp, and returns when it has read them all (no following).
+func (d *Docker) LogsSince(ctx context.Context, container string, since time.Time, line func(at time.Time, text string) error) error {
+	q := url.Values{"stdout": {"1"}, "stderr": {"1"}, "timestamps": {"1"},
+		"since": {fmt.Sprintf("%d.%09d", since.Unix(), since.Nanosecond())}}
+	return d.logs(ctx, container, q, func(l string) error {
+		// "2026-10-09T18:00:00.123456789Z text"
+		stamp, text, _ := strings.Cut(l, " ")
+		at, err := time.Parse(time.RFC3339Nano, stamp)
+		if err != nil {
+			return nil // not a timestamped line (shouldn't happen); skip it
+		}
+		return line(at, text)
+	})
+}
+
+// logs reads the container's log with the query q, line by line.
+func (d *Docker) logs(ctx context.Context, container string, q url.Values, line func(string) error) error {
 	st, err := d.Inspect(ctx, container)
 	if err != nil {
 		return err
 	}
-	q := url.Values{"follow": {"1"}, "stdout": {"1"}, "stderr": {"1"}, "tail": {fmt.Sprint(tail)}}
 	resp, err := d.do(ctx, http.MethodGet, "/containers/"+url.PathEscape(container)+"/logs?"+q.Encode(), nil)
 	if err != nil {
 		return err
