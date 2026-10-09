@@ -22,7 +22,7 @@ func TestSPA(t *testing.T) {
 		body, cache string
 	}{
 		{"root", "/", 200, "app", "no-cache"},
-		{"client route", "/routines/abc", 200, "app", "no-cache"},
+		{"client route", "/plans/abc", 200, "app", "no-cache"},
 		{"directory", "/assets/", 200, "app", "no-cache"},
 		// net/http refuses ".." outright (the mux would redirect it first).
 		{"escape attempt", "/../../etc/passwd", 400, "invalid URL path", ""},

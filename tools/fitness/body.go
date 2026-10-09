@@ -16,7 +16,7 @@ import (
 // (weights.json). Both are optional files in users/<id>/.
 
 // loadBody loads one user's fitness.json and weights.json into s (called
-// by Open, after routines are loaded, so schedule references can be checked).
+// by Open, after plans are loaded, so schedule references can be checked).
 func (s *Store) loadBody(userDir, userID string) error {
 	profilePath := filepath.Join(userDir, "fitness.json")
 	p, err := jsonfile.Read[Profile](profilePath)
@@ -74,7 +74,7 @@ func (s *Store) Profile(userID string) (Profile, bool) {
 	return p, ok
 }
 
-// SaveProfile validates p, checks its user and scheduled routines exist,
+// SaveProfile validates p, checks its user and scheduled plans exist,
 // and writes it to users/<user_id>/fitness.json, then to memory.
 func (s *Store) SaveProfile(p Profile) error {
 	if err := p.Validate(); err != nil {
@@ -133,15 +133,15 @@ func (s *Store) SaveWeight(userID string, w WeightEntry) error {
 	return nil
 }
 
-// checkProfileRefs checks p's user exists and every scheduled routine is
+// checkProfileRefs checks p's user exists and every scheduled plan is
 // in the store. Same locking rule as checkSessionRefs.
 func (s *Store) checkProfileRefs(p Profile) error {
 	if _, ok := s.users.User(p.UserID); !ok {
 		return fmt.Errorf("%w fitness profile: unknown user %q", ErrInvalid, p.UserID)
 	}
-	for day, routineID := range p.Schedule {
-		if _, ok := s.routines[routineID]; !ok {
-			return fmt.Errorf("%w fitness profile %s: %s has unknown routine %q", ErrInvalid, p.UserID, day, routineID)
+	for day, planID := range p.Schedule {
+		if _, ok := s.plans[planID]; !ok {
+			return fmt.Errorf("%w fitness profile %s: %s has unknown plan %q", ErrInvalid, p.UserID, day, planID)
 		}
 	}
 	return nil

@@ -9,15 +9,15 @@
   import type { FitnessProfile } from '@/features/fitness-profile'
   import { blobPath } from '@/features/profiles/blob'
   import type { Profile } from '@/features/profiles/types'
-  import type { Routine } from '@/features/routines'
+  import type { Plan } from '@/features/plans'
   import type { Session } from '@/features/sessions'
 
   let {
     profile,
     fitness,
     sessions,
-    routines,
-  }: { profile: Profile; fitness: FitnessProfile; sessions: Session[]; routines: Routine[] } = $props()
+    plans,
+  }: { profile: Profile; fitness: FitnessProfile; sessions: Session[]; plans: Plan[] } = $props()
 
   const today = new Date()
   const todayISO = isoDate(today)
@@ -27,9 +27,9 @@
   let days = $derived(
     weekDays(today).map((d) => {
       const iso = isoDate(d)
-      const routineId = fitness.schedule?.[weekdayKey(d)]
+      const planId = fitness.schedule?.[weekdayKey(d)]
       const done = sessions.some((s) => isoDate(new Date(s.started_at)) === iso)
-      const planned = routineId ? (routines.find((r) => r.id === routineId)?.name ?? 'Workout') : null
+      const planned = planId ? (plans.find((r) => r.id === planId)?.name ?? 'Workout') : null
       const state = done ? 'done' : planned ? (iso < todayISO ? 'missed' : 'planned') : 'rest'
       return {
         iso,

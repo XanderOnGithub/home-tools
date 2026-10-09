@@ -87,19 +87,19 @@ func TestExerciseValidate(t *testing.T) {
 	}
 }
 
-func TestRoutineValidate(t *testing.T) {
-	push := Routine{
+func TestPlanValidate(t *testing.T) {
+	push := Plan{
 		ID:        "push_day",
 		Name:      "Push Day",
 		CreatedBy: "xander",
-		Exercises: []RoutineExercise{
+		Exercises: []PlanExercise{
 			{ExerciseID: "bench_press", SuggestedSets: 4},
 			{ExerciseID: "push_up"},
 		},
 	}
 	// with copies push and applies one change. Exercises is a slice, so a
 	// change must assign a new slice rather than edit push's elements.
-	with := func(change func(*Routine)) Routine {
+	with := func(change func(*Plan)) Plan {
 		r := push
 		change(&r)
 		return r
@@ -107,19 +107,19 @@ func TestRoutineValidate(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		r       Routine
+		r       Plan
 		wantErr bool
 	}{
 		{"valid", push, false},
-		{"missing ID", with(func(r *Routine) { r.ID = "" }), true},
-		{"missing name", with(func(r *Routine) { r.Name = "" }), true},
-		{"missing created_by", with(func(r *Routine) { r.CreatedBy = "" }), true},
-		{"no exercises", with(func(r *Routine) { r.Exercises = nil }), true},
-		{"exercise missing ID", with(func(r *Routine) {
-			r.Exercises = []RoutineExercise{{SuggestedSets: 3}}
+		{"missing ID", with(func(r *Plan) { r.ID = "" }), true},
+		{"missing name", with(func(r *Plan) { r.Name = "" }), true},
+		{"missing created_by", with(func(r *Plan) { r.CreatedBy = "" }), true},
+		{"no exercises", with(func(r *Plan) { r.Exercises = nil }), true},
+		{"exercise missing ID", with(func(r *Plan) {
+			r.Exercises = []PlanExercise{{SuggestedSets: 3}}
 		}), true},
-		{"negative suggested sets", with(func(r *Routine) {
-			r.Exercises = []RoutineExercise{{ExerciseID: "bench_press", SuggestedSets: -1}}
+		{"negative suggested sets", with(func(r *Plan) {
+			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", SuggestedSets: -1}}
 		}), true},
 	}
 	for _, tt := range tests {

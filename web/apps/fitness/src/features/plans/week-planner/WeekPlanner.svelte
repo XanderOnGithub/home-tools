@@ -1,13 +1,13 @@
 <!--
-  "Your week": one row per weekday, each with a routine picker (or Rest).
+  "Your routine": one row per weekday, each with a plan picker (or Rest).
   Saves on change into this person's fitness profile (decision #27, #30);
   a live region announces "Saved" so it's clear nothing else is needed.
 -->
 <script lang="ts">
   import { saveFitnessProfile, type FitnessProfile, type Weekday } from '@/features/fitness-profile'
-  import type { Routine } from '@/features/routines'
+  import type { Plan } from '@/features/plans'
 
-  let { fitness = $bindable(), routines }: { fitness: FitnessProfile; routines: Routine[] } = $props()
+  let { fitness = $bindable(), plans }: { fitness: FitnessProfile; plans: Plan[] } = $props()
 
   const DAYS: { key: Weekday; label: string }[] = [
     { key: 'monday', label: 'Monday' },
@@ -21,14 +21,14 @@
 
   let status = $state('')
 
-  // Archived routines can't be newly picked, but stay listed on the days
+  // Archived plans can't be newly picked, but stay listed on the days
   // that already use them, so the select doesn't silently show "Rest".
   const choicesFor = (day: Weekday) =>
-    routines.filter((r) => !r.archived || r.id === fitness.schedule?.[day])
+    plans.filter((r) => !r.archived || r.id === fitness.schedule?.[day])
 
-  async function change(day: Weekday, routineId: string) {
+  async function change(day: Weekday, planId: string) {
     const schedule = { ...fitness.schedule }
-    if (routineId) schedule[day] = routineId
+    if (planId) schedule[day] = planId
     else delete schedule[day] // missing = rest day
     status = 'Saving…'
     try {
@@ -42,7 +42,7 @@
 
 <section class="week" aria-labelledby="week-title">
   <div class="head">
-    <h2 id="week-title">Your week</h2>
+    <h2 id="week-title">Your routine</h2>
     <p class="status" role="status">{status}</p>
   </div>
 

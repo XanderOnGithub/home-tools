@@ -6,8 +6,8 @@
   import { ProfilePicker } from '@/features/profiles/profile-picker'
   import { forgetProfile } from '@/features/profiles/remembered'
   import type { Profile } from '@/features/profiles/types'
-  import { RoutineEditor } from '@/features/routines/routine-editor'
-  import { RoutinesScreen } from '@/features/routines/routines-screen'
+  import { PlanEditor } from '@/features/plans/plan-editor'
+  import { PlansScreen } from '@/features/plans/plans-screen'
   import { AppShell } from '@/features/shell/app-shell'
   import { NotFound } from '@/features/shell/not-found'
   import { WorkoutMode } from '@/features/workout/workout-mode'
@@ -21,14 +21,14 @@
   let fitness = $state<FitnessProfile | null>(null)
   let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
-  // /routines/new → editor for a new routine; /routines/<id> → edit it.
-  let routineId = $derived(router.path.match(/^\/routines\/([^/]+)$/)?.[1] ?? null)
+  // /plans/new → editor for a new plan; /plans/<id> → edit it.
+  let planId = $derived(router.path.match(/^\/plans\/([^/]+)$/)?.[1] ?? null)
   // /workout/<session id> → workout mode (full screen, no navigation).
   let workoutId = $derived(router.path.match(/^\/workout\/([^/]+)$/)?.[1] ?? null)
 
   // "Page · Fitness" (most specific first: tabs cut off the end). Home is
   // the tool's front page, so it names the whole set instead.
-  const TITLES: Record<string, string> = { '/routines': 'Routines', '/history': 'History' }
+  const TITLES: Record<string, string> = { '/plans': 'Plans', '/history': 'History' }
   $effect(() => {
     if (router.path === '/') {
       document.title = 'Fitness · Home Tools'
@@ -36,10 +36,10 @@
     }
     const title = workoutId
       ? 'Workout'
-      : routineId
-        ? routineId === 'new'
-          ? 'New routine'
-          : 'Edit routine'
+      : planId
+        ? planId === 'new'
+          ? 'New plan'
+          : 'Edit plan'
         : TITLES[router.path]
     document.title = `${title ?? 'Not found'} · Fitness`
   })
@@ -91,11 +91,11 @@
   <AppShell {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <HomeScreen {profile} bind:fitness />
-    {:else if router.path === '/routines'}
-      <RoutinesScreen bind:fitness />
-    {:else if routineId}
-      {#key routineId}
-        <RoutineEditor {profile} id={routineId === 'new' ? null : decodeURIComponent(routineId)} />
+    {:else if router.path === '/plans'}
+      <PlansScreen bind:fitness />
+    {:else if planId}
+      {#key planId}
+        <PlanEditor {profile} id={planId === 'new' ? null : decodeURIComponent(planId)} />
       {/key}
     {:else if router.path === '/history'}
       <HistoryScreen {profile} />

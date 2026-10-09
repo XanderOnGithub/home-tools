@@ -51,7 +51,7 @@ func run(addr, dataDir string, log *slog.Logger) error {
 	if err != nil {
 		return fmt.Errorf("open fitness store: %w", err)
 	}
-	log.Info("stores loaded", "users", len(us.Users()), "exercises", len(store.Exercises()), "routines", len(store.Routines()))
+	log.Info("stores loaded", "users", len(us.Users()), "exercises", len(store.Exercises()), "plans", len(store.Plans()))
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
@@ -80,7 +80,7 @@ func run(addr, dataDir string, log *slog.Logger) error {
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	// ListenAndServe blocks, so it runs in a goroutine while this one
+	// ListenAndServe blocks, so it runs in a goplan while this one
 	// waits for either a server failure or a shutdown signal.
 	errc := make(chan error, 1)
 	go func() {

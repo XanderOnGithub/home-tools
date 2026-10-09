@@ -101,26 +101,26 @@ func (e Exercise) Validate() error {
 //   - SuggestedSets is not negative (0 means no suggestion)
 //
 // Whether each ExerciseID exists in the catalog is checked by the store,
-// which has the catalog; Validate only sees the routine itself.
-func (r Routine) Validate() error {
+// which has the catalog; Validate only sees the plan itself.
+func (r Plan) Validate() error {
 	if !jsonfile.ValidID(r.ID) {
-		return fmt.Errorf("%w routine: bad ID %q", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan: bad ID %q", ErrInvalid, r.ID)
 	}
 	if r.Name == "" {
-		return fmt.Errorf("%w routine %s: missing name", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan %s: missing name", ErrInvalid, r.ID)
 	}
 	if r.CreatedBy == "" {
-		return fmt.Errorf("%w routine %s: missing created_by", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan %s: missing created_by", ErrInvalid, r.ID)
 	}
 	if len(r.Exercises) == 0 {
-		return fmt.Errorf("%w routine %s: no exercises", ErrInvalid, r.ID)
+		return fmt.Errorf("%w plan %s: no exercises", ErrInvalid, r.ID)
 	}
 	for i, ex := range r.Exercises {
 		if ex.ExerciseID == "" {
-			return fmt.Errorf("%w routine %s: exercise %d missing exercise_id", ErrInvalid, r.ID, i)
+			return fmt.Errorf("%w plan %s: exercise %d missing exercise_id", ErrInvalid, r.ID, i)
 		}
 		if ex.SuggestedSets < 0 {
-			return fmt.Errorf("%w routine %s: exercise %d has negative suggested_sets", ErrInvalid, r.ID, i)
+			return fmt.Errorf("%w plan %s: exercise %d has negative suggested_sets", ErrInvalid, r.ID, i)
 		}
 	}
 	return nil
@@ -158,10 +158,10 @@ func (s Session) Validate() error {
 //   - UserID is a valid ID
 //   - Goal, if set, is a known value
 //   - HeightM is 0 (not set) or a plausible human height (0.5 to 2.75 m)
-//   - Schedule keys are weekdays and values are valid routine IDs
+//   - Schedule keys are weekdays and values are valid plan IDs
 //   - WeightPromptSkipped, if set, is an ISO week like "2026-W41"
 //
-// Whether scheduled routines exist is checked by the store.
+// Whether scheduled plans exist is checked by the store.
 func (p Profile) Validate() error {
 	if !jsonfile.ValidID(p.UserID) {
 		return fmt.Errorf("%w fitness profile: bad user_id %q", ErrInvalid, p.UserID)
@@ -172,12 +172,12 @@ func (p Profile) Validate() error {
 	if p.HeightM != 0 && (p.HeightM < 0.5 || p.HeightM > 2.75) {
 		return fmt.Errorf("%w fitness profile %s: height_m %g is not between 0.5 and 2.75", ErrInvalid, p.UserID, p.HeightM)
 	}
-	for day, routineID := range p.Schedule {
+	for day, planID := range p.Schedule {
 		if !slices.Contains(AllWeekdays, day) {
 			return fmt.Errorf("%w fitness profile %s: unknown weekday %q", ErrInvalid, p.UserID, day)
 		}
-		if !jsonfile.ValidID(routineID) {
-			return fmt.Errorf("%w fitness profile %s: %s has bad routine ID %q", ErrInvalid, p.UserID, day, routineID)
+		if !jsonfile.ValidID(planID) {
+			return fmt.Errorf("%w fitness profile %s: %s has bad plan ID %q", ErrInvalid, p.UserID, day, planID)
 		}
 	}
 	if p.WeightPromptSkipped != "" && !validISOWeek(p.WeightPromptSkipped) {

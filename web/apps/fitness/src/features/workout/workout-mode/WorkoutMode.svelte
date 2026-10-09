@@ -13,7 +13,7 @@
   import { onDestroy, onMount, tick } from 'svelte'
   import { getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import type { Profile } from '@/features/profiles/types'
-  import { getRoutines } from '@/features/routines'
+  import { getPlans } from '@/features/plans'
   import { RestTimer } from '@/features/workout/rest-timer'
   import {
     getRecentSessions,
@@ -60,18 +60,18 @@
   async function load() {
     status = 'loading'
     try {
-      const [history, routines] = await Promise.all([getRecentSessions(profile.id), getRoutines()])
+      const [history, plans] = await Promise.all([getRecentSessions(profile.id), getPlans()])
       const s = history.find((h) => h.id === sessionId)
       if (!s) {
         status = 'missing'
         return
       }
-      const routine = routines.find((r) => r.id === s.routine_id)
+      const plan = plans.find((r) => r.id === s.plan_id)
       const exercises = await Promise.all(s.entries.map((e) => getExercise(e.exercise_id).catch(() => null)))
 
       steps = s.entries.map((entry, i) => {
         const last = lastSets(history, entry.exercise_id, s.id)
-        const suggested = routine?.exercises.find((r) => r.exercise_id === entry.exercise_id)?.suggested_sets
+        const suggested = plan?.exercises.find((r) => r.exercise_id === entry.exercise_id)?.suggested_sets
         const planned = Math.max(entry.sets.length, suggested ?? (last.length || DEFAULT_SETS))
         // Done sets keep their values; the rest are pre-filled from last time.
         const rows = Array.from({ length: planned }, (_, n): Row => {

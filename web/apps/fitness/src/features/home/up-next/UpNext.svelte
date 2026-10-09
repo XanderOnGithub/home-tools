@@ -1,5 +1,5 @@
 <!--
-  "Today": the hero of home. What the weekly schedule says for today
+  "Today": the hero of home. What the person's routine (weekly schedule) says for today
   (decision #27) in large type on the person's color, with the first few
   exercises; a rest day shows what's next instead.
 -->
@@ -8,7 +8,7 @@
   import { getExercise } from '@/features/exercises'
   import type { FitnessProfile } from '@/features/fitness-profile'
   import type { Profile } from '@/features/profiles/types'
-  import type { Routine } from '@/features/routines'
+  import type { Plan } from '@/features/plans'
   import { startSession, type Session } from '@/features/sessions'
   import { router } from '@/router'
 
@@ -16,24 +16,24 @@
     profile,
     fitness,
     sessions,
-    routines,
+    plans,
     active,
   }: {
     profile: Profile
     fitness: FitnessProfile
     sessions: Session[]
-    routines: Routine[]
+    plans: Plan[]
     active: Session | undefined // an unfinished workout, if any
   } = $props()
 
   let starting = $state(false)
   let startError = $state('')
 
-  async function start(routine: Routine) {
+  async function start(plan: Plan) {
     starting = true
     startError = ''
     try {
-      const s = await startSession(profile.id, routine.id, routine.exercises.map((e) => e.exercise_id))
+      const s = await startSession(profile.id, plan.id, plan.exercises.map((e) => e.exercise_id))
       router.navigate(`/workout/${s.id}`)
     } catch (err) {
       startError = `Couldn't start. ${(err as Error).message}`
@@ -44,21 +44,21 @@
   const PREVIEW = 4 // exercises listed before "+N more"
 
   const now = new Date()
-  const routineOn = (d: Date) => {
+  const planOn = (d: Date) => {
     const id = fitness.schedule?.[weekdayKey(d)]
-    return id ? routines.find((r) => r.id === id) : undefined
+    return id ? plans.find((r) => r.id === id) : undefined
   }
 
   let hasSchedule = $derived(Object.keys(fitness.schedule ?? {}).length > 0)
-  let todays = $derived(routineOn(now))
+  let todays = $derived(planOn(now))
   let doneToday = $derived(sessions.some((s) => isoDate(new Date(s.started_at)) === isoDate(now)))
 
   // Next planned day after today, within the coming week.
   let next = $derived.by(() => {
     for (let i = 1; i <= 7; i++) {
       const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
-      const r = routineOn(d)
-      if (r) return { routine: r, day: i === 1 ? 'tomorrow' : d.toLocaleDateString(undefined, { weekday: 'long' }) }
+      const r = planOn(d)
+      if (r) return { plan: r, day: i === 1 ? 'tomorrow' : d.toLocaleDateString(undefined, { weekday: 'long' }) }
     }
     return null
   })
@@ -80,13 +80,13 @@
   {#if active}
     <!-- An unfinished workout always comes first. -->
     <h2 class="title">Workout in progress</h2>
-    <p class="meta">{routines.find((r) => r.id === active.routine_id)?.name ?? 'Workout'}</p>
+    <p class="meta">{plans.find((r) => r.id === active.plan_id)?.name ?? 'Workout'}</p>
     <a class="btn btn-primary start" href="/workout/{active.id}">Resume workout</a>
   {:else}
 
   {#if !hasSchedule}
-    <h2 class="title">No plan yet</h2>
-    <p class="meta">Pick a routine for each day in <a href="/routines">Routines</a>.</p>
+    <h2 class="title">No routine yet</h2>
+    <p class="meta">Set up your routine in <a href="/plans">Plans</a>.</p>
   {:else if todays}
     <h2 class="title">{todays.name}</h2>
     <p class="meta">
@@ -107,7 +107,7 @@
   {:else}
     <h2 class="title">Rest day</h2>
     {#if next}
-      <p class="meta">Next: {next.routine.name}, {next.day}</p>
+      <p class="meta">Next: {next.plan.name}, {next.day}</p>
     {/if}
   {/if}
   {#if todays && !doneToday}

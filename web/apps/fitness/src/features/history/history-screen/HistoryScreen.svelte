@@ -1,19 +1,19 @@
 <!-- Past workouts, newest first. -->
 <script lang="ts">
   import type { Profile } from '@/features/profiles/types'
-  import { getRoutines, type Routine } from '@/features/routines'
+  import { getPlans, type Plan } from '@/features/plans'
   import { getRecentSessions, type Session } from '@/features/sessions'
 
   let { profile }: { profile: Profile } = $props()
 
   let sessions = $state<Session[]>([])
-  let routines = $state<Routine[]>([])
+  let plans = $state<Plan[]>([])
   let status = $state<'loading' | 'ready' | 'error'>('loading')
 
   async function load() {
     status = 'loading'
     try {
-      ;[sessions, routines] = await Promise.all([getRecentSessions(profile.id), getRoutines()])
+      ;[sessions, plans] = await Promise.all([getRecentSessions(profile.id), getPlans()])
       status = 'ready'
     } catch (err) {
       console.error('Loading history failed:', err)
@@ -22,7 +22,7 @@
   }
   load()
 
-  const title = (s: Session) => routines.find((r) => r.id === s.routine_id)?.name ?? 'Workout'
+  const title = (s: Session) => plans.find((r) => r.id === s.plan_id)?.name ?? 'Workout'
   const when = (s: Session) =>
     new Date(s.started_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' })
   const minutes = (s: Session) =>
