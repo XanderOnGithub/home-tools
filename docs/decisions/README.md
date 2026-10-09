@@ -16,6 +16,7 @@ costs, what was rejected. Smaller decisions live only in the decision log
 | [0008](0008-docker-with-bind-mounted-data.md) | One Docker image; data in a bind-mounted host folder | #31 |
 | [0009](0009-ci-images-on-ghcr.md) | CI publishes public multi-arch images; ZimaOS pulls them | #32 |
 | [0010](0010-vocabulary-plan-routine-workout.md) | Vocabulary: Plan, Routine, Workout | #33 |
+| [0011](0011-docker-access-via-socket-proxy.md) | Game servers via the Docker API, through a filtered socket proxy | #37 |
 
 ## Writing a new one
 Copy this, number it next, keep it under a page:

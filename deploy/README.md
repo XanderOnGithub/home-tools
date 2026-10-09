@@ -65,7 +65,8 @@ Once, over SSH and in ZimaOS:
        valheim.json    {"id": "valheim", "name": "Valheim", "game": "valheim", "container": "<name from step 4>"}
 
 6. UniFi: DNS record `games.<domain>` → the server's LAN IP.
-7. Check: `https://games.<domain>/api/servers` lists both with a `state`.
+7. Check: `https://games.<domain>` shows both servers as Running or
+   Stopped (not "Unavailable"), and a server's page shows its live log.
 
 ## Update
 Merge to `main` → wait for the "images" workflow (GitHub → Actions) →

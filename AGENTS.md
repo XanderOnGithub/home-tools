@@ -77,7 +77,7 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
     docs/adding-a-tool.md  checklist for the next tool
     data/                  runtime JSON (gitignored)
     tools/games/           Go package: game servers via the Docker API (socket proxy)
-    later: web/apps/games/
+    web/apps/games/        @home-tools/games (Vite SPA) + embed.go
 
 Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 "@home-tools/fitness" is an *import path*
@@ -140,7 +140,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
-ADRs exist for #3–#6, #8–#10, #24, #31–#33).
+ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37).
 
 ## 5. Tool briefs (scope, not specs)
 ### Fitness (`fitness.<domain>`): mostly CRUD
@@ -155,7 +155,7 @@ ADRs exist for #3–#6, #8–#10, #24, #31–#33).
 - **Routine:** per person, which plan on which weekday (#33).
 - **Progress:** derived from sessions (and snapshots) for charts per exercise/user.
 
-### Game Server Manager (`games.<domain>`)
+### Game Server Manager (`games.<domain>`): v1 built (#37), see `tools/games/AGENTS.md`
 - Servers: Valheim + Minecraft as Docker containers on ZimaOS.
 - Start / stop / restart via the Docker Engine API (unix socket).
 - Live logs (stream to browser; SSE or WebSocket, decide later).
@@ -195,19 +195,21 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 ## 7. Status (2026-10-08)
 Live at `https://fitness.<domain>` on ZimaOS (#31, #32). History of how it
 got here: `git log`.
-- **Done:** shared profiles (picker, manage mode, blob avatars, accent
+- **Done:** host routing (`-tool` for dev); `@home-tools/ui`; shared profiles (picker, manage mode, blob avatars, accent
   colors); fitness onboarding (height, weight); home (Today card, this
   week, weekly weight check-in); plans + routine planner; workout mode
   (pre-filled sets, rest timer + chime, photo demo + how-to, cardio with
   optional distance, add exercises, empty workouts, discard); history
   list; HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
   adding-a-tool).
-- **Not built yet:** Progress (charts per exercise); `@home-tools/ui`;
-  tool #2 (in progress on `feature/games`: host routing done).
+- **Games (#37, ADR 0011):** server list with live status,
+  start/stop/restart, live logs (SSE), via the socket proxy. Tested against
+  a fake Docker API; not yet run against the real server.
+- **Not built yet:** Progress (charts per exercise); games players online,
+  console commands, permissions, server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
-- **Next:** tool #2, the game server manager (§5), via
-  `docs/adding-a-tool.md`.
+- **Next:** deploy games (`deploy/README.md` "Games"), then players online.
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
