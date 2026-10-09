@@ -253,6 +253,14 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   = the blob for seed "gym" in light green (bigger eyes for 16 px),
   generated from the avatar code: `pnpm --filter @home-tools/fitness
   favicon` (`scripts/favicon/`, needs Chrome for the PNG).
+  Plans/workouts (#33–#35): Routine→Plan rename, start any plan or an
+  empty workout, "+ Add exercise", discard (archive) from the Today
+  card, 409 on same-second sessions, rest per plan exercise, min/sec and
+  distance inputs, rest chime. Workout mode shows the exercise's two
+  photos full width as a looping crossfade (start ↔ end position;
+  pausable, still with reduced motion; `features/exercises/
+  exercise-photos`) and a collapsed "How to do it" with the
+  instructions.
 
 
 ## 8. Improvements (later, not urgent)
