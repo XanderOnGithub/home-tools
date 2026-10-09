@@ -156,10 +156,10 @@
 
     <div class="actions">
       {#if step > 0}
-        <button type="button" class="button button-quiet" onclick={() => goTo(step - 1)}>Back</button>
+        <button type="button" class="btn btn-quiet" onclick={() => goTo(step - 1)}>Back</button>
       {/if}
       <span class="spacer"></span>
-      <button type="submit" class="button button-primary" disabled={saving}>
+      <button type="submit" class="btn btn-primary" disabled={saving}>
         {#if step < STEPS - 1}Continue{:else if saving}Saving…{:else}Let's go{/if}
       </button>
     </div>
@@ -327,44 +327,6 @@
 
   .spacer {
     flex: 1;
-  }
-
-  .button {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-5);
-    border: none;
-    border-radius: var(--radius-full);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-
-  .button-primary {
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-  }
-
-  .button-quiet {
-    background: none;
-    color: var(--color-text-muted);
-  }
-
-  @media (hover: hover) {
-    .button-primary:hover {
-      background: var(--color-accent-hover);
-    }
-    .button-quiet:hover {
-      color: var(--color-text);
-    }
-  }
-
-  .button-primary:active {
-    background: var(--color-accent-pressed);
-  }
-
-  .button:disabled {
-    cursor: progress;
-    opacity: 0.7;
   }
 
   @media (min-width: 40rem) {

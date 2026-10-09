@@ -113,7 +113,7 @@
   {#if status === 'error'}
     <div class="profile-error" role="alert">
       <p>Couldn't load profiles. Check that the server is running.</p>
-      <button type="button" class="retry-button" onclick={load}>Try again</button>
+      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
     </div>
   {:else if status === 'ready'}
     <ul class="profile-list">
@@ -168,7 +168,7 @@
             <li class="archived-row" data-accent={user.color}>
               <span class="archived-avatar"><ProfileAvatar id={user.id} /></span>
               <span class="archived-name">{user.name}</span>
-              <button type="button" class="quiet-button" onclick={() => restore(user)}>
+              <button type="button" class="btn btn-quiet" onclick={() => restore(user)}>
                 Restore<span class="visually-hidden"> {user.name}</span>
               </button>
             </li>
@@ -182,7 +182,7 @@
 
     <!-- One button whose label flips, so keyboard focus stays on it. -->
     {#if users.length > 0}
-      <button type="button" class="quiet-button manage-toggle" onclick={() => (managing = !managing)}>
+      <button type="button" class="btn btn-quiet manage-toggle" onclick={() => (managing = !managing)}>
         {managing ? 'Done' : 'Manage profiles'}
       </button>
     {/if}
@@ -253,7 +253,6 @@
     width: 100%;
     height: 100%;
   }
-
 
   /* Names are quiet until you point at them, so the colors lead. */
   .profile-name {
@@ -328,28 +327,6 @@
     gap: var(--space-4);
   }
 
-  .retry-button {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-5);
-    border: none;
-    border-radius: var(--radius-full);
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) {
-    .retry-button:hover {
-      background: var(--color-accent-hover);
-    }
-  }
-
-  .retry-button:active {
-    background: var(--color-accent-pressed);
-  }
-
   /* Pencil in manage mode: a small badge on the avatar's lower right. */
   .edit-badge {
     position: absolute;
@@ -373,24 +350,6 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  .quiet-button {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-4);
-    border: none;
-    border-radius: var(--radius-full);
-    background: none;
-    color: var(--color-text-muted);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-    transition: color var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) {
-    .quiet-button:hover {
-      color: var(--color-text);
-    }
   }
 
   .manage-toggle {

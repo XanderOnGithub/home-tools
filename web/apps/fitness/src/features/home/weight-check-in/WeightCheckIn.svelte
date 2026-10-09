@@ -78,8 +78,8 @@
       <input id="check-in-weight" type="text" inputmode="decimal" maxlength="5" bind:value autocomplete="off" />
       <span class="unit">{unit}</span>
     </span>
-    <button type="submit" class="button primary" disabled={busy}>Save</button>
-    <button type="button" class="button quiet" onclick={skip} disabled={busy}>Skip</button>
+    <button type="submit" class="btn btn-primary" disabled={busy}>Save</button>
+    <button type="button" class="btn btn-quiet" onclick={skip} disabled={busy}>Skip</button>
   </span>
   {#if error}
     <p class="error" role="alert">{error}</p>
@@ -147,43 +147,5 @@
     flex-basis: 100%;
     margin: 0;
     color: var(--color-danger-text);
-  }
-
-  .button {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-4);
-    border: none;
-    border-radius: var(--radius-full);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-    transition: background var(--duration-fast) var(--ease-out);
-  }
-
-  .primary {
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-  }
-
-  .quiet {
-    background: none;
-    color: var(--color-text-muted);
-  }
-
-  @media (hover: hover) {
-    .primary:hover {
-      background: var(--color-accent-hover);
-    }
-    .quiet:hover {
-      color: var(--color-text);
-    }
-  }
-
-  .primary:active {
-    background: var(--color-accent-pressed);
-  }
-
-  .button:disabled {
-    cursor: progress;
-    opacity: 0.7;
   }
 </style>

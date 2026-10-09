@@ -34,7 +34,7 @@
 {#if status === 'error'}
   <div role="alert">
     <p>Couldn't load your workouts. Check that the server is running.</p>
-    <button type="button" class="retry" onclick={load}>Try again</button>
+    <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
   </div>
 {:else if status === 'ready' && sessions.length === 0}
   <p class="muted">No workouts logged yet.</p>
@@ -89,16 +89,5 @@
 
   .name {
     font-weight: var(--weight-semibold);
-  }
-
-  .retry {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-5);
-    border: none;
-    border-radius: var(--radius-full);
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
   }
 </style>

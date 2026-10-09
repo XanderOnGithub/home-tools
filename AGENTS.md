@@ -270,9 +270,6 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
 - Muscle recovery map (own screen): per-muscle fatigue computed from recent
   sessions × exercise `activation`, decaying over days; "needs rest" view.
-- Older components (picker, profile dialog, onboarding, check-in, menu) still
-  define their own button styles; move them to the shared `.btn` classes
-  in `app.css`.
 - Workout mode: a mute toggle for the rest chime, if it turns out to be
   annoying in a shared gym.
 - Profile picker → app: a smooth wipe transition in the chosen person's

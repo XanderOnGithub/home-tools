@@ -78,8 +78,8 @@
 {:else if status === 'error'}
   <main class="center">
     <p role="alert">Couldn't load your fitness profile. Check that the server is running.</p>
-    <button type="button" class="retry" onclick={() => profile && choose(profile)}>Try again</button>
-    <button type="button" class="retry quiet" onclick={switchProfile}>Switch profile</button>
+    <button type="button" class="btn btn-primary" onclick={() => profile && choose(profile)}>Try again</button>
+    <button type="button" class="btn btn-quiet" onclick={switchProfile}>Switch profile</button>
   </main>
 {:else if status === 'ready' && !fitness}
   <OnboardingFlow {profile} oncomplete={(fp) => (fitness = fp)} />
@@ -115,21 +115,5 @@
     min-height: 100dvh;
     padding: var(--space-4);
     text-align: center;
-  }
-
-  .retry {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-5);
-    border: none;
-    border-radius: var(--radius-full);
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-  }
-
-  .retry.quiet {
-    background: none;
-    color: var(--color-text-muted);
   }
 </style>
