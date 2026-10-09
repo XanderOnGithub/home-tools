@@ -12,6 +12,7 @@ in the UI = **Session** in the code.
 | `model.go` | Types and enums: Exercise, Plan, Session, Set, Profile, WeightEntry. Start here. |
 | `validate.go` | Each type's own rules (`Validate`), with `ErrInvalid` / `ErrConflict`. |
 | `store.go` | `Store`: loads everything at `Open`, serves reads from memory, writes through to JSON. Exercises, plans, sessions. |
+| `progress.go` | Progress reads (#39): exercise log + one exercise's all-time history. |
 | `body.go` | Fitness profile (`fitness.json`, incl. the routine) and the weight log. |
 | `handlers.go` | HTTP API (`Register`). |
 | `fedb.go` | free-exercise-db → Exercise mapping (`fedbMetrics`, holds, distance cardio). |
@@ -21,7 +22,7 @@ The UI is `web/apps/fitness` (Svelte); its `src/features/<feature>/`
 folders mirror these concepts: `exercises` (catalog, picker, photos),
 `plans` (list, editor, routine planner), `sessions` (API + helpers),
 `workout` (workout mode, start dialog, rest timer, chime), `home`,
-`history`, `onboarding`, `fitness-profile`, `profiles` (shared picker,
+`progress` (summary, weight + exercise charts, workout list), `onboarding`, `fitness-profile`, `profiles` (shared picker,
 avatar blob), `shell` (layout, nav).
 
 ## Data on disk (`data/fitness/`)

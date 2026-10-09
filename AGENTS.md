@@ -201,19 +201,19 @@ got here: `git log`.
   colors); fitness onboarding (height, weight); home (Today card, this
   week, weekly weight check-in); plans + routine planner; workout mode
   (pre-filled sets, rest timer + chime, photo demo + how-to, cardio with
-  optional distance, add exercises, empty workouts, discard); history
-  list; HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
+  optional distance, add exercises, empty workouts, discard); HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
   adding-a-tool).
 - **Games (#37, #38, ADR 0011):** server cards with status and players,
   ⋯ menu for start/stop/restart, server page with players and live log;
   runs on the real server via the socket proxy. Minecraft players via
   RCON set up on the server (2026-10-09); Valheim's query doesn't answer (§8).
-- **Not built yet:** Progress (charts per exercise); games console
-  commands, permissions, server config editor.
+- **Progress (#39):** summary, weight chart, per-exercise journeys
+  (chart, records, every workout's sets), recent workouts. Replaces History.
+- **Not built yet:** games console commands, permissions, server
+  config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
-- **Next:** Fitness Progress (charts per exercise, §8); then Valheim
-  players from the log, Minecraft console.
+- **Next:** Valheim players from the log, Minecraft console.
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
@@ -233,6 +233,3 @@ got here: `git log`.
 - Games, Minecraft console: send commands over the RCON connection that
   already works (`say`, `whitelist add`, …) from the server page; needs a
   decision on who may run what (§5 permissions).
-- Fitness Progress: charts per exercise from logged sessions (weight ×
-  reps, volume, time/distance for cardio); the last big piece of the
-  fitness brief (§5).
