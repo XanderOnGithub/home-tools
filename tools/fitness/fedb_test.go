@@ -50,6 +50,19 @@ func TestParseFreeExerciseDB(t *testing.T) {
 	}
 }
 
+func TestParseFreeExerciseDBHolds(t *testing.T) {
+	// "strength" in the dataset, but a plank is held, not repeated.
+	data := []byte(`[{"id":"Plank","name":"Plank","level":"beginner","equipment":"body only",
+	 "primaryMuscles":["abdominals"],"secondaryMuscles":[],"instructions":[],"category":"strength","images":[]}]`)
+	got, err := ParseFreeExerciseDB(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(got[0].Metrics, []Metric{MetricDuration}) {
+		t.Errorf("plank metrics = %v, want [duration]", got[0].Metrics)
+	}
+}
+
 func TestParseFreeExerciseDBRejectsUnknown(t *testing.T) {
 	tests := map[string]string{
 		"equipment": `[{"id":"x","name":"X","level":"beginner","equipment":"spaceship","primaryMuscles":["chest"],"category":"strength"}]`,

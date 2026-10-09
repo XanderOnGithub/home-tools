@@ -47,10 +47,20 @@ var fedbEquipment = map[string]Equipment{
 // weight is optional (0 = bodyweight only).
 var fedbBodyweight = []string{"body only", "other", "", "bands", "exercise ball", "foam roll"}
 
+// fedbHolds are static holds the dataset files under "strength": timed,
+// not counted in reps.
+var fedbHolds = []string{
+	"Plank",
+	"Side_Bridge", // side plank
+	"Isometric_Neck_Exercise_-_Front_And_Back",
+	"Isometric_Neck_Exercise_-_Sides",
+}
+
 // ParseFreeExerciseDB converts free-exercise-db's dist/exercises.json into
 // validated exercises. Mapping:
 //   - primary muscles → activation 1.0, secondary → 0.5
-//   - stretching and cardio track duration; everything else reps + weight
+//   - stretching, cardio and static holds (fedbHolds) track duration;
+//     everything else reps + weight
 //   - bodyweight-style equipment makes weight optional
 //
 // Any value outside the dataset's known vocabulary is an error, so a
@@ -93,8 +103,8 @@ func (r fedbExercise) toExercise() (Exercise, error) {
 		ex.Equipment = []Equipment{eq}
 	}
 
-	switch ex.Category {
-	case CategoryStretching, CategoryCardio:
+	switch {
+	case ex.Category == CategoryStretching, ex.Category == CategoryCardio, slices.Contains(fedbHolds, r.ID):
 		ex.Metrics = []Metric{MetricDuration}
 	default:
 		ex.Metrics = []Metric{MetricReps, MetricWeight}
