@@ -3,6 +3,9 @@
 //
 //	go run ./cmd/home-tools -addr :8080 -data data            # route by subdomain
 //	go run ./cmd/home-tools -tool fitness                     # local dev: one tool on every host
+//
+// The Discord bot's token comes from the DISCORD_TOKEN environment
+// variable (a secret: never a flag, which shows up in `ps`).
 package main
 
 import (
@@ -12,6 +15,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,8 +27,10 @@ import (
 	"github.com/XanderOnGithub/home-tools/internal/hostroute"
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
 	"github.com/XanderOnGithub/home-tools/internal/users"
+	"github.com/XanderOnGithub/home-tools/tools/discord"
 	"github.com/XanderOnGithub/home-tools/tools/fitness"
 	"github.com/XanderOnGithub/home-tools/tools/games"
+	discordweb "github.com/XanderOnGithub/home-tools/web/apps/discord"
 	fitnessweb "github.com/XanderOnGithub/home-tools/web/apps/fitness"
 	gamesweb "github.com/XanderOnGithub/home-tools/web/apps/games"
 )
@@ -35,6 +41,7 @@ type config struct {
 	dataDir string // one subfolder per tool
 	tool    string // serve only this tool (local dev); "" = route by subdomain
 	docker  string // Docker API socket for games (the socket proxy's); "" = none
+	games   string // games API base URL for the Discord bot; "" = this server
 }
 
 func main() {
@@ -43,6 +50,7 @@ func main() {
 	flag.StringVar(&cfg.dataDir, "data", "data", "data folder (one subfolder per tool)")
 	flag.StringVar(&cfg.tool, "tool", "", "serve only this tool, on every host (local dev: localhost has no subdomain); empty = route by subdomain")
 	flag.StringVar(&cfg.docker, "docker", "", "Docker API unix socket for the games tool (the socket proxy's); empty = games can't see or control servers")
+	flag.StringVar(&cfg.games, "games-url", "", "games API the Discord bot calls (e.g. http://127.0.0.1:8081 in local dev); empty = this server")
 	flag.Parse()
 
 	log := slog.New(slog.NewTextHandler(os.Stderr, nil))
@@ -76,6 +84,15 @@ func run(cfg config, log *slog.Logger) error {
 	if cfg.docker != "" {
 		docker = games.NewDocker(cfg.docker)
 	}
+	discordStore, err := discord.Open(filepath.Join(cfg.dataDir, "discord"))
+	if err != nil {
+		return fmt.Errorf("open discord store: %w", err)
+	}
+	gamesURL := cfg.games
+	if gamesURL == "" {
+		gamesURL = localURL(cfg.addr)
+	}
+	bot := discord.NewBot(os.Getenv("DISCORD_TOKEN"), discordStore, discord.NewGamesHTTP(gamesURL), log)
 	log.Info("stores loaded", "users", len(us.Users()), "exercises", len(store.Exercises()), "plans", len(store.Plans()))
 
 	// Each tool gets its own mux on its own subdomain (#5, ADR 0003).
@@ -85,6 +102,9 @@ func run(cfg config, log *slog.Logger) error {
 	}))
 	tools.Handle("games", toolMux(us, gamesweb.Dist, log, func(mux *http.ServeMux) {
 		games.Register(mux, gameServers, docker, log)
+	}))
+	tools.Handle("discord", toolMux(us, discordweb.Dist, log, func(mux *http.ServeMux) {
+		discord.Register(mux, discordStore, bot, log)
 	}))
 	if cfg.tool != "" && !slices.Contains(tools.Names(), cfg.tool) {
 		return fmt.Errorf("-tool %q: no such tool (have %v)", cfg.tool, tools.Names())
@@ -108,13 +128,23 @@ func run(cfg config, log *slog.Logger) error {
 		IdleTimeout:       2 * time.Minute,
 	}
 
-	// ListenAndServe blocks, so it runs in a goplan while this one
+	// ListenAndServe blocks, so it runs in a goroutine while this one
 	// waits for either a server failure or a shutdown signal.
 	errc := make(chan error, 1)
 	go func() {
 		log.Info("listening", "addr", cfg.addr)
 		errc <- srv.ListenAndServe()
 	}()
+
+	// The bot runs until ctx ends (Ctrl-C, docker stop), then disconnects.
+	botDone := make(chan struct{})
+	go func() {
+		defer close(botDone)
+		bot.Run(ctx)
+	}()
+	// stop() cancels ctx, so this never waits on a bot that's still running
+	// (e.g. when the server fails to start).
+	defer func() { stop(); <-botDone }()
 
 	select {
 	case err := <-errc:
@@ -134,6 +164,19 @@ func run(cfg config, log *slog.Logger) error {
 		return err
 	}
 	return nil
+}
+
+// localURL is this server's own address, for calls to itself:
+// ":8080" → "http://127.0.0.1:8080".
+func localURL(addr string) string {
+	host, port, err := net.SplitHostPort(addr)
+	if err != nil {
+		return "http://" + addr
+	}
+	if host == "" || host == "0.0.0.0" || host == "::" {
+		host = "127.0.0.1"
+	}
+	return "http://" + net.JoinHostPort(host, port)
 }
 
 // toolMux builds one tool's mux: the shared profiles API (every tool shows
