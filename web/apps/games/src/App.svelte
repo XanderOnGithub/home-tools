@@ -34,7 +34,7 @@
 
 {#if !profile}
   <main>
-    <ProfilePicker onselect={(p) => (profile = p)} />
+    <ProfilePicker onselect={(p) => (profile = p)} title="Who's playing?" />
   </main>
 {:else}
   <header class="top">

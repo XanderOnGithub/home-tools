@@ -74,7 +74,7 @@
 
 {#if !profile}
   <main>
-    <ProfilePicker onselect={choose} />
+    <ProfilePicker onselect={choose} title="Who's working out?" />
   </main>
 {:else if status === 'error'}
   <main class="center">
