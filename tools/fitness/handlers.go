@@ -28,9 +28,10 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	// with h already bound, like .bind(this) in JS.
 	mux.HandleFunc("GET /api/exercises/{id}", h.getExercise)
 	mux.HandleFunc("GET /api/exercises", h.getExercises)
-	mux.HandleFunc("PUT /api/exercises/{id}", h.putExercise)
+	mux.HandleFunc("PUT /api/exercises/{id}", httpx.PutByID(log, func(e Exercise) string { return e.ID }, store.SaveExercise, ErrInvalid))
 	mux.HandleFunc("GET /api/plans", h.getPlans)
-	mux.HandleFunc("PUT /api/plans/{id}", h.putPlan)
+	// SavePlan also rejects unknown exercise IDs with ErrInvalid → 400.
+	mux.HandleFunc("PUT /api/plans/{id}", httpx.PutByID(log, func(p Plan) string { return p.ID }, store.SavePlan, ErrInvalid))
 	// Profiles themselves (GET/PUT /api/users) come from internal/users.
 	mux.HandleFunc("GET /api/users/{user}/sessions", h.getSessions)
 	mux.HandleFunc("POST /api/users/{user}/sessions", h.postSession)
@@ -74,39 +75,6 @@ func (h *handlers) getExercise(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, ex)
 }
 
-// putExercise creates or replaces the exercise at /api/exercises/{id}.
-// PUT, not POST: the client names the resource, and sending the same body
-// twice leaves the same result (idempotent), matching SaveExercise.
-// Archiving is a PUT with "archived": true.
-func (h *handlers) putExercise(w http.ResponseWriter, r *http.Request) {
-	var ex Exercise
-	if err := httpx.DecodeJSON(w, r, &ex); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	// The URL says which file gets written; the body must agree, or a PUT
-	// to /squat could silently overwrite /deadlift.
-	if id := r.PathValue("id"); ex.ID != id {
-		httpx.WriteError(w, http.StatusBadRequest, "body id "+ex.ID+" does not match URL id "+id)
-		return
-	}
-
-	if err := h.store.SaveExercise(ex); err != nil {
-		// errors.Is walks the %w chain: the store wraps ErrInvalid with
-		// details, so this matches any validation failure. That message
-		// was written for users; anything else (disk full, permissions)
-		// is ours, so the client gets a generic 500 and the log gets it all.
-		if errors.Is(err, ErrInvalid) {
-			httpx.WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		httpx.ServerError(w, r, h.log, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, ex)
-}
-
 // getExercises returns all exercises, or 200 if no exercises are found
 func (h *handlers) getExercises(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, h.store.Exercises())
@@ -116,30 +84,6 @@ func (h *handlers) getExercises(w http.ResponseWriter, r *http.Request) {
 // An empty list is still a success: 200 with [].
 func (h *handlers) getPlans(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, h.store.Plans())
-}
-
-// putPlan creates or replaces the plan at /api/plans/{id}.
-// Same shape as putExercise; SavePlan also rejects unknown exercise
-// IDs with ErrInvalid, so those become 400s through the same check.
-func (h *handlers) putPlan(w http.ResponseWriter, r *http.Request) {
-	var rt Plan // not "r": that name is taken by the request
-	if err := httpx.DecodeJSON(w, r, &rt); err != nil {
-		httpx.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-	if id := r.PathValue("id"); rt.ID != id {
-		httpx.WriteError(w, http.StatusBadRequest, "body id "+rt.ID+" does not match URL id "+id)
-		return
-	}
-	if err := h.store.SavePlan(rt); err != nil {
-		if errors.Is(err, ErrInvalid) {
-			httpx.WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-		httpx.ServerError(w, r, h.log, err)
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, rt)
 }
 
 // getSessions returns the user's most recent non-archived sessions, newest
