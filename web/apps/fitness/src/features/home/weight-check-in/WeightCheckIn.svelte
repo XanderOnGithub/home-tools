@@ -5,15 +5,15 @@
 -->
 <script lang="ts">
   import { untrack } from 'svelte'
-  import { isoWeek, today } from '@/dates'
+  import { isoWeek, today } from '@home-tools/ui/dates'
   import {
     saveFitnessProfile,
     saveWeight,
     type FitnessProfile,
     type WeightEntry,
   } from '@/features/fitness-profile'
-  import type { Profile } from '@/features/profiles/types'
-  import { kgToLb, lbToKg, parseNumber } from '@/units'
+  import type { Profile } from '@home-tools/ui/profiles/types'
+  import { kgToLb, lbToKg, parseNumber } from '@home-tools/ui/units'
 
   let {
     profile,

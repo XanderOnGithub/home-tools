@@ -19,11 +19,11 @@
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
-  import { LoadError } from '@/components/load-error'
+  import { LoadError } from '@home-tools/ui/components/load-error'
   import { getCatalog, getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePhotos } from '@/features/exercises/exercise-photos'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
-  import type { Profile } from '@/features/profiles/types'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import { DEFAULT_REST_SEC, getPlans, type Plan } from '@/features/plans'
   import { playChime, unlockChime } from '@/features/workout/chime'
   import { RestTimer } from '@/features/workout/rest-timer'
@@ -34,8 +34,8 @@
     type Session,
     type SetEntry,
   } from '@/features/sessions'
-  import { router } from '@/router'
-  import { formatDuration, kgToLb, kmToM, lbToKg, miToM, mToKm, mToMi, parseNumber } from '@/units'
+  import { router } from '@home-tools/ui/router'
+  import { formatDuration, kgToLb, kmToM, lbToKg, miToM, mToKm, mToMi, parseNumber } from '@home-tools/ui/units'
   import { keepScreenOn } from '@/wake-lock'
 
   let { profile, sessionId }: { profile: Profile; sessionId: string } = $props()

@@ -10,9 +10,9 @@
 -->
 <script lang="ts">
   import { tick, type Snippet } from 'svelte'
-  import { ProfileMenu } from '@/features/profiles/profile-menu'
-  import type { Profile } from '@/features/profiles/types'
-  import { router } from '@/router'
+  import { ProfileMenu } from '@home-tools/ui/profiles/profile-menu'
+  import type { Profile } from '@home-tools/ui/profiles/types'
+  import { router } from '@home-tools/ui/router'
 
   let { profile, onswitch, children }: { profile: Profile; onswitch: () => void; children: Snippet } =
     $props()

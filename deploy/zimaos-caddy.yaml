@@ -1,4 +1,4 @@
-# ZimaOS app 2 of 2: HTTPS in front of home-tools (decisions #8, #9).
+# ZimaOS app 2 of 3: HTTPS in front of home-tools (decisions #8, #9).
 # Fill in the <...> values in the gitignored copy zimaos-caddy.local.yaml
 # (it contains the Cloudflare token), then paste that into Custom Install.
 name: home-tools-caddy

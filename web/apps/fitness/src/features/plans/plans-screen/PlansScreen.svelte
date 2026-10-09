@@ -4,10 +4,10 @@
   or edit a plan; each person's routine decides which plan falls on which day.
 -->
 <script lang="ts">
-  import { LoadError } from '@/components/load-error'
-  import { api } from '@/api'
+  import { LoadError } from '@home-tools/ui/components/load-error'
+  import { api } from '@home-tools/ui/api'
   import type { FitnessProfile } from '@/features/fitness-profile'
-  import type { Profile } from '@/features/profiles/types'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
   import { WeekPlanner } from '@/features/plans/week-planner'
 

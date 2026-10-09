@@ -11,15 +11,12 @@ to do because fitness was alone until now.
 - [ ] Record the decisions in the log (`AGENTS.md` §4); big ones get an ADR
       (`docs/decisions/`).
 
-## 1. Host routing (first time only)
-`cmd/home-tools/main.go` mounts everything on one mux and serves the
-fitness UI for every host (`TODO(#5)`).
-- [ ] One `http.ServeMux` per tool, chosen by the request's `Host`
-      (`fitness.` → fitness, `games.` → games). `/healthz` and
-      `/api/users` on every host.
-- [ ] Decide how local dev picks a tool (`localhost` has no subdomain),
-      e.g. a `-tool` flag or `<name>.localhost` hostnames.
-- [ ] Unknown host → 404. Table test for the router.
+## 1. Host routing (done, 2026-10-08)
+`internal/hostroute` picks a tool's mux by subdomain; `main.go` builds each
+tool's mux with `toolMux` (shared `/api/users`, the tool's API, its UI).
+Local dev: `-tool <name>` (`make run TOOL=<name>`).
+- [ ] Mount the new tool: `tools.Handle("<name>", toolMux(...))` in
+      `main.go`.
 
 ## 2. Go package `tools/<name>`
 - [ ] `model.go`, `validate.go`, `store.go`, `handlers.go`, following
@@ -32,15 +29,14 @@ fitness UI for every host (`TODO(#5)`).
 - [ ] Tests (table-driven) for rules, store and handlers.
 - [ ] In `main.go`: open its store after users, mount on its host.
 
-## 3. Shared UI package (first time only)
-ADR 0004: extract `@home-tools/ui` once a second app needs it.
-- [ ] Create `web/packages/ui` and move what isn't fitness-specific out of
-      `web/apps/fitness/src`: `tokens.css`, `app.css`, `components/`,
-      `features/profiles/`, `router/`, `api/`, `dates/`, `units/`, `ids/`,
-      `wake-lock/`.
-- [ ] Fitness imports them from `@home-tools/ui`; `pnpm --dir web check`
-      still passes; the favicon script still finds the blob code.
-- [ ] Move `web/DESIGN.md` references accordingly.
+## 3. Shared UI package (done, 2026-10-08)
+`@home-tools/ui` (`web/packages/ui`, consumed as source, no build step):
+`tokens.css`, `app.css`, `components/`, `profiles/` (picker, dialog, menu,
+avatar blob, remembered profile), `api`, `router`, `dates`, `units`, `ids`.
+- [ ] Add `"@home-tools/ui": "workspace:*"` to the new app's dependencies;
+      import `@home-tools/ui/app.css` in its `main.ts`.
+- [ ] Anything new that two apps need goes into the package (relative
+      imports inside it; apps import `@home-tools/ui/<module>`).
 
 ## 4. Web app `web/apps/<name>`
 - [ ] Copy fitness's scaffold (`package.json` as `@home-tools/<name>`,

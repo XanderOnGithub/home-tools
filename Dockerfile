@@ -12,7 +12,9 @@ RUN npm install -g pnpm@10.28.0
 WORKDIR /src/web
 # Manifests first, so dependencies are cached until they change.
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+COPY web/packages/ui/package.json packages/ui/
 COPY web/apps/fitness/package.json apps/fitness/
+COPY web/apps/games/package.json apps/games/
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
 RUN pnpm build
@@ -26,6 +28,7 @@ COPY go.mod go.sum* ./
 RUN go mod download
 COPY . .
 COPY --from=web /src/web/apps/fitness/dist web/apps/fitness/dist
+COPY --from=web /src/web/apps/games/dist web/apps/games/dist
 RUN go build -tags webembed -trimpath -ldflags="-s -w" -o /out/home-tools ./cmd/home-tools \
  && go build -trimpath -ldflags="-s -w" -o /out/fitness-import ./cmd/fitness-import
 

@@ -49,12 +49,12 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
   (`fitness.<domain>` → fitness, `games.<domain>` → games; the real
   domain is only in the deploy config, never in git).
   API under `/api/...` per host; everything else serves the tool's SPA.
-  *Not built yet:* with one tool, everything is on one mux (`TODO(#5)` in
-  `main.go`); it's step 1 of `docs/adding-a-tool.md`.
+  `internal/hostroute`; a bare IP or unknown subdomain gets a 404, and
+  `/healthz` answers on any host. Local dev: `-tool <name>` serves one
+  tool on every host (`make run TOOL=fitness`).
 - **Frontend:** Svelte + Vite, no SSR, pnpm workspaces. Packages named
   `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`
-  (`-tags webembed`). Shared UI moves to `@home-tools/ui` when a second app
-  exists.
+  (`-tags webembed`). Shared UI lives in `@home-tools/ui` (`web/packages/ui`).
 - **Storage:** JSON files under a configurable data dir (e.g. `data/<tool>/`).
   In-memory index loaded at start; mutations written atomically
   (write temp → fsync → rename); files are loaded as strictly as API input.
@@ -66,8 +66,9 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
 ### Layout
     cmd/home-tools/        main.go: open stores, mount tools, serve (flags -addr, -data)
     cmd/fitness-import/    exercise catalog importer (-fix-metrics)
-    internal/              shared Go: jsonfile, httpx, users (shared profiles)
+    internal/              shared Go: jsonfile, httpx, users (shared profiles), hostroute
     tools/fitness/         Go package: model, rules, store, API (+ its AGENTS.md)
+    web/packages/ui/       @home-tools/ui: tokens, base CSS, shared components, profiles, api/router helpers
     web/apps/fitness/      @home-tools/fitness (Vite SPA) + embed.go
     web/DESIGN.md          UI rules and shared building blocks
     deploy/                Caddy image (HTTPS), compose + ZimaOS app files, setup steps
@@ -75,7 +76,8 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
     docs/decisions/        ADRs (index in its README)
     docs/adding-a-tool.md  checklist for the next tool
     data/                  runtime JSON (gitignored)
-    later: tools/games/, web/apps/games/, web/packages/ui/
+    tools/games/           Go package: game servers via the Docker API (socket proxy)
+    web/apps/games/        @home-tools/games (Vite SPA) + embed.go
 
 Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 "@home-tools/fitness" is an *import path*
@@ -84,7 +86,7 @@ Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 `./...` never walks node_modules.
 
 ### Commands
-    make run     go run ./cmd/home-tools  (API on :8080)
+    make run     go run ./cmd/home-tools -tool $(TOOL)  (API on :8080; TOOL=fitness default)
     make web     fitness UI dev server on :5173 (proxies /api, /images to :8080)
     pnpm --dir web install | check | build   web deps, type-check, production build
     make build   → bin/home-tools (UI built in via -tags webembed)
@@ -134,10 +136,11 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 34 | Starting and discarding workouts: home's Today card has "Other workout" (or "Start a workout" when nothing is scheduled) → dialog: any plan or an **empty workout**; workout mode has "+ Add exercise" (catalog picker, appended at the end; removable until a set is logged). An in-progress workout can be **discarded** from the Today card (trash icon → inline confirm) = archived (#16) | ✅ | 2026-10-08. Xander: archive, not delete. |
 | 35 | Rest between sets: optional `rest_sec` per plan exercise (0 = default 60 s, shown as the field's placeholder; max 3600), a hint like `suggested_sets`; typed as seconds in the plan editor. In workout mode ±15 s changes that exercise's rest for the rest of the workout. Rest end: vibrate (Android) + a Web Audio chime (iOS, unlocked by the ✓ tap). Timed sets are entered as min + sec boxes, distance in km/mi per profile units | ✅ | 2026-10-08. Phone number pads have no ":" key, hence seconds / two boxes instead of "1:30". |
 | 36 | Cardio (category `cardio`) is one effort, not sets: workout mode starts it with one row (no set number), no rest timer, "+ Add interval" for more; the plan editor hides its rest field. Distance cardio (running, cycling, rowing, elliptical, skating, walking; `fedbDistance`) tracks duration + **optional** distance (Set rule: distance 0 = not measured); stair/rope/prowler time only. `SaveExercise` refuses metric changes that would invalidate logged sets. `fitness-import -fix-metrics` re-applies the import metric rules to existing free-exercise-db exercises (stop the server first) | ✅ | 2026-10-08. Fixes existing data (server) without overwriting hand edits to anything but metrics. |
+| 37 | Game server manager v1: status, start/stop/restart, live logs (players + console later). Servers are config files `data/games/servers/<id>.json` (`{id, name, game: minecraft\|valheim, container}`), one per server like every other store. Docker via its HTTP API with `net/http` over a unix socket (no SDK), through **wollomatic/socket-proxy** (own ZimaOS app; allowlist: container inspect/logs GET, start/stop/restart POST; socket in `/run/home-tools-docker`, not on a share). Logs stream as **Server-Sent Events** (last 200 lines, then live). Stop/restart wait up to 60 s for the world to save. Local dev: `-tool <name>`; host routing in `internal/hostroute` | ✅ | 2026-10-08. Xander chose file config, the proxy (the raw socket is root on the server and the app has no auth), SSE and the small v1. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
-ADRs exist for #3–#6, #8–#10, #24, #31–#33).
+ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37).
 
 ## 5. Tool briefs (scope, not specs)
 ### Fitness (`fitness.<domain>`): mostly CRUD
@@ -152,7 +155,7 @@ ADRs exist for #3–#6, #8–#10, #24, #31–#33).
 - **Routine:** per person, which plan on which weekday (#33).
 - **Progress:** derived from sessions (and snapshots) for charts per exercise/user.
 
-### Game Server Manager (`games.<domain>`)
+### Game Server Manager (`games.<domain>`): v1 built (#37), see `tools/games/AGENTS.md`
 - Servers: Valheim + Minecraft as Docker containers on ZimaOS.
 - Start / stop / restart via the Docker Engine API (unix socket).
 - Live logs (stream to browser; SSE or WebSocket, decide later).
@@ -172,7 +175,9 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - Web layout: one folder per component or module, never a loose file.
   Folders are kebab-case; Svelte files are PascalCase (Svelte components
   must be capitalized when used: `<ProfilePicker />`).
-  `src/components/<name>/` = generic UI (Button, Dialog; knows no domain).
+  Generic UI (knows no domain) and anything two apps share lives in
+  `@home-tools/ui` (`web/packages/ui/src/<module>/`); an app's own
+  generic pieces go in its `src/components/<name>/`.
   `src/features/<feature>/` = everything for one feature (its components,
   api, types, helpers), e.g. `features/profiles/profile-picker/`:
   `ProfilePicker.svelte` + `index.ts` (re-export; Vite can't resolve an
@@ -190,19 +195,21 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 ## 7. Status (2026-10-08)
 Live at `https://fitness.<domain>` on ZimaOS (#31, #32). History of how it
 got here: `git log`.
-- **Done:** shared profiles (picker, manage mode, blob avatars, accent
+- **Done:** host routing (`-tool` for dev); `@home-tools/ui`; shared profiles (picker, manage mode, blob avatars, accent
   colors); fitness onboarding (height, weight); home (Today card, this
   week, weekly weight check-in); plans + routine planner; workout mode
   (pre-filled sets, rest timer + chime, photo demo + how-to, cardio with
   optional distance, add exercises, empty workouts, discard); history
   list; HTTPS (Caddy, DNS-01); CI images on GHCR; docs (ADRs, tool guide,
   adding-a-tool).
-- **Not built yet:** Progress (charts per exercise); host routing (#5);
-  `@home-tools/ui`; tool #2.
+- **Games (#37, ADR 0011):** server list with live status,
+  start/stop/restart, live logs (SSE), via the socket proxy. Tested against
+  a fake Docker API; not yet run against the real server.
+- **Not built yet:** Progress (charts per exercise); games players online,
+  console commands, permissions, server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
-- **Next:** tool #2, the game server manager (§5), via
-  `docs/adding-a-tool.md`.
+- **Next:** deploy games (`deploy/README.md` "Games"), then players online.
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.

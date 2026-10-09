@@ -11,11 +11,11 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte'
-  import { api } from '@/api'
-  import { today } from '@/dates'
-  import { blobPath } from '@/features/profiles/blob'
-  import { ProfileAvatar } from '@/features/profiles/profile-avatar'
-  import type { Profile, ProfileColor } from '@/features/profiles/types'
+  import { api } from '../../api'
+  import { today } from '../../dates'
+  import { blobPath } from '../blob'
+  import { ProfileAvatar } from '../profile-avatar'
+  import type { Profile, ProfileColor } from '../types'
   import { COLORS, firstFreeColor, idFromName } from './utils'
 
   let {

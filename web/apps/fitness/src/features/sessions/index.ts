@@ -1,5 +1,5 @@
 // Workout sessions (Go: fitness.Session). In progress = no ended_at.
-import { api } from '@/api'
+import { api } from '@home-tools/ui/api'
 
 export type Session = {
   id: string

@@ -7,14 +7,14 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte'
-  import { isoDate, weekdayKey } from '@/dates'
+  import { isoDate, weekdayKey } from '@home-tools/ui/dates'
   import { getExercise } from '@/features/exercises'
   import type { FitnessProfile } from '@/features/fitness-profile'
-  import type { Profile } from '@/features/profiles/types'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import type { Plan } from '@/features/plans'
   import { saveSession, startSession, type Session } from '@/features/sessions'
   import { StartWorkout } from '@/features/workout/start-workout'
-  import { router } from '@/router'
+  import { router } from '@home-tools/ui/router'
 
   let {
     profile,

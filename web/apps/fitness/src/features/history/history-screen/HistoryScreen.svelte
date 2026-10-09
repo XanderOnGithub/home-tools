@@ -1,7 +1,7 @@
 <!-- Past workouts, newest first. -->
 <script lang="ts">
-  import { LoadError } from '@/components/load-error'
-  import type { Profile } from '@/features/profiles/types'
+  import { LoadError } from '@home-tools/ui/components/load-error'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
   import { getRecentSessions, type Session } from '@/features/sessions'
 

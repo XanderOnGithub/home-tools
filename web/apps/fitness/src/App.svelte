@@ -1,18 +1,18 @@
 <script lang="ts">
-  import { LoadError } from '@/components/load-error'
+  import { LoadError } from '@home-tools/ui/components/load-error'
   import { getFitnessProfile, type FitnessProfile } from '@/features/fitness-profile'
   import { HistoryScreen } from '@/features/history/history-screen'
   import { HomeScreen } from '@/features/home/home-screen'
   import { OnboardingFlow } from '@/features/onboarding/onboarding-flow'
-  import { ProfilePicker } from '@/features/profiles/profile-picker'
-  import { forgetProfile } from '@/features/profiles/remembered'
-  import type { Profile } from '@/features/profiles/types'
+  import { ProfilePicker } from '@home-tools/ui/profiles/profile-picker'
+  import { forgetProfile } from '@home-tools/ui/profiles/remembered'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import { PlanEditor } from '@/features/plans/plan-editor'
   import { PlansScreen } from '@/features/plans/plans-screen'
   import { AppShell } from '@/features/shell/app-shell'
   import { NotFound } from '@/features/shell/not-found'
   import { WorkoutMode } from '@/features/workout/workout-mode'
-  import { router } from '@/router'
+  import { router } from '@home-tools/ui/router'
 
   // Gates, in order:
   //   no profile chosen      → picker

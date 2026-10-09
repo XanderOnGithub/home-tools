@@ -1,0 +1,28 @@
+{
+  "name": "@home-tools/ui",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Shared UI for every home-tools app: tokens, base styles, components, profiles, API/router helpers. Consumed as source (Vite compiles it); no build step.",
+  "exports": {
+    "./app.css": "./src/app.css",
+    "./tokens.css": "./src/tokens.css",
+    "./profiles/types": "./src/profiles/types.ts",
+    "./*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "dependencies": {
+    "@fontsource/figtree": "5.3.0"
+  },
+  "peerDependencies": {
+    "svelte": "^5.57.0"
+  },
+  "devDependencies": {
+    "@tsconfig/svelte": "^5.0.8",
+    "svelte": "^5.57.0",
+    "svelte-check": "^4.7.6",
+    "typescript": "~6.0.2"
+  }
+}

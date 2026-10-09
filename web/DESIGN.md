@@ -1,8 +1,9 @@
 # Design rules
 
 How every home-tools UI looks and behaves. Decision #23 in `AGENTS.md`.
-Tokens live in `apps/<tool>/src/tokens.css` (moves to a shared package once
-a second app exists).
+Tokens, base styles and shared pieces live in `@home-tools/ui`
+(`web/packages/ui/src`: `tokens.css`, `app.css`, `components/`, `profiles/`);
+every app imports `@home-tools/ui/app.css` once in `main.ts`.
 
 ## 1. Tokens only
 - Components use semantic tokens: `var(--color-text)`, `var(--space-4)`.
@@ -71,11 +72,12 @@ content (long names, 50 items).
 - **Buttons:** `.btn` + one of `.btn-primary`, `.btn-secondary`,
   `.btn-quiet`, `.btn-danger`, `.btn-text-danger`, `.btn-icon` (icon only;
   needs `aria-label`). Same classes on an `<a>` that looks like a button.
-  All states (hover, pressed, disabled) are in `app.css`.
+  All states (hover, pressed, disabled) are in `@home-tools/ui/app.css`.
 - **Dialogs:** `<dialog class="dialog">` + `showModal()`. Shared look and
-  backdrop in `app.css`; the component sets only its size and padding.
+  backdrop in `@home-tools/ui/app.css`; the component sets only its size
+  and padding.
 - **Failed loads:** `<LoadError what="your week" onretry={load} />`
-  (`src/components/load-error`).
+  (`@home-tools/ui/components/load-error`).
 - **Destructive actions:** an inline confirm in place of the buttons
   ("Keep it" / red "Discard"), with focus moved to the safe choice.
 - **Screen-reader-only text:** `.visually-hidden`.

@@ -5,10 +5,10 @@
   hidden text, so it never relies on shape or color alone.
 -->
 <script lang="ts">
-  import { isoDate, weekDays, weekdayKey } from '@/dates'
+  import { isoDate, weekDays, weekdayKey } from '@home-tools/ui/dates'
   import type { FitnessProfile } from '@/features/fitness-profile'
-  import { blobPath } from '@/features/profiles/blob'
-  import type { Profile } from '@/features/profiles/types'
+  import { blobPath } from '@home-tools/ui/profiles/blob'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import type { Plan } from '@/features/plans'
   import type { Session } from '@/features/sessions'
 

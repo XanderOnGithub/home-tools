@@ -1,6 +1,6 @@
 // Exercise catalog (Go: fitness.Exercise). 876 imported from
 // free-exercise-db; photos are served at /images/<path>.
-import { api } from '@/api'
+import { api } from '@home-tools/ui/api'
 
 export type Exercise = {
   id: string

@@ -1,6 +1,6 @@
-import type { ProfileColor } from '@/features/profiles/types'
+import type { ProfileColor } from '../types'
 
-export { idFromName } from '@/ids'
+export { idFromName } from '../../ids'
 
 export const COLORS: ProfileColor[] = ['green', 'blue', 'orange', 'purple']
 

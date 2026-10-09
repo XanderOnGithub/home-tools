@@ -1,10 +1,11 @@
 // Small wrapper around fetch for the Go API. Every failure becomes an
 // ApiError whose message is safe to show a person:
-//   - 400: the server's own message (written for people, e.g. "unknown color")
+//   - our handlers' own messages, written for people (400 "unknown color",
+//     409, 502/503 "Docker isn't connected"): shown as they are
+//   - 500: generic (the real error is only in the server log)
 //   - network down: "Couldn't reach the server…"
 //   - a route the server doesn't have: "…may need a restart" (the Go server
 //     doesn't reload code by itself, so a new endpoint 404s until restarted)
-//   - anything else: a generic message (details stay in the server log)
 
 export class ApiError extends Error {
   /** HTTP status, or 0 if the server couldn't be reached at all. */
@@ -34,7 +35,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
     const isJSON = res.headers.get('Content-Type')?.includes('application/json')
     const data = isJSON ? await res.json().catch(() => null) : null
     let message = 'Something went wrong.'
-    if (res.status === 400 && data?.error) message = data.error
+    if (data?.error && res.status !== 500) message = data.error
     else if ((res.status === 404 || res.status === 405) && !isJSON)
       message = 'The server may be out of date. Try restarting it.'
     throw new ApiError(res.status, message)

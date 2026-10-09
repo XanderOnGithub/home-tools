@@ -1,11 +1,11 @@
 <script lang="ts">
-  import { LoadError } from '@/components/load-error'
-  import { api } from '@/api'
-  import { blobPath } from '@/features/profiles/blob'
-  import { ProfileAvatar } from '@/features/profiles/profile-avatar'
-  import { ProfileDialog } from '@/features/profiles/profile-dialog'
-  import { rememberedProfileId, rememberProfile } from '@/features/profiles/remembered'
-  import type { Profile } from '@/features/profiles/types'
+  import { LoadError } from '../../components/load-error'
+  import { api } from '../../api'
+  import { blobPath } from '../blob'
+  import { ProfileAvatar } from '../profile-avatar'
+  import { ProfileDialog } from '../profile-dialog'
+  import { rememberedProfileId, rememberProfile } from '../remembered'
+  import type { Profile } from '../types'
 
   let { onselect }: { onselect: (profile: Profile) => void } = $props()
 
