@@ -10,7 +10,7 @@
   import { getCatalog, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
-  import { getPlans, savePlan, type Plan } from '@/features/plans'
+  import { DEFAULT_REST_SEC, getPlans, savePlan, type Plan } from '@/features/plans'
   import { idFromName } from '@/ids'
   import { router } from '@/router'
 
@@ -197,7 +197,13 @@
                   <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
                 </label>
                 <label class="sets rest">
-                  <input type="text" inputmode="numeric" maxlength="4" placeholder="–" bind:value={item.rest} />
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="4"
+                    placeholder={String(DEFAULT_REST_SEC)}
+                    bind:value={item.rest}
+                  />
                   <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
                 </label>
                 <span class="tools">
