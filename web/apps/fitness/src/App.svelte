@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { LoadError } from '@/components/load-error'
   import { getFitnessProfile, type FitnessProfile } from '@/features/fitness-profile'
   import { HistoryScreen } from '@/features/history/history-screen'
   import { HomeScreen } from '@/features/home/home-screen'
@@ -77,9 +78,9 @@
   </main>
 {:else if status === 'error'}
   <main class="center">
-    <p role="alert">Couldn't load your fitness profile. Check that the server is running.</p>
-    <button type="button" class="btn btn-primary" onclick={() => profile && choose(profile)}>Try again</button>
-    <button type="button" class="btn btn-quiet" onclick={switchProfile}>Switch profile</button>
+    <LoadError what="your fitness profile" onretry={() => profile && choose(profile)} align="center">
+      <button type="button" class="btn btn-quiet" onclick={switchProfile}>Switch profile</button>
+    </LoadError>
   </main>
 {:else if status === 'ready' && !fitness}
   <OnboardingFlow {profile} oncomplete={(fp) => (fitness = fp)} />

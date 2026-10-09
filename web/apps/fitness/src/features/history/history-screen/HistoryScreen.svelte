@@ -1,5 +1,6 @@
 <!-- Past workouts, newest first. -->
 <script lang="ts">
+  import { LoadError } from '@/components/load-error'
   import type { Profile } from '@/features/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
   import { getRecentSessions, type Session } from '@/features/sessions'
@@ -32,10 +33,7 @@
 <h1 tabindex="-1">History</h1>
 
 {#if status === 'error'}
-  <div role="alert">
-    <p>Couldn't load your workouts. Check that the server is running.</p>
-    <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
-  </div>
+  <LoadError what="your workouts" onretry={load} />
 {:else if status === 'ready' && sessions.length === 0}
   <p class="muted">No workouts logged yet.</p>
 {:else if status === 'ready'}

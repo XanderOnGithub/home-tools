@@ -4,6 +4,7 @@
   or edit a plan; each person's routine decides which plan falls on which day.
 -->
 <script lang="ts">
+  import { LoadError } from '@/components/load-error'
   import { api } from '@/api'
   import type { FitnessProfile } from '@/features/fitness-profile'
   import type { Profile } from '@/features/profiles/types'
@@ -44,10 +45,7 @@
   </div>
 
   {#if status === 'error'}
-    <div role="alert">
-      <p>Couldn't load plans. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
-    </div>
+    <LoadError what="plans" onretry={load} />
   {:else if status === 'ready'}
     <div class="grid">
       <section class="list" aria-labelledby="list-title">

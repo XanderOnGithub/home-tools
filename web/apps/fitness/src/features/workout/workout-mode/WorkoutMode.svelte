@@ -17,6 +17,7 @@
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
+  import { LoadError } from '@/components/load-error'
   import { getCatalog, getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePhotos } from '@/features/exercises/exercise-photos'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
@@ -410,9 +411,8 @@
   {#if status === 'missing'}
     <p class="message">This workout doesn't exist anymore. <a href="/">Go home</a></p>
   {:else if status === 'error'}
-    <div class="message" role="alert">
-      <p>Couldn't load the workout. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
+    <div class="message">
+      <LoadError what="the workout" onretry={load} />
     </div>
   {:else if status === 'ready'}
     <div class="progress" aria-hidden="true">

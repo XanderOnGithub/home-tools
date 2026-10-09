@@ -3,6 +3,7 @@
   weekly weight check-in (only when due), today's plan, and this week.
 -->
 <script lang="ts">
+  import { LoadError } from '@/components/load-error'
   import { isoDate, isoWeek, startOfWeek, weekDays } from '@/dates'
   import { getWeights, type FitnessProfile, type WeightEntry } from '@/features/fitness-profile'
   import { ThisWeek } from '@/features/home/this-week'
@@ -72,10 +73,7 @@
   </div>
 
   {#if status === 'error'}
-    <div class="error" role="alert">
-      <p>Couldn't load your week. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
-    </div>
+    <LoadError what="your week" onretry={load} />
   {:else if status === 'ready'}
     {#if checkInDue}
       <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
@@ -146,14 +144,4 @@
     }
   }
 
-  .error {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
-  }
-
-  .error p {
-    margin: 0;
-  }
 </style>

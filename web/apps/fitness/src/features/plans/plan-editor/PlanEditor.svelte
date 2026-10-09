@@ -6,6 +6,7 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte'
+  import { LoadError } from '@/components/load-error'
   import { getCatalog, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
@@ -152,10 +153,7 @@
   {#if status === 'missing'}
     <p>That plan doesn't exist. <a href="/plans">Back to plans</a></p>
   {:else if status === 'error'}
-    <div role="alert">
-      <p>Couldn't load. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
-    </div>
+    <LoadError what="the plan" onretry={load} />
   {:else if status === 'ready'}
     <form class="form" onsubmit={save} novalidate>
       <div class="field">

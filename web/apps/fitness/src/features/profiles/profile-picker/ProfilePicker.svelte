@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { LoadError } from '@/components/load-error'
   import { api } from '@/api'
   import { blobPath } from '@/features/profiles/blob'
   import { ProfileAvatar } from '@/features/profiles/profile-avatar'
@@ -111,10 +112,7 @@
   </div>
 
   {#if status === 'error'}
-    <div class="profile-error" role="alert">
-      <p>Couldn't load profiles. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
-    </div>
+    <LoadError what="profiles" onretry={load} align="center" />
   {:else if status === 'ready'}
     <ul class="profile-list">
       {#each active as user (user.id)}
@@ -314,19 +312,6 @@
 
   /* Status text sits where the list will be, so nothing jumps around. */
   .profile-status p,
-  .profile-error p {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--text-lg);
-  }
-
-  .profile-error {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: var(--space-4);
-  }
-
   /* Pencil in manage mode: a small badge on the avatar's lower right. */
   .edit-badge {
     position: absolute;
