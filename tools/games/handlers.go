@@ -30,39 +30,65 @@ type handlers struct {
 func Register(mux *http.ServeMux, store *Store, docker *Docker, log *slog.Logger) {
 	h := &handlers{store: store, docker: docker, log: log}
 	mux.HandleFunc("GET /api/servers", h.getServers)
-	mux.HandleFunc("PUT /api/servers/{id}", httpx.PutByID(log, func(s Server) string { return s.ID }, store.SaveServer, ErrInvalid))
+	mux.HandleFunc("PUT /api/servers/{id}", h.putServer)
 	mux.HandleFunc("POST /api/servers/{id}/{action}", h.postAction)
 	mux.HandleFunc("GET /api/servers/{id}/logs", h.getLogs)
 }
 
-// serverStatus is a server plus what Docker says about it right now.
-// Error explains a missing State (Docker unreachable, no such container).
-type serverStatus struct {
-	Server
-	State *State `json:"state,omitempty"`
-	Error string `json:"error,omitempty"`
+// serverView is what the browser gets about a server: its config minus
+// secrets (no RCON password, no query address), what Docker says about it
+// right now, and who's online. Error explains a missing State (Docker
+// unreachable, no such container); PlayersError a missing Players.
+type serverView struct {
+	ID           string   `json:"id"`
+	Name         string   `json:"name"`
+	Game         Game     `json:"game"`
+	Container    string   `json:"container"`
+	Archived     bool     `json:"archived,omitempty"`
+	State        *State   `json:"state,omitempty"`
+	Error        string   `json:"error,omitempty"`
+	Players      *Players `json:"players,omitempty"`
+	PlayersError string   `json:"players_error,omitempty"`
 }
 
-// getServers lists every server with its live state. Containers are
-// inspected in parallel, each with its own short timeout, so one stuck
-// lookup can't hold up the list.
+func viewOf(srv Server) serverView {
+	return serverView{ID: srv.ID, Name: srv.Name, Game: srv.Game, Container: srv.Container, Archived: srv.Archived}
+}
+
+// fill asks Docker for srv's state and, if it's running, the game for its
+// players. Errors are worded for people; details go to the log.
+func (h *handlers) fill(ctx context.Context, v *serverView, srv Server) {
+	st, err := h.inspect(ctx, srv)
+	if err != nil {
+		v.Error = err.Error()
+		return
+	}
+	v.State = &st
+	if !st.Running || srv.Query == "" {
+		return
+	}
+	p, err := queryPlayers(ctx, srv)
+	if err != nil {
+		h.log.Warn("player query", "server", srv.ID, "err", err)
+		v.PlayersError = "couldn't ask the game who's online"
+		return
+	}
+	v.Players = &p
+}
+
+// getServers lists every server with its live state and players. Servers
+// are looked up in parallel, each step with its own short timeout, so one
+// stuck container or game can't hold up the list.
 func (h *handlers) getServers(w http.ResponseWriter, r *http.Request) {
 	servers := h.store.Servers()
-	out := make([]serverStatus, len(servers))
+	out := make([]serverView, len(servers))
 	var wg sync.WaitGroup
 	for i, srv := range servers {
-		out[i].Server = srv
+		out[i] = viewOf(srv)
 		if srv.Archived {
 			continue
 		}
-		wg.Go(func() {
-			st, err := h.inspect(r.Context(), srv)
-			if err != nil {
-				out[i].Error = err.Error()
-				return
-			}
-			out[i].State = &st
-		})
+		wg.Go(func() { h.fill(r.Context(), &out[i], srv) })
 	}
 	wg.Wait()
 	httpx.WriteJSON(w, http.StatusOK, out)
@@ -84,6 +110,29 @@ func (h *handlers) inspect(ctx context.Context, srv Server) (State, error) {
 		return State{}, errors.New("couldn't reach Docker")
 	}
 	return st, nil
+}
+
+// putServer creates or replaces a server's config. Like httpx.PutByID, but
+// it answers with the view (no password), not the body it was sent.
+func (h *handlers) putServer(w http.ResponseWriter, r *http.Request) {
+	var srv Server
+	if err := httpx.DecodeJSON(w, r, &srv); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if id := r.PathValue("id"); srv.ID != id {
+		httpx.WriteError(w, http.StatusBadRequest, "body id "+srv.ID+" does not match URL id "+id)
+		return
+	}
+	if err := h.store.SaveServer(srv); err != nil {
+		if errors.Is(err, ErrInvalid) {
+			httpx.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpx.ServerError(w, r, h.log, err)
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, viewOf(srv))
 }
 
 // postAction starts, stops or restarts a server's container and answers
@@ -115,12 +164,9 @@ func (h *handlers) postAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.log.Info("server action", "server", srv.ID, "action", a)
-	st, err := h.inspect(r.Context(), srv)
-	if err != nil {
-		httpx.WriteJSON(w, http.StatusOK, serverStatus{Server: srv, Error: err.Error()})
-		return
-	}
-	httpx.WriteJSON(w, http.StatusOK, serverStatus{Server: srv, State: &st})
+	v := viewOf(srv)
+	h.fill(r.Context(), &v, srv)
+	httpx.WriteJSON(w, http.StatusOK, v)
 }
 
 // getLogs streams a server's log as Server-Sent Events (decision #37): the
