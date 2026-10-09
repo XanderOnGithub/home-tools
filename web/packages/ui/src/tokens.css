@@ -63,6 +63,9 @@
  * on-accent       text/icons on any of the three above
  * accent-text     accent-colored text and links on surfaces
  * accent-subtle   tinted backgrounds (selected rows, chips)
+ * avatar          the profile blob; the light shade in both themes so the
+ *                 dark eyes stay readable (≥ 6.6:1; the light-theme accent
+ *                 gave 2.5:1 on blue/purple)
  */
 :root,
 [data-accent='green'] {
@@ -71,6 +74,7 @@
   --color-accent-pressed: light-dark(#14532d, #22c55e);
   --color-on-accent: light-dark(#ffffff, #052e16);
   --color-accent-text: light-dark(#15803d, #4ade80);
+  --color-avatar: #4ade80; /* blob body, both themes: eyes ≥ 6.6:1 on it */
   --color-accent-subtle: light-dark(#f0fdf4, #10241a);
 }
 [data-accent='blue'] {
@@ -79,6 +83,7 @@
   --color-accent-pressed: light-dark(#1e3a8a, #5299f8);
   --color-on-accent: light-dark(#ffffff, #172554);
   --color-accent-text: light-dark(#1d4ed8, #60a5fa);
+  --color-avatar: #60a5fa; /* blob body, both themes: eyes ≥ 6.6:1 on it */
   --color-accent-subtle: light-dark(#eff6ff, #121c30);
 }
 [data-accent='orange'] {
@@ -87,6 +92,7 @@
   --color-accent-pressed: light-dark(#7c2d12, #f97316);
   --color-on-accent: light-dark(#ffffff, #431407);
   --color-accent-text: light-dark(#c2410c, #fb923c);
+  --color-avatar: #fb923c; /* blob body, both themes: eyes ≥ 6.6:1 on it */
   --color-accent-subtle: light-dark(#fff7ed, #2a1a0e);
 }
 [data-accent='purple'] {
@@ -95,6 +101,7 @@
   --color-accent-pressed: light-dark(#581c87, #b476fa);
   --color-on-accent: light-dark(#ffffff, #3b0764);
   --color-accent-text: light-dark(#7e22ce, #c084fc);
+  --color-avatar: #c084fc; /* blob body, both themes: eyes ≥ 6.6:1 on it */
   --color-accent-subtle: light-dark(#faf5ff, #221430);
 }
 
