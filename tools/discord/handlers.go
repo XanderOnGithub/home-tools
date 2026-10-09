@@ -9,8 +9,10 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
+	"github.com/bwmarrin/discordgo"
 )
 
 // The settings page's API (decision #42). LAN-only like every tool (#2);
@@ -30,6 +32,8 @@ func Register(mux *http.ServeMux, store *Store, bot *Bot, log *slog.Logger) {
 	mux.HandleFunc("PUT /api/config", h.putConfig)
 	mux.HandleFunc("GET /api/bot", h.getBot)
 	mux.HandleFunc("DELETE /api/requests/{user}", h.deleteRequest)
+	mux.HandleFunc("POST /api/poll", h.postPoll)
+	mux.HandleFunc("GET /api/blob", h.getBlob)
 	mux.HandleFunc("GET /api/persona.gif", h.getPersonaImage)
 	mux.HandleFunc("GET /api/persona.png", h.getPersonaImage) // still: for reduced motion
 }
@@ -77,7 +81,8 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 type botView struct {
 	BotView
 	Requests     []AccessRequest `json:"requests"`
-	Servers      []serverOption  `json:"servers"` // for picking a status board's server
+	NextPoll     *time.Time      `json:"next_poll,omitempty"` // nil: the poll is off
+	Servers      []serverOption  `json:"servers"`             // for picking a status board's server
 	ServersError string          `json:"servers_error,omitempty"`
 }
 
@@ -90,6 +95,9 @@ type serverOption struct {
 
 func (h *handlers) getBot(w http.ResponseWriter, r *http.Request) {
 	v := botView{BotView: h.bot.View(), Requests: h.store.Requests(), Servers: []serverOption{}}
+	if next := h.bot.NextPoll(); !next.IsZero() {
+		v.NextPoll = &next
+	}
 	list, err := h.bot.gameServers(r.Context(), 10*time.Second)
 	if err != nil {
 		h.log.Warn("discord games list", "err", err)
@@ -100,6 +108,53 @@ func (h *handlers) getBot(w http.ResponseWriter, r *http.Request) {
 	}
 	slices.SortFunc(v.Servers, func(a, b serverOption) int { return compareFold(a.Name, b.Name) })
 	httpx.WriteJSON(w, http.StatusOK, v)
+}
+
+// postPoll posts the next poll now (for trying it out, or a slow day).
+func (h *handlers) postPoll(w http.ResponseWriter, r *http.Request) {
+	if err := h.bot.PostPollNow(); err != nil {
+		h.log.Warn("discord poll now", "err", err)
+		httpx.WriteError(w, http.StatusConflict, "Couldn't post the poll: "+pollProblem(err))
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// pollProblem words a poll error for people: ours as they are, Discord's
+// as the likely cause.
+func pollProblem(err error) string {
+	var rest *discordgo.RESTError
+	if errors.As(err, &rest) {
+		return "Discord refused it. Check that the bot may post polls in that channel."
+	}
+	return err.Error()
+}
+
+// getBlob draws a blob exactly as /blob does, for the settings page's
+// preview and download: ?name=Jim&color=blue[&animated=1]. Same input,
+// same image, so browsers may cache it for good.
+func (h *handlers) getBlob(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	name, c := strings.TrimSpace(q.Get("name")), Color(q.Get("color"))
+	if _, ok := colorHex[c]; !ok || name == "" || utf8.RuneCountInString(name) > maxNameLen {
+		httpx.WriteError(w, http.StatusBadRequest, fmt.Sprintf("needs a color and a name of 1–%d characters", maxNameLen))
+		return
+	}
+	var data []byte
+	var err error
+	if q.Get("animated") == "1" {
+		w.Header().Set("Content-Type", "image/gif")
+		data, err = BlobGIF(name, c, blobGIFPx)
+	} else {
+		w.Header().Set("Content-Type", "image/png")
+		data, err = BlobPNG(name, c, blobPNGPx)
+	}
+	if err != nil {
+		httpx.ServerError(w, r, h.log, err)
+		return
+	}
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	w.Write(data)
 }
 
 func (h *handlers) deleteRequest(w http.ResponseWriter, r *http.Request) {

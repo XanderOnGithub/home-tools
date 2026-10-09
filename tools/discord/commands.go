@@ -1,6 +1,7 @@
 package discord
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 	"unicode"
+	"unicode/utf8"
 
 	"github.com/bwmarrin/discordgo"
 )
@@ -18,8 +20,9 @@ import (
 // (invocation in, reply out, through a responder), so it's tested without
 // Discord; discordgo only appears at the edges (definitions, adapters).
 
-// commands are the slash commands as Discord shows them.
-func commands() []*discordgo.ApplicationCommand {
+// commands are the slash commands as Discord shows them: the core ones,
+// plus those of the features that are on.
+func commands(f Features) []*discordgo.ApplicationCommand {
 	gamesChoices := make([]*discordgo.ApplicationCommandOptionChoice, len(sensGames))
 	for i, g := range sensGames {
 		gamesChoices[i] = &discordgo.ApplicationCommandOptionChoice{Name: g.Name, Value: g.Slug}
@@ -34,7 +37,7 @@ func commands() []*discordgo.ApplicationCommand {
 		Type: discordgo.ApplicationCommandOptionString, Name: "player", Required: true, MaxLength: 100,
 		Description: "Minecraft: their username. Valheim: their SteamID64 or Steam profile link.",
 	}
-	return []*discordgo.ApplicationCommand{
+	cmds := []*discordgo.ApplicationCommand{
 		{
 			Name: "sens", Description: "Convert your mouse sensitivity from one game to another", Contexts: everywhere,
 			Options: []*discordgo.ApplicationCommandOption{
@@ -58,7 +61,25 @@ func commands() []*discordgo.ApplicationCommand {
 			},
 		},
 	}
+	if f.Blob.Enabled {
+		colors := make([]*discordgo.ApplicationCommandOptionChoice, len(AllColors))
+		for i, c := range AllColors {
+			colors[i] = &discordgo.ApplicationCommandOptionChoice{Name: colorNames[c], Value: string(c)}
+		}
+		cmds = append(cmds, &discordgo.ApplicationCommand{
+			Name: "blob", Description: "Make a blob of your own: same name, same blob, every time", Contexts: everywhere,
+			Options: []*discordgo.ApplicationCommandOption{
+				{Type: discordgo.ApplicationCommandOptionString, Name: "name", Description: "Its name: shapes the blob and its face", Required: true, MaxLength: maxNameLen},
+				{Type: discordgo.ApplicationCommandOptionString, Name: "color", Description: "Its color", Required: true, Choices: colors},
+				{Type: discordgo.ApplicationCommandOptionBoolean, Name: "animated", Description: "A blinking GIF instead of a still PNG"},
+			},
+		})
+	}
+	return cmds
 }
+
+// colorNames are the colors as people read them.
+var colorNames = map[Color]string{ColorGreen: "Green", ColorBlue: "Blue", ColorOrange: "Orange", ColorPurple: "Purple"}
 
 // invocation is one use of a command, as plain values.
 type invocation struct {
@@ -80,7 +101,14 @@ func (in invocation) integer(name string) int { i, _ := in.opts[name].(int64); r
 type reply struct {
 	content string
 	embed   *discordgo.MessageEmbed
+	file    *attachment
 	private bool // only the person who asked sees it (ephemeral)
+}
+
+// attachment is a file sent with a reply.
+type attachment struct {
+	name, contentType string
+	data              []byte
 }
 
 // responder answers one interaction. Discord wants an answer within 3 s;
@@ -100,6 +128,11 @@ func (b *Bot) handle(ctx context.Context, in invocation, r responder) error {
 		return b.restart(ctx, in, r)
 	case "whitelist":
 		return b.whitelist(ctx, in, r)
+	case "blob":
+		if !b.store.Config().Features.Blob.Enabled { // switched off since Discord last synced
+			break
+		}
+		return r.send(b.blob(in))
 	}
 	return r.send(reply{content: "I don't know that command (anymore).", private: true})
 }
@@ -126,6 +159,52 @@ func (b *Bot) sens(in invocation) reply {
 		e.Footer = &discordgo.MessageEmbedFooter{Text: fmt.Sprintf("%.1f cm for a full turn (360°)", res.CM360)}
 	}
 	return reply{embed: e}
+}
+
+// Sizes for /blob: a PNG big enough for a profile picture; the GIF
+// smaller, since every frame counts toward its size.
+const (
+	blobPNGPx = 512
+	blobGIFPx = 256
+)
+
+// blob answers /blob with the blob for a name, as a file anyone can save.
+func (b *Bot) blob(in invocation) reply {
+	name := strings.TrimSpace(in.str("name"))
+	c := Color(in.str("color"))
+	if _, ok := colorHex[c]; !ok || name == "" || utf8.RuneCountInString(name) > maxNameLen {
+		return reply{private: true, content: fmt.Sprintf("Pick a color and a name of 1–%d characters.", maxNameLen)}
+	}
+	animated, _ := in.opts["animated"].(bool)
+	var f attachment
+	var err error
+	if animated {
+		f.name, f.contentType = fileName(name)+".gif", "image/gif"
+		f.data, err = BlobGIF(name, c, blobGIFPx)
+	} else {
+		f.name, f.contentType = fileName(name)+".png", "image/png"
+		f.data, err = BlobPNG(name, c, blobPNGPx)
+	}
+	if err != nil {
+		b.log.Error("discord blob", "err", err)
+		return reply{private: true, content: "Couldn't draw that one, sorry."}
+	}
+	return reply{content: fmt.Sprintf("Meet **%s** (%s).", discordEscape(name), strings.ToLower(colorNames[c])), file: &f}
+}
+
+// fileName makes name safe as a file name: letters and digits kept,
+// anything else becomes "-".
+func fileName(name string) string {
+	out := strings.Map(func(r rune) rune {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) {
+			return unicode.ToLower(r)
+		}
+		return '-'
+	}, name)
+	if strings.Trim(out, "-") == "" {
+		return "blob"
+	}
+	return out
 }
 
 // trimFloat formats f with at most places decimals, no trailing zeros.
@@ -428,8 +507,15 @@ var noPings = &discordgo.MessageAllowedMentions{}
 func (r *interactionResponder) send(rep reply) error {
 	return r.s.InteractionRespond(r.i, &discordgo.InteractionResponse{
 		Type: discordgo.InteractionResponseChannelMessageWithSource,
-		Data: &discordgo.InteractionResponseData{Content: rep.content, Embeds: embeds(rep), Flags: flags(rep.private), AllowedMentions: noPings},
+		Data: &discordgo.InteractionResponseData{Content: rep.content, Embeds: embeds(rep), Files: files(rep), Flags: flags(rep.private), AllowedMentions: noPings},
 	})
+}
+
+func files(rep reply) []*discordgo.File {
+	if rep.file == nil {
+		return nil
+	}
+	return []*discordgo.File{{Name: rep.file.name, ContentType: rep.file.contentType, Reader: bytes.NewReader(rep.file.data)}}
 }
 
 func (r *interactionResponder) later(private bool) error {

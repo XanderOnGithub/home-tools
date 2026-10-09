@@ -93,6 +93,11 @@ Once:
    `games/servers/valheim.json` and restart Home Tools. The game reads
    the list when it starts, so additions apply after a restart.
 
+Features (poll, `/blob`) are switched on in the page's Features tab.
+The poll needs "Send Polls" and `/blob` "Attach Files" in their
+channels: both are in the invite link; a bot invited before they were
+added may need them given to its role in Discord's server settings.
+
 Check the log after the first start (`sudo docker logs <home-tools>`):
 "discord connected", then "discord persona" per server. If the avatar
 was refused, the log says so and the bot keeps a still image or just

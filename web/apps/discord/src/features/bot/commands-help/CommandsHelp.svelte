@@ -1,7 +1,13 @@
 <!--
   What people can type in Discord, and who may. Mirrors the bot's slash
-  commands (tools/discord/commands.go).
+  commands (tools/discord/commands.go); feature commands only while on.
 -->
+<script lang="ts">
+  import type { Features } from '@/features/bot'
+
+  let { features }: { features: Features } = $props()
+</script>
+
 <section class="section" aria-labelledby="commands-title">
   <h2 id="commands-title">Commands</h2>
   <dl class="list">
@@ -20,6 +26,12 @@
         Steam profile link, and needs a restart to apply.
       </dd>
     </div>
+    {#if features.blob.enabled}
+      <div class="row">
+        <dt><code>/blob</code></dt>
+        <dd>Makes a blob from a name and a color, as a PNG or a blinking GIF. Anyone.</dd>
+      </div>
+    {/if}
   </dl>
 </section>
 

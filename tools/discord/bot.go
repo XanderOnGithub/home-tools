@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"slices"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -37,6 +38,10 @@ type Bot struct {
 
 	boardsWake  chan struct{} // refresh the status boards now
 	personaWake chan struct{} // re-check the persona in every guild
+	pollWake    chan struct{} // the poll's settings changed: reschedule
+
+	cmdMu      sync.Mutex // serializes command registration
+	registered string     // the command set Discord has now (names, joined)
 }
 
 // connState is what the settings page shows about the connection.
@@ -54,6 +59,7 @@ func NewBot(token string, store *Store, games Games, log *slog.Logger) *Bot {
 		applied:     make(map[string]Persona),
 		boardsWake:  make(chan struct{}, 1),
 		personaWake: make(chan struct{}, 1),
+		pollWake:    make(chan struct{}, 1),
 	}
 	if token == "" {
 		b.conn.err = "No bot token: set DISCORD_TOKEN for Home Tools (see deploy/README.md)."
@@ -74,6 +80,8 @@ func wake(c chan struct{}) {
 func (b *Bot) Changed() {
 	wake(b.boardsWake)
 	wake(b.personaWake)
+	wake(b.pollWake)
+	go b.syncCommands() // a feature switched on or off adds or removes commands
 }
 
 // Run connects and serves until ctx ends, then disconnects. It only
@@ -121,6 +129,7 @@ func (b *Bot) Run(ctx context.Context) {
 	var wg sync.WaitGroup
 	wg.Go(func() { b.runBoards(ctx) })
 	wg.Go(func() { b.runPersona(ctx) })
+	wg.Go(func() { b.runPolls(ctx) })
 	<-ctx.Done()
 	wg.Wait()
 }
@@ -149,14 +158,45 @@ func (b *Bot) onReady(s *discordgo.Session, r *discordgo.Ready) {
 	if r.Application != nil {
 		b.conn.appID = r.Application.ID
 	}
-	appID := b.conn.appID
 	b.mu.Unlock()
 	b.log.Info("discord connected", "user", r.User.Username, "guilds", len(r.Guilds))
-	if _, err := s.ApplicationCommandBulkOverwrite(appID, "", commands()); err != nil {
-		b.log.Error("discord register commands", "err", err)
-	}
+	b.cmdMu.Lock()
+	b.registered = "" // a fresh connection: always send the set once
+	b.cmdMu.Unlock()
+	b.syncCommands()
 	wake(b.boardsWake)
 	wake(b.personaWake)
+	wake(b.pollWake)
+}
+
+// syncCommands registers the commands of the features that are on, if
+// they differ from what Discord has. Bulk overwrite is idempotent: the set
+// always matches the config, and commands of features switched off
+// disappear.
+func (b *Bot) syncCommands() {
+	b.mu.RLock()
+	appID, connected := b.conn.appID, b.conn.connected
+	b.mu.RUnlock()
+	if !connected || appID == "" {
+		return // onReady registers on connect
+	}
+	cmds := commands(b.store.Config().Features)
+	names := make([]string, len(cmds))
+	for i, c := range cmds {
+		names[i] = c.Name
+	}
+	set := strings.Join(names, ",")
+	b.cmdMu.Lock()
+	defer b.cmdMu.Unlock()
+	if set == b.registered {
+		return
+	}
+	if _, err := b.sess.ApplicationCommandBulkOverwrite(appID, "", cmds); err != nil {
+		b.log.Error("discord register commands", "err", err)
+		return
+	}
+	b.registered = set
+	b.log.Info("discord commands", "registered", set)
 }
 
 // runPersona keeps the daily persona on every server: now, at each local
@@ -343,9 +383,12 @@ type ChannelView struct {
 	CanPost bool   `json:"can_post"` // the bot may post embeds there
 }
 
-// invitePermissions: view channels, send messages, embed links, read
-// message history, change nickname. Nothing else (no admin).
-const invitePermissions = 1024 | 2048 | 16384 | 65536 | 67108864
+// invitePermissions: view channels, send messages, embed links, attach
+// files (/blob), read message history, change nickname, send polls.
+// Nothing else (no admin).
+const invitePermissions = discordgo.PermissionViewChannel | discordgo.PermissionSendMessages |
+	discordgo.PermissionEmbedLinks | discordgo.PermissionAttachFiles | discordgo.PermissionReadMessageHistory |
+	discordgo.PermissionChangeNickname | discordgo.PermissionSendPolls
 
 const postPermissions = discordgo.PermissionViewChannel | discordgo.PermissionSendMessages | discordgo.PermissionEmbedLinks
 
@@ -360,7 +403,7 @@ func (b *Bot) View() BotView {
 		v.InviteURL = "https://discord.com/oauth2/authorize?" + url.Values{
 			"client_id":   {c.appID},
 			"scope":       {"bot applications.commands"},
-			"permissions": {strconv.Itoa(invitePermissions)},
+			"permissions": {strconv.FormatInt(invitePermissions, 10)},
 		}.Encode()
 	}
 	if b.sess == nil || !c.connected {

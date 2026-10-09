@@ -397,6 +397,19 @@ func TestHandlers(t *testing.T) {
 		t.Errorf("GET png = %d %v (the GIF's ETag must not match it)", still.Code, still.Header())
 	}
 
+	if rec := do("GET", "/api/blob?name=Jim&color=green", ""); rec.Code != 200 || rec.Header().Get("Content-Type") != "image/png" {
+		t.Errorf("GET blob = %d %v", rec.Code, rec.Header())
+	}
+	if rec := do("GET", "/api/blob?name=Jim&color=green&animated=1", ""); rec.Code != 200 || rec.Header().Get("Content-Type") != "image/gif" {
+		t.Errorf("GET blob gif = %d %v", rec.Code, rec.Header())
+	}
+	if rec := do("GET", "/api/blob?name=&color=green", ""); rec.Code != 400 {
+		t.Errorf("GET blob without name = %d", rec.Code)
+	}
+	if rec := do("POST", "/api/poll", ""); rec.Code != 409 || !strings.Contains(rec.Body.String(), "turn the poll on") {
+		t.Errorf("POST poll = %d %s", rec.Code, rec.Body)
+	}
+
 	if err := b.store.AddRequest(AccessRequest{UserID: bob, Name: "Bob"}); err != nil {
 		t.Fatal(err)
 	}

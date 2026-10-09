@@ -24,7 +24,7 @@
     <div class="sections">
       <StatusBoards config={s.config} bot={s.bot} save={s.save} />
       <NameList config={s.config} save={s.save} />
-      <CommandsHelp />
+      <CommandsHelp features={s.config.features} />
     </div>
   {/if}
 </div>
