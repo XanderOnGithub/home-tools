@@ -15,6 +15,7 @@ root `AGENTS.md` first; this file is what's specific to games.
 | `rcon.go` | Minecraft RCON client (Source RCON protocol over TCP). |
 | `a2s.go` | Steam A2S query client (UDP), as Valheim answers it. |
 | `handlers.go` | HTTP API, incl. the SSE log stream. `serverView` is what browsers see (no password, no query address). |
+| `snapshot.go` | Stale-while-revalidate cache of all server views, so `GET /api/servers` answers instantly. |
 | `games_test.go`, `players_test.go` | Rules, store, demux, RCON, A2S, and every handler against fakes. |
 
 UI: `web/apps/games` (Svelte, on `@home-tools/ui` incl. the shared
@@ -22,8 +23,9 @@ UI: `web/apps/games` (Svelte, on `@home-tools/ui` incl. the shared
 cards), `server-card` (icon, name, status, players; the whole card links
 to the server page), `server-menu` (⋯ popover: Start or Stop, Restart;
 confirm dialog), `server-page` (header + players + log), `player-list`,
-`server-status`, `game-icon`, `log-view` (SSE client), `live-servers` (the
-list, refreshed every 10 s while visible).
+`server-status`, `game-icon`, `log-view` (SSE client), `live-servers` (one
+shared list for every page, polled every 5 s while visible, so moving
+between pages never refetches).
 
 ## Configuration
 One file per server in `data/games/servers/<id>.json`:
@@ -54,7 +56,7 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
 ## API
 | Method + path | Does |
 |---|---|
-| `GET /api/servers` | Every server + live `state` (`running`, `status`, `started_at`) or an `error` worded for people, and for running ones with a `query`: `players` (`online`, `max`, `names`) or `players_error`. Looked up in parallel: 3 s for Docker, 2 s for the game. |
+| `GET /api/servers` | Every server + live `state` (`running`, `status`, `started_at`) or an `error` worded for people, and for running ones with a `query`: `players` (`online`, `max`, `names`) or `players_error`. Served from a snapshot (instant); a snapshot older than 4 s triggers one background refresh (Docker 3 s, games 1 s timeouts), so data lags by at most one poll. Only the first request after startup or a config change waits. |
 | `PUT /api/servers/{id}` | Create or replace a server's config (`httpx.PutByID`). |
 | `POST /api/servers/{id}/{start\|stop\|restart}` | Do it; answers with the new state. 502 = Docker refused / no such container; 503 = Docker not connected. |
 | `GET /api/servers/{id}/logs` | Server-Sent Events: the last 200 lines, then live. `data:` = one line; `event: end` = the container stopped; `event: failure` = a message. |
@@ -70,6 +72,9 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
   shows the UI with "Docker isn't connected". For a full flow, point
   `-docker` at a fake Docker API on a unix socket (see `games_test.go`'s
   `fakeDocker` for the endpoints it needs).
+- **Never make the list wait on games:** a game that doesn't answer costs
+  its whole query timeout. That's why the list comes from the snapshot
+  and lookups happen in the background.
 - **Valheim names:** A2S usually reports a count without names; the UI
   says so instead of showing blanks.
 - **RCON is a password-protected admin port:** reachable from the LAN is

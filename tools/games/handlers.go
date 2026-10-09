@@ -23,6 +23,7 @@ type handlers struct {
 	store  *Store
 	docker *Docker // nil: no Docker socket configured (e.g. local dev)
 	log    *slog.Logger
+	snap   snapshot // last looked-up views, so the list answers instantly
 }
 
 // Register mounts the games API on mux. docker may be nil: servers are
@@ -76,10 +77,20 @@ func (h *handlers) fill(ctx context.Context, v *serverView, srv Server) {
 	v.Players = &p
 }
 
-// getServers lists every server with its live state and players. Servers
-// are looked up in parallel, each step with its own short timeout, so one
-// stuck container or game can't hold up the list.
+// getServers lists every server with its live state and players, from
+// the snapshot (instant; refreshed in the background when stale).
 func (h *handlers) getServers(w http.ResponseWriter, r *http.Request) {
+	views := h.snap.get(r.Context(), h.lookAll)
+	if views == nil { // the client gave up while the first lookup ran
+		return
+	}
+	httpx.WriteJSON(w, http.StatusOK, views)
+}
+
+// lookAll looks up every server in parallel, each step with its own short
+// timeout, so one stuck container or game can't hold up the rest. It runs
+// in the background (see snapshot), so it doesn't use a request's context.
+func (h *handlers) lookAll() []serverView {
 	servers := h.store.Servers()
 	out := make([]serverView, len(servers))
 	var wg sync.WaitGroup
@@ -88,10 +99,10 @@ func (h *handlers) getServers(w http.ResponseWriter, r *http.Request) {
 		if srv.Archived {
 			continue
 		}
-		wg.Go(func() { h.fill(r.Context(), &out[i], srv) })
+		wg.Go(func() { h.fill(context.Background(), &out[i], srv) })
 	}
 	wg.Wait()
-	httpx.WriteJSON(w, http.StatusOK, out)
+	return out
 }
 
 // inspect returns srv's state, with errors worded for the UI.
@@ -132,6 +143,7 @@ func (h *handlers) putServer(w http.ResponseWriter, r *http.Request) {
 		httpx.ServerError(w, r, h.log, err)
 		return
 	}
+	h.snap.reset()
 	httpx.WriteJSON(w, http.StatusOK, viewOf(srv))
 }
 
@@ -166,6 +178,7 @@ func (h *handlers) postAction(w http.ResponseWriter, r *http.Request) {
 	h.log.Info("server action", "server", srv.ID, "action", a)
 	v := viewOf(srv)
 	h.fill(r.Context(), &v, srv)
+	h.snap.put(v) // the list shows the new state at once
 	httpx.WriteJSON(w, http.StatusOK, v)
 }
 
