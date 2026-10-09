@@ -2,7 +2,8 @@
   A server's state in words: a dot plus text (color is never the only
   signal). Running = filled accent dot, stopped = hollow dot,
   unavailable = danger text with the reason; an action in flight
-  ("Stopping…") replaces it all. Uptime and players go on the line below
+  ("Stopping…", from this page or anyone else's, e.g. the Discord bot)
+  replaces it all. Uptime and players go on the line below
   (see `details`), so this one never wraps mid-phrase.
 -->
 <script lang="ts">
@@ -12,12 +13,13 @@
 
   const DOING: Record<Action, string> = { start: 'Starting…', stop: 'Stopping…', restart: 'Restarting…' }
   let running = $derived(server.state?.running ?? false)
+  let doing = $derived(pending ?? server.busy ?? null)
 </script>
 
-<p class="status" class:on={running && !pending} class:unknown={!server.state && !pending}>
+<p class="status" class:on={running && !doing} class:unknown={!server.state && !doing}>
   <span class="dot" aria-hidden="true"></span>
-  {#if pending}
-    {DOING[pending]}
+  {#if doing}
+    {DOING[doing]}
   {:else if !server.state}
     Unavailable: {server.error ?? 'unknown error'}
   {:else if running}

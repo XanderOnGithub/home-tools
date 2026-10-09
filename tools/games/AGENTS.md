@@ -14,6 +14,7 @@ root `AGENTS.md` first; this file is what's specific to games.
 | `players.go` | Who's online: Minecraft over RCON (`list uuids`, falls back to `list`); Valheim's slots over A2S. |
 | `activity.go` | Joins/leaves and Valheim's online players, parsed from the Docker log on demand (#40). |
 | `console.go` | Minecraft console + whitelist over RCON (#41): the routes the Discord bot uses. |
+| `permitted.go` | Valheim's whitelist: edits `permittedlist.txt` in place (atomic replace, comments and file mode kept) (#42). |
 | `heads.go` | Minecraft faces: Mojang profile → skin → 8×8 face + hat, cached. |
 | `rcon.go` | Minecraft RCON client (Source RCON protocol over TCP). |
 | `a2s.go` | Steam A2S query client (UDP), as Valheim answers it. |
@@ -36,13 +37,18 @@ One file per server in `data/games/servers/<id>.json`:
     {"id": "minecraft", "name": "Minecraft", "game": "minecraft", "container": "<docker ps name>",
      "query": "192.168.3.3:25575", "rcon_password": "<server.properties rcon.password>"}
     {"id": "valheim", "name": "Valheim", "game": "valheim", "container": "<docker ps name>",
-     "query": "192.168.3.3:2457"}
+     "query": "192.168.3.3:2457", "permitted_list": "/valheim/adminlist/permittedlist.txt"}
 
 `container` must be a valid Docker name (it goes into API URLs). `query`
 (optional) is where to ask who's online, as seen from the Home Tools
 container: Minecraft's RCON port (needs `enable-rcon=true` and a password
 in `server.properties`, and `rcon_password` here), Valheim's Steam query
-port (game port + 1; only for the slot count, players come from its log). The password and address never leave the server
+port (game port + 1; only for the slot count, players come from its log).
+`permitted_list` (optional, Valheim) is the game's `permittedlist.txt` as
+the Home Tools container sees it: mount the **folder** that holds it (a
+single bind-mounted file can't be replaced atomically), read-write. The
+path must be absolute and end in `permittedlist.txt`, so the API can never
+rewrite any other file. The password and address never leave the server
 (`serverView`). The server reads these files at startup; there's no
 editor in the UI yet (`PUT /api/servers/{id}` works).
 
@@ -61,19 +67,19 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
 |---|---|
 | `GET /api/servers` | Every server + live `state` (`running`, `status`, `started_at`) or an `error` worded for people, and for running ones: `players` (`online`, `max` (0 = unknown), `names`; Minecraft needs a `query`) or `players_error`, plus `activity` (joins/leaves, newest first, ≤ 50; also kept for stopped servers). Served from a snapshot (instant); a snapshot older than 4 s triggers one background refresh (Docker 3 s, games 1 s, log read 5 s timeouts), so data lags by at most one poll. Only the first request after startup or a config change waits. |
 | `PUT /api/servers/{id}` | Create or replace a server's config (`httpx.PutByID`). |
-| `POST /api/servers/{id}/{start\|stop\|restart}` | Do it; answers with the new state. 502 = Docker refused / no such container; 503 = Docker not connected. |
+| `POST /api/servers/{id}/{start\|stop\|restart}` | Do it; answers with the new state. 409 = an action is already running on that server (one at a time, from any client); meanwhile the list shows it as `busy`. 502 = Docker refused / no such container; 503 = Docker not connected. |
 | `GET /api/servers/{id}/heads/{name}` | A Minecraft player's face, 8×8 PNG (1-day cache); 404 when there's none. Only players RCON has listed. |
 | `POST /api/servers/{id}/console` | Minecraft: `{"command": "say hi"}` → `{"output": "…"}` (§ codes removed; leading `/` fine; no line breaks). 409 = RCON not set up, 502 = game unreachable. |
-| `GET /api/servers/{id}/whitelist` | Minecraft: `{"players": [...]}` |
-| `PUT` / `DELETE /api/servers/{id}/whitelist/{player}` | Minecraft: add / remove; `{"output"}` is the game's own answer ("Added Steve to the whitelist", "That player does not exist"). 400 = not a valid username. |
+| `GET /api/servers/{id}/whitelist` | `{"players": [...]}`: Minecraft names, or Valheim SteamID64s. 409 = not set up (`query` / `permitted_list`). |
+| `PUT` / `DELETE /api/servers/{id}/whitelist/{player}` | Add / remove. Minecraft: `{"output"}` is the game's own answer ("Added Steve to the whitelist", "That player does not exist"); 400 = not a valid username. Valheim: `{player}` is a SteamID64 (400 otherwise); `{"output", "restart_needed": true}`: Valheim reads the list at start. |
 | `GET /api/servers/{id}/logs` | Server-Sent Events: the last 200 lines, then live. `data:` = one line; `event: end` = the container stopped; `event: failure` = a message. |
 
 ## For the Discord bot (#41)
 No login: the bot calls these over the LAN, and decides itself which
 Discord users may use which. Stable routes:
 `POST /api/servers/{id}/restart` (any game; waits up to a minute),
-`GET/PUT/DELETE /api/servers/{id}/whitelist[/{player}]` and
-`POST /api/servers/{id}/console` (Minecraft), `GET /api/servers` (status,
+`GET/PUT/DELETE /api/servers/{id}/whitelist[/{player}]` (Minecraft names,
+Valheim SteamID64s) and `POST /api/servers/{id}/console` (Minecraft), `GET /api/servers` (status,
 players). Errors are `{"error": "…"}` worded for people, safe to show.
 Routing is by Host header (`internal/hostroute`): call
 `https://games.<domain>/api/...`, or plain HTTP to port 8080 with

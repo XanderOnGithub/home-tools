@@ -26,6 +26,8 @@ export type Server = {
   players?: Players // only while running and if a query address is set
   players_error?: string
   console?: boolean // Minecraft with RCON set up: commands work
+  whitelist?: boolean // whitelist routes work (Minecraft RCON, or Valheim's permitted list)
+  busy?: Action // a start/stop/restart is running (from any page or the Discord bot)
   activity?: ActivityEvent[] // newest first, ≤ 50; since Home Tools started reading
 }
 

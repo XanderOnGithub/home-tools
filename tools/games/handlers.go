@@ -23,9 +23,11 @@ type handlers struct {
 	store  *Store
 	docker *Docker // nil: no Docker socket configured (e.g. local dev)
 	log    *slog.Logger
-	snap   snapshot // last looked-up views, so the list answers instantly
-	acts   activity // joins and leaves, read from the logs
-	heads  *heads   // Minecraft player faces
+	snap   snapshot   // last looked-up views, so the list answers instantly
+	acts   activity   // joins and leaves, read from the logs
+	heads  *heads     // Minecraft player faces
+	busy   busy       // servers with a start/stop/restart running
+	lists  sync.Mutex // serializes edits to Valheim's permitted lists
 }
 
 // Register mounts the games API on mux. docker may be nil: servers are
@@ -58,13 +60,16 @@ type serverView struct {
 	Error        string   `json:"error,omitempty"`
 	Players      *Players `json:"players,omitempty"`
 	PlayersError string   `json:"players_error,omitempty"`
-	Activity     []Event  `json:"activity,omitempty"` // joins and leaves, newest first
-	Console      bool     `json:"console,omitempty"`  // Minecraft with RCON set up: commands work
+	Activity     []Event  `json:"activity,omitempty"`  // joins and leaves, newest first
+	Console      bool     `json:"console,omitempty"`   // Minecraft with RCON set up: commands work
+	Whitelist    bool     `json:"whitelist,omitempty"` // the whitelist routes work (RCON, or Valheim's permitted list)
+	Busy         Action   `json:"busy,omitempty"`      // a start/stop/restart is running right now
 }
 
 func viewOf(srv Server) serverView {
+	console := srv.Game == GameMinecraft && srv.Query != ""
 	return serverView{ID: srv.ID, Name: srv.Name, Game: srv.Game, Container: srv.Container, Archived: srv.Archived,
-		Console: srv.Game == GameMinecraft && srv.Query != ""}
+		Console: console, Whitelist: console || srv.PermittedList != ""}
 }
 
 // fill asks Docker for srv's state and, if it's running, who's online:
@@ -136,6 +141,7 @@ func (h *handlers) lookAll() []serverView {
 	var wg sync.WaitGroup
 	for i, srv := range servers {
 		out[i] = viewOf(srv)
+		out[i].Busy = h.busy.action(srv.ID)
 		if srv.Archived {
 			continue
 		}
@@ -204,6 +210,15 @@ func (h *handlers) postAction(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusServiceUnavailable, "Docker isn't connected")
 		return
 	}
+	// One action per server at a time: a second restart (another tab, the
+	// Discord bot) would only queue up behind the first in Docker.
+	if running, ok := h.busy.begin(srv.ID, a); !ok {
+		httpx.WriteError(w, http.StatusConflict, srv.Name+" is already "+running.ing()+"; try again in a minute")
+		return
+	}
+	defer h.busy.end(srv.ID)
+	h.snap.setBusy(srv.ID, a) // the list says "Restarting…" for everyone meanwhile
+	defer h.snap.setBusy(srv.ID, "")
 	ctx, cancel := context.WithTimeout(r.Context(), (stopTimeoutSec+30)*time.Second)
 	defer cancel()
 	if err := h.docker.Do(ctx, srv.Container, a); err != nil {
@@ -295,6 +310,43 @@ func (h *handlers) getHead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "public, max-age=86400") // a day, like the server's own cache
 	w.Write(face)
+}
+
+// busy records which servers have an action running. The zero value is
+// ready to use. Lookups are O(1) map operations under one mutex: there are
+// a handful of servers and actions take seconds, so contention is nil.
+type busy struct {
+	mu sync.Mutex
+	by map[string]Action // server ID → the action running
+}
+
+// begin marks id busy with a. If id is already busy it returns the action
+// that's running and false; the caller must not go ahead.
+func (b *busy) begin(id string, a Action) (Action, bool) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	if running, ok := b.by[id]; ok {
+		return running, false
+	}
+	if b.by == nil {
+		b.by = make(map[string]Action)
+	}
+	b.by[id] = a
+	return a, true
+}
+
+// end marks id idle again.
+func (b *busy) end(id string) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	delete(b.by, id)
+}
+
+// action returns what's running on id, or "" when nothing is.
+func (b *busy) action(id string) Action {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.by[id]
 }
 
 // server looks up {id}, answering 404 itself when it's unknown.

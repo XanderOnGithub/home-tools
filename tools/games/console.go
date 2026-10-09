@@ -11,7 +11,8 @@ import (
 	"github.com/XanderOnGithub/home-tools/internal/httpx"
 )
 
-// Minecraft console and whitelist over RCON (decision #41). No login:
+// Minecraft console and whitelist over RCON (decision #41); Valheim's
+// whitelist is a file (permitted.go, decision #42). No login:
 // anyone on the LAN may run commands (#10). The whitelist routes are the
 // stable API for the Discord bot, which decides who may use them; the
 // console route is for the server page. Restarting any server is the
@@ -27,7 +28,10 @@ const (
 var playerName = regexp.MustCompile(`^[A-Za-z0-9_]{3,16}$`)
 
 type commandResult struct {
-	Output string `json:"output"` // what Minecraft answered, § codes removed
+	Output string `json:"output"` // what Minecraft answered (§ codes removed), or what changed
+	// RestartNeeded: the change only takes effect after the server restarts
+	// (Valheim reads its permitted list at start).
+	RestartNeeded bool `json:"restart_needed,omitempty"`
 }
 
 // rconServer looks up {id} and checks it's a Minecraft server with RCON
@@ -96,10 +100,20 @@ type whitelist struct {
 	Players []string `json:"players"`
 }
 
-// getWhitelist lists the whitelisted players.
+// getWhitelist lists the whitelisted players: Minecraft names over RCON,
+// or the SteamID64s on Valheim's permitted list.
 func (h *handlers) getWhitelist(w http.ResponseWriter, r *http.Request) {
-	srv, ok := h.rconServer(w, r)
+	srv, ok := h.whitelistServer(w, r)
 	if !ok {
+		return
+	}
+	if srv.Game == GameValheim {
+		l, _, err := readPermitted(srv.PermittedList)
+		if err != nil {
+			h.permittedFailed(w, srv, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, whitelist{Players: l.players()})
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), commandTimeout)
@@ -119,29 +133,59 @@ func (h *handlers) getWhitelist(w http.ResponseWriter, r *http.Request) {
 	httpx.WriteJSON(w, http.StatusOK, whitelist{Players: players})
 }
 
-// putWhitelist adds {player}; deleteWhitelist removes them. Both answer
-// with Minecraft's own words ("Added Steve to the whitelist", "Player is
-// already whitelisted", "That player does not exist"…), since only the
-// game knows whether the name is a real account.
+// putWhitelist adds {player}; deleteWhitelist removes them. Minecraft
+// answers in its own words ("Added Steve to the whitelist", "That player
+// does not exist"…), since only the game knows whether the name is a real
+// account. Valheim's answer says the change needs a restart.
 func (h *handlers) putWhitelist(w http.ResponseWriter, r *http.Request) {
-	h.whitelistChange(w, r, "add")
+	h.whitelistChange(w, r, true)
 }
 
 func (h *handlers) deleteWhitelist(w http.ResponseWriter, r *http.Request) {
-	h.whitelistChange(w, r, "remove")
+	h.whitelistChange(w, r, false)
 }
 
-func (h *handlers) whitelistChange(w http.ResponseWriter, r *http.Request, verb string) {
-	srv, ok := h.rconServer(w, r)
+func (h *handlers) whitelistChange(w http.ResponseWriter, r *http.Request, add bool) {
+	srv, ok := h.whitelistServer(w, r)
 	if !ok {
 		return
 	}
 	player := r.PathValue("player")
+	if srv.Game == GameValheim {
+		if !steamID64.MatchString(player) {
+			httpx.WriteError(w, http.StatusBadRequest, "not a SteamID64: 17 digits starting with 7656119")
+			return
+		}
+		res, err := h.editPermitted(srv, player, add)
+		if err != nil {
+			h.permittedFailed(w, srv, err)
+			return
+		}
+		httpx.WriteJSON(w, http.StatusOK, res)
+		return
+	}
 	if !playerName.MatchString(player) {
 		httpx.WriteError(w, http.StatusBadRequest, "not a Minecraft username: 3–16 letters, digits or _")
 		return
 	}
+	verb := "remove"
+	if add {
+		verb = "add"
+	}
 	h.run(w, r, srv, "whitelist "+verb+" "+player)
+}
+
+// whitelistServer looks up {id} and checks its whitelist is set up:
+// Minecraft with RCON, or Valheim with a permitted list.
+func (h *handlers) whitelistServer(w http.ResponseWriter, r *http.Request) (Server, bool) {
+	srv, ok := h.server(w, r)
+	if !ok {
+		return Server{}, false
+	}
+	if srv.Game == GameValheim {
+		return srv, h.permittedServer(w, srv)
+	}
+	return h.rconServer(w, r)
 }
 
 // Minecraft's `whitelist list`: "There are 2 whitelisted player(s): alice,
