@@ -1,8 +1,8 @@
 <!--
   Search the catalog and add exercises. A native modal <dialog> (focus,
   Esc, background hidden from screen readers), nearly full-screen on
-  phones. Each result is a toggle button (aria-pressed): pressed = in the
-  plan. It stays open, so several exercises can be added in a row.
+  phones. Each result is a toggle button (aria-pressed): pressed = already
+  added (to the plan or workout). It stays open, so several exercises can be added in a row.
 
   Searching 876 names on each keystroke is O(n) and instant; only the
   first PAGE results are rendered, with "Show more", to keep the DOM light.
@@ -26,7 +26,7 @@
   }: {
     open?: boolean
     catalog: Exercise[]
-    selected: Set<string> // exercise IDs already in the plan
+    selected: Set<string> // exercise IDs already added
     ontoggle: (exercise: Exercise) => void
   } = $props()
 

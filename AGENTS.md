@@ -122,6 +122,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 29 | Manage profiles = a mode of the picker ("Manage profiles" / "Done"): tiles open an edit dialog (same form as Add; ID never changes on rename). "Remove" archives after an inline confirm; archived profiles are listed in manage mode with Restore | 🟡 | 2026-10-08. Agent's call (Xander delegated); review. |
 | 30 | Plans are one shared household list (anyone creates/edits); each person's routine (`schedule` in their `fitness.json`) picks which plan on which day. Plans page = "Your routine" planner + the shared list; create/edit is its own page (`/plans/new`, `/plans/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
 | 33 | Vocabulary: **Plan** = a named list of exercises (was "Routine"; Go `Plan`, `/api/plans`, `fitness/plans/`, `plan_id` on sessions). **Routine** = a person's weekly schedule of plans (JSON key stays `schedule`). **Workout** (UI) = **Session** (code) | ✅ | 2026-10-08. Matches how Xander thinks about it. Renamed everywhere with no data migration (nothing to keep yet). |
+| 34 | Starting and discarding workouts: home's Today card has "Other workout" (or "Start a workout" when nothing is scheduled) → dialog: any plan or an **empty workout**; workout mode has "+ Add exercise" (catalog picker, appended at the end; removable until a set is logged). An in-progress workout can be **discarded** from the Today card (trash icon → inline confirm) = archived (#16) | ✅ | 2026-10-08. Xander: archive, not delete. |
 | 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
 | 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form as two apps (its importer keeps one service per app): `deploy/zimaos-home-tools.yaml` (publishes :8080) + `deploy/zimaos-caddy.yaml` (proxies to `host.docker.internal:8080`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
 
@@ -263,8 +264,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - Older components (picker, profile dialog, onboarding, check-in, menu) still
   define their own button styles; move them to the shared `.btn` classes
   in `app.css`.
-- Workout mode: discard a workout; start a workout on a rest day / from any
-  plan (today only from the schedule); duration input as min:sec
+- Workout mode: duration input as min:sec
   instead of seconds; distance metric not shown yet; rest length per
   exercise or per goal; optional sound when rest ends (vibration is
   Android-only).

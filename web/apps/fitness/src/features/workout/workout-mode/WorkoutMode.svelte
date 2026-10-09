@@ -6,14 +6,17 @@
   - Completing a set saves the whole session (so a refresh or a dead
     battery loses nothing) and starts the rest timer.
   - The screen stays on while this is open (where the browser allows).
+  - "+ Add exercise" adds any exercise from the catalog (at the end), so
+    an empty workout is built as you go.
   - "Leave" keeps the workout in progress (home offers Resume);
     "Finish" stamps the end time.
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
-  import { getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
+  import { getCatalog, getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
+  import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
-  import { getPlans } from '@/features/plans'
+  import { getPlans, type Plan } from '@/features/plans'
   import { RestTimer } from '@/features/workout/rest-timer'
   import {
     getRecentSessions,
@@ -39,6 +42,8 @@
   type Step = { exercise: Exercise | null; exerciseId: string; rows: Row[]; last: SetEntry[] }
 
   let session = $state<Session | null>(null)
+  let history: Session[] = [] // recent sessions, for "Last:" and pre-fills
+  let plan: Plan | undefined // the plan this workout started from, if any
   let steps = $state<Step[]>([])
   let step = $state(0)
   let status = $state<'loading' | 'ready' | 'missing' | 'error'>('loading')
@@ -60,38 +65,20 @@
   async function load() {
     status = 'loading'
     try {
-      const [history, plans] = await Promise.all([getRecentSessions(profile.id), getPlans()])
-      const s = history.find((h) => h.id === sessionId)
+      const [recent, plans] = await Promise.all([getRecentSessions(profile.id), getPlans()])
+      const s = recent.find((h) => h.id === sessionId)
       if (!s) {
         status = 'missing'
         return
       }
-      const plan = plans.find((r) => r.id === s.plan_id)
+      history = recent
+      plan = plans.find((p) => p.id === s.plan_id)
       const exercises = await Promise.all(s.entries.map((e) => getExercise(e.exercise_id).catch(() => null)))
-
-      steps = s.entries.map((entry, i) => {
-        const last = lastSets(history, entry.exercise_id, s.id)
-        const suggested = plan?.exercises.find((r) => r.exercise_id === entry.exercise_id)?.suggested_sets
-        const planned = Math.max(entry.sets.length, suggested ?? (last.length || DEFAULT_SETS))
-        // Done sets keep their values; the rest are pre-filled from last time.
-        const rows = Array.from({ length: planned }, (_, n): Row => {
-          const done = entry.sets[n]
-          const src = done ?? last[n] ?? last.at(-1)
-          const weight = src?.weight_kg ? showWeight(src.weight_kg) : ''
-          return {
-            reps: src?.reps ? String(src.reps) : '',
-            weight,
-            duration: src?.duration_sec ? String(src.duration_sec) : '',
-            done: !!done,
-            fromKg: src?.weight_kg ? { kg: src.weight_kg, shown: weight } : undefined,
-          }
-        })
-        return { exercise: exercises[i], exerciseId: entry.exercise_id, rows, last }
-      })
+      steps = s.entries.map((entry, i) => makeStep(entry.exercise_id, exercises[i], entry.sets))
       session = s
       // Resume at the first exercise that still has sets to do.
       const firstOpen = steps.findIndex((st) => st.rows.some((r) => !r.done))
-      step = firstOpen === -1 ? steps.length - 1 : firstOpen
+      step = firstOpen === -1 ? Math.max(0, steps.length - 1) : firstOpen
       status = 'ready'
     } catch (err) {
       console.error('Loading workout failed:', err)
@@ -99,6 +86,68 @@
     }
   }
   load()
+
+  /**
+   * One exercise's rows: done sets keep their values; the rest are
+   * pre-filled from last time. How many rows: the plan's suggestion, else
+   * as many as last time, else DEFAULT_SETS (never fewer than are done).
+   */
+  function makeStep(exerciseId: string, exercise: Exercise | null, doneSets: SetEntry[]): Step {
+    const last = lastSets(history, exerciseId, sessionId)
+    const suggested = plan?.exercises.find((p) => p.exercise_id === exerciseId)?.suggested_sets
+    const planned = Math.max(doneSets.length, suggested ?? (last.length || DEFAULT_SETS))
+    const rows = Array.from({ length: planned }, (_, n): Row => {
+      const done = doneSets[n]
+      const src = done ?? last[n] ?? last.at(-1)
+      const weight = src?.weight_kg ? showWeight(src.weight_kg) : ''
+      return {
+        reps: src?.reps ? String(src.reps) : '',
+        weight,
+        duration: src?.duration_sec ? String(src.duration_sec) : '',
+        done: !!done,
+        fromKg: src?.weight_kg ? { kg: src.weight_kg, shown: weight } : undefined,
+      }
+    })
+    return { exercise, exerciseId, rows, last }
+  }
+
+  // "+ Add exercise": the catalog is loaded on first open only.
+  let picking = $state(false)
+  let catalog = $state<Exercise[]>([])
+  let inWorkout = $derived(new Set(steps.map((st) => st.exerciseId)))
+
+  async function openPicker() {
+    try {
+      catalog = await getCatalog()
+      picking = true
+    } catch (err) {
+      saveError = `Couldn't load exercises. ${(err as Error).message}`
+    }
+  }
+
+  // Picker toggle: add at the end and show it; tapping an added one again
+  // takes it back out, unless sets are already logged for it.
+  async function toggleExercise(ex: Exercise) {
+    const at = steps.findIndex((st) => st.exerciseId === ex.id)
+    if (at === -1) {
+      steps.push(makeStep(ex.id, ex, []))
+      step = steps.length - 1
+      announce = `${ex.name} added.`
+      if (!(await persist())) {
+        steps.pop()
+        step = Math.max(0, Math.min(step, steps.length - 1))
+      }
+      return
+    }
+    if (steps[at].rows.some((r) => r.done)) {
+      announce = `${ex.name} has logged sets; remove them first.`
+      return
+    }
+    const [removedStep] = steps.splice(at, 1)
+    step = Math.max(0, Math.min(step, steps.length - 1))
+    announce = `${ex.name} removed.`
+    if (!(await persist())) steps.splice(at, 0, removedStep)
+  }
 
   let stopWakeLock: () => void = () => {}
   let ticker: ReturnType<typeof setInterval>
@@ -321,7 +370,7 @@
       <p>Couldn't load the workout. Check that the server is running.</p>
       <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
     </div>
-  {:else if status === 'ready' && current}
+  {:else if status === 'ready'}
     <div class="progress" aria-hidden="true">
       {#each steps as st, i (st.exerciseId)}
         <span class:done={st.rows.every((r) => r.done)} class:current={i === step}></span>
@@ -342,6 +391,13 @@
               {finishing ? 'Saving…' : 'Finish'}
             </button>
           </div>
+          {#if saveError}<p class="error" role="alert">{saveError}</p>{/if}
+        </section>
+      {:else if !current}
+        <section class="empty">
+          <h1 bind:this={heading} tabindex="-1">Empty workout</h1>
+          <p>Add exercises as you go; each one starts with what you did last time.</p>
+          <button type="button" class="btn btn-primary" onclick={openPicker}>+ Add exercise</button>
           {#if saveError}<p class="error" role="alert">{saveError}</p>{/if}
         </section>
       {:else}
@@ -417,12 +473,15 @@
           </p>
         {/if}
 
-        <button type="button" class="btn btn-quiet add-set" onclick={addSet}>+ Add set</button>
+        <div class="adders">
+          <button type="button" class="btn btn-quiet add-set" onclick={addSet}>+ Add set</button>
+          <button type="button" class="btn btn-quiet" onclick={openPicker}>+ Add exercise</button>
+        </div>
         {#if saveError}<p class="error" role="alert">{saveError}</p>{/if}
       {/if}
     </main>
 
-    {#if !confirmingFinish}
+    {#if !confirmingFinish && current}
       <footer class="bottom">
         {#if restEndsAt !== null}
           <RestTimer
@@ -453,6 +512,8 @@
       </footer>
     {/if}
   {/if}
+
+  <ExercisePicker bind:open={picking} {catalog} selected={inWorkout} ontoggle={toggleExercise} />
 </div>
 
 <style>
@@ -694,8 +755,22 @@
     color: var(--color-danger-text);
   }
 
-  .add-set {
-    align-self: flex-start;
+  .adders {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+  }
+
+  .empty {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-4);
+  }
+
+  .empty p {
+    margin: 0;
+    color: var(--color-text-muted);
   }
 
   /* Sticky bottom bar: exercise navigation, or the rest timer. */
