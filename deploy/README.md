@@ -44,7 +44,8 @@ test).
    and token filled in (keep that copy as the gitignored
    `zimaos-caddy.local.yaml`).
 5. **Local DNS (UniFi):** Policy Table → DNS Record, type Host (A):
-   `fitness.<domain>` → the server's LAN IP. Give the server a fixed IP.
+   `fitness.<domain>` → the server's LAN IP (likewise `games.`,
+   `discord.`). Give the server a fixed IP.
    One record per tool (not a wildcard, so public subdomains like game
    servers still resolve normally).
 6. **Check:** `sudo docker ps` (SSH needs sudo for Docker on ZimaOS);
@@ -71,6 +72,31 @@ Once, over SSH and in ZimaOS:
 6. UniFi: DNS record `games.<domain>` → the server's LAN IP.
 7. Check: `https://games.<domain>` shows both servers as Running or
    Stopped (not "Unavailable"), and a server's page shows its live log.
+
+## Discord bot
+Once:
+1. <https://discord.com/developers/applications> → New Application (the
+   name is only a fallback; the bot renames itself per server daily) →
+   Bot → Reset Token, copy it. Leave every "Privileged Gateway Intent"
+   off: the bot needs none.
+2. ZimaOS → Home Tools app → settings: environment `DISCORD_TOKEN` = the
+   token. Save (the app restarts). Never put the token in a file in git.
+3. UniFi: DNS record `discord.<domain>` → the server's LAN IP.
+4. Open `https://discord.<domain>`: it should say "Connected as …". Use
+   "Add to a Discord server" there (only the permissions it needs).
+5. Pick the status channels on that page. People who try `/restart` show
+   up under People → "Asked for access": tap Verify.
+6. Valheim whitelist (optional): mount the folder holding the Valheim
+   server's `permittedlist.txt` into Home Tools, read-write (the
+   commented volume in `zimaos-home-tools.yaml`; the folder, not the
+   file), then add `"permitted_list": "/valheim/permittedlist.txt"` to
+   `games/servers/valheim.json` and restart Home Tools. The game reads
+   the list when it starts, so additions apply after a restart.
+
+Check the log after the first start (`sudo docker logs <home-tools>`):
+"discord connected", then "discord persona" per server. If the avatar
+was refused, the log says so and the bot keeps a still image or just
+the nickname.
 
 ## Update
 Merge to `main` → wait for the "images" workflow (GitHub → Actions) →

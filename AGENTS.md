@@ -46,7 +46,8 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
   under `tools/<name>/` exposing one registration function; a single binary
   `cmd/home-tools` mounts all tools. One process = lowest memory.
 - **Routing:** the Go server dispatches by `Host` header
-  (`fitness.<domain>` → fitness, `games.<domain>` → games; the real
+  (`fitness.<domain>` → fitness, `games.<domain>` → games,
+  `discord.<domain>` → discord; the real
   domain is only in the deploy config, never in git).
   API under `/api/...` per host; everything else serves the tool's SPA.
   `internal/hostroute`; a bare IP or unknown subdomain gets a 404, and
@@ -78,6 +79,8 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
     data/                  runtime JSON (gitignored)
     tools/games/           Go package: game servers via the Docker API (socket proxy)
     web/apps/games/        @home-tools/games (Vite SPA) + embed.go
+    tools/discord/         Go package: Discord bot (commands, status boards, persona) + settings API
+    web/apps/discord/      @home-tools/discord (Vite SPA) + embed.go
 
 Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 "@home-tools/fitness" is an *import path*
@@ -141,11 +144,12 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 39 | Fitness Progress replaces the History tab (Home · Plans · Progress): summary, weight journey chart, logged exercises → per-exercise journey (`/progress/<exercise>`), then the workout history list. Journey charts: weight + reps → heaviest set per workout (+ records), timed → longest duration, distance cardio → distance and pace; every logged set below. Charts are hand-rolled SVG (no dependency); swap for a library only if they turn out hard to read or not responsive enough. All derived from sessions + weight log, nothing new stored; all-time data via `GET /api/users/{u}/exercise-log[/{exercise}]` (finished workouts only; the sessions list stays capped at 100) | ✅ | 2026-10-09. Must be easy to read and follow; for looking at progress before and after a workout, nothing added to workout mode. |
 | 40 | Games activity + heads. **Joins/leaves** read from each server's Docker log, on demand and incremental (only while someone looks: lines since the last read, `timestamps` + `since`; first look catches up from the container's start), last 50 events + who's online in memory, reset per container run; shown as an Activity list on the server page. **Valheim players** come from that log (character names; `query`/A2S now only gives slots). **Minecraft heads**: RCON `list uuids` → Mojang session server → skin → 8×8 face + hat layer cropped in Go (`image/png`), cached a day (failures an hour), served at `/api/servers/{id}/heads/{name}`; browsers never call a third party. Skin downloads only from `textures.minecraft.net` | ✅ | 2026-10-09. Xander chose Mojang-direct over mc-heads.net/crafatar (privacy, no third party) and on-demand over an always-on watcher. NameMC has no public API. Join/leave lines checked against the real Valheim log (2026-10-09); "Connections 0" clears anyone missed. |
 | 41 | Minecraft console + bot API. Anyone on the LAN may run commands (no login, #10). Routes: `POST /api/servers/{id}/console` (`{command}` → `{output}`, any command, one per request), `GET /api/servers/{id}/whitelist`, `PUT`/`DELETE /api/servers/{id}/whitelist/{player}` (name checked against Minecraft's username rule), and the existing `POST …/restart` for every game. **Who may do what is the Discord bot's job** (trusted roles), not this API's. Server page gets a Console section (Minecraft with RCON). Every command is logged | ✅ | 2026-10-09. Xander: LAN is trusted; the bot (later its own home-tool) connects to these routes. Valheim: restart only. |
-| 42 | Discord tool (temporary name "Discord", renamed later), replaces Starport-Assistant: only `/sens` carries over (its 17-game ratio table); news + lobby dropped. **Game statuses:** channel per server chosen in the web UI only (no command); the bot keeps one embed per server and edits it. **Restart + whitelist:** **verified users** only (Discord user IDs listed in the UI). Valheim whitelist takes a SteamID64 (17 digits) and replies "added after the next server restart" (Valheim only reads `permittedlist.txt` at start, as far as we know). Restarts are refused while one is already running. **Blob bot:** daily name (simple names: Jim, Larry…) + color from the 4 profile colors, set as a **per-server nickname** + per-server avatar (Modify Current Member), not the global username; avatar = a looping GIF of its blob (idle → blink ×2 → look left/right) | 🟡 | 2026-10-09. Xander chose UI-only statuses, nicknames, verified-only whitelist. Still open: `discordgo` dependency; bot → games over HTTP vs an import. Animated avatars for bots are unconfirmed; static blob as a fallback. |
+| 42 | Discord tool (working name "Discord", renamed later; replaces Starport-Assistant): `tools/discord` + `web/apps/discord` at `discord.<domain>`, in the same binary; the bot dials **out** to Discord's gateway with **`discordgo`** (approved dependency; guilds intent only, no privileged intents) and reaches games through the **games HTTP API**, not an import (ADR 0012). Token = `DISCORD_TOKEN` env only. Only `/sens` carries over (17-game table); news + lobby dropped. **Statuses:** channel per server set in the UI only; one message per board, edited. **Restart + whitelist:** verified users only (Discord user IDs in the config). Valheim whitelist = SteamID64 on `permittedlist.txt` (games tool, `permitted_list` path), "added after the next server restart". Games refuses a second action on a busy server (409). **Persona:** daily name + one of the 4 profile colors as a **per-server nickname** + per-server avatar (Modify Current Member), avatar = the household blob for that name as a looping GIF (rest → blink ×2 → look left → right → back), still PNG / nickname-only fallbacks | ✅ | 2026-10-09. Xander chose UI-only statuses, nicknames, verified-only whitelist, `discordgo`, HTTP to games. Animated per-server avatars unconfirmed until the first deploy (fallbacks logged). |
+| 43 | Discord details (agent's call, review): unverified attempts become **access requests** (People page: Verify / Dismiss; newest 20 kept) so nobody looks up user IDs; `/restart` has a **2-minute cooldown** per server on top of the 409; config saves carry a **`revision`** (409 if someone saved in between); names = a shuffled pass through the list (each name once before repeats, never the same two days running), colors rotate daily; the blob's seed is the day's name (Jim always looks like Jim); GIF edge is hard (GIF has on/off transparency), eyes anti-aliased; `/whitelist add/remove` replies publicly, `list` privately; status embeds show uptime as a Discord relative timestamp (no edits needed to keep it current) | 🟡 | 2026-10-09. Xander delegated ("whatever is best"); review. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
-ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37).
+ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37, #41–#42).
 
 ## 5. Tool briefs (scope, not specs)
 ### Fitness (`fitness.<domain>`): mostly CRUD
@@ -166,9 +170,14 @@ ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37).
 - Live logs (stream to browser; SSE or WebSocket, decide later).
 - Players: Minecraft via RCON (`list`); Valheim via Steam A2S query or log parsing.
 - Console commands: Minecraft RCON; Valheim TBD.
-- HTTP API for Xander's Discord bot (#41): whitelist + restart routes;
-  the bot decides which Discord users may use them. The bot itself will
-  likely become its own home-tool later.
+- HTTP API for the Discord bot (#41): whitelist + restart routes;
+  the bot decides which Discord users may use them.
+
+### Discord (`discord.<domain>`): built (#42), see `tools/discord/AGENTS.md`
+- Bot: `/sens`, `/restart` + `/whitelist` for verified people, live
+  server status messages, a daily blob persona (name + color).
+- Settings page: today's persona and connection, status channels,
+  names, verified people and access requests.
 
 ### Later ideas (do not build yet)
 Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
@@ -214,10 +223,15 @@ got here: `git log`.
   log (#40); Minecraft console + whitelist/restart API for the bot (#41).
 - **Progress (#39):** summary, weight chart, per-exercise journeys
   (chart, records, every workout's sets), recent workouts. Replaces History.
-- **Not built yet:** games server config editor; the Discord bot.
+- **Discord (#42, ADR 0012):** bot with `/sens`, `/restart`,
+  `/whitelist` (Minecraft + Valheim's permitted list), status boards,
+  daily blob persona; settings page (Bot, People). Not yet run against
+  real Discord.
+- **Not built yet:** games server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
-  profile management flow).
-- **Next:** connect the Discord bot to the games API (#41).
+  profile management flow), #43 (review the Discord details).
+- **Next:** deploy the bot (deploy/README.md → Discord bot), confirm
+  per-server animated avatars, pick the bot's real name.
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.

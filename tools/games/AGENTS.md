@@ -74,9 +74,11 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
 | `PUT` / `DELETE /api/servers/{id}/whitelist/{player}` | Add / remove. Minecraft: `{"output"}` is the game's own answer ("Added Steve to the whitelist", "That player does not exist"); 400 = not a valid username. Valheim: `{player}` is a SteamID64 (400 otherwise); `{"output", "restart_needed": true}`: Valheim reads the list at start. |
 | `GET /api/servers/{id}/logs` | Server-Sent Events: the last 200 lines, then live. `data:` = one line; `event: end` = the container stopped; `event: failure` = a message. |
 
-## For the Discord bot (#41)
-No login: the bot calls these over the LAN, and decides itself which
-Discord users may use which. Stable routes:
+## For the Discord bot (#41, #42)
+No login: the bot (`tools/discord`, ADR 0012) calls these over HTTP
+(normally this same server on localhost), and decides itself which
+Discord users may use which. It relies on the 409 for a busy server and
+on `busy` + `whitelist` in the list. Stable routes:
 `POST /api/servers/{id}/restart` (any game; waits up to a minute),
 `GET/PUT/DELETE /api/servers/{id}/whitelist[/{player}]` (Minecraft names,
 Valheim SteamID64s) and `POST /api/servers/{id}/console` (Minecraft), `GET /api/servers` (status,
@@ -109,5 +111,4 @@ Routing is by Host header (`internal/hostroute`): call
   from the server, never from browsers. Offline-mode servers get no heads.
 - **RCON is a password-protected admin port:** reachable from the LAN is
   fine, never forward it on the router.
-- **Later (scope, not built):** a server config editor; the Discord bot
-  itself (AGENTS.md §5).
+- **Later (scope, not built):** a server config editor.
