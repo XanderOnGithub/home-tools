@@ -12,6 +12,7 @@ in the UI = **Session** in the code.
 | `model.go` | Types and enums: Exercise, Plan, Session, Set, Profile, WeightEntry. Start here. |
 | `validate.go` | Each type's own rules (`Validate`), with `ErrInvalid` / `ErrConflict`. |
 | `store.go` | `Store`: loads everything at `Open`, serves reads from memory, writes through to JSON. Exercises, plans, sessions. |
+| `progress.go` | Progress reads (#39): exercise log + one exercise's all-time history. |
 | `body.go` | Fitness profile (`fitness.json`, incl. the routine) and the weight log. |
 | `handlers.go` | HTTP API (`Register`). |
 | `fedb.go` | free-exercise-db → Exercise mapping (`fedbMetrics`, holds, distance cardio). |
@@ -21,7 +22,7 @@ The UI is `web/apps/fitness` (Svelte); its `src/features/<feature>/`
 folders mirror these concepts: `exercises` (catalog, picker, photos),
 `plans` (list, editor, routine planner), `sessions` (API + helpers),
 `workout` (workout mode, start dialog, rest timer, chime), `home`,
-`history`, `onboarding`, `fitness-profile`, `profiles` (shared picker,
+`progress` (summary, weight + exercise charts, workout list), `onboarding`, `fitness-profile`, `profiles` (shared picker,
 avatar blob), `shell` (layout, nav).
 
 ## Data on disk (`data/fitness/`)
@@ -66,6 +67,8 @@ All JSON; bodies are decoded strictly (unknown fields → 400).
 | `GET /api/users/{user}/sessions?limit=n` | Newest first, archived skipped; `limit` 1–100, default 20 |
 | `POST /api/users/{user}/sessions` | Start a workout; server assigns the ID (201; 409 same second) |
 | `PUT /api/users/{user}/sessions/{id}` | Save sets, finish (`ended_at`), archive |
+| `GET /api/users/{user}/exercise-log` | Progress (#39): exercises with logged sets, `{exercise_id, last_done, workouts}`, most recent first |
+| `GET /api/users/{user}/exercise-log/{exercise}` | One exercise's history, all time, newest first: `{session_id, started_at, sets}` per workout. Both count only finished, non-archived workouts |
 | `GET`/`PUT /api/users/{user}/fitness` | Fitness profile + routine (404 = not onboarded) |
 | `GET /api/users/{user}/weights`, `PUT …/weights/{date}` | Weight log (upsert by date) |
 | `GET /images/<path>` | Exercise photos (no listings, 1-day cache) |

@@ -1,12 +1,13 @@
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { getFitnessProfile, type FitnessProfile } from '@/features/fitness-profile'
-  import { HistoryScreen } from '@/features/history/history-screen'
   import { HomeScreen } from '@/features/home/home-screen'
   import { OnboardingFlow } from '@/features/onboarding/onboarding-flow'
   import { ProfilePicker } from '@home-tools/ui/profiles/profile-picker'
   import { forgetProfile } from '@home-tools/ui/profiles/remembered'
   import type { Profile } from '@home-tools/ui/profiles/types'
+  import { ExerciseJourney } from '@/features/progress/exercise-journey'
+  import { ProgressScreen } from '@/features/progress/progress-screen'
   import { PlanEditor } from '@/features/plans/plan-editor'
   import { PlansScreen } from '@/features/plans/plans-screen'
   import { AppShell } from '@home-tools/ui/app-shell'
@@ -17,7 +18,7 @@
   const LINKS = [
     { href: '/', label: 'Home', icon: 'M3 11l9-8 9 8 M5 9.5V20h5v-6h4v6h5V9.5' },
     { href: '/plans', label: 'Plans', icon: 'M8 6h12 M8 12h12 M8 18h12 M4 6h.01 M4 12h.01 M4 18h.01' },
-    { href: '/history', label: 'History', icon: 'M12 7v5l3 2 M3.05 11a9 9 0 1 1 .5 4 M3 4v5h5' },
+    { href: '/progress', label: 'Progress', icon: 'M3 3v18h18 M7 15l4-4 3 3 6-6' },
   ]
 
   // Gates, in order:
@@ -30,17 +31,21 @@
 
   // /plans/new → editor for a new plan; /plans/<id> → edit it.
   let planId = $derived(router.path.match(/^\/plans\/([^/]+)$/)?.[1] ?? null)
+  // /progress/<exercise id> → that exercise's journey.
+  let journeyId = $derived(router.path.match(/^\/progress\/([^/]+)$/)?.[1] ?? null)
   // /workout/<session id> → workout mode (full screen, no navigation).
   let workoutId = $derived(router.path.match(/^\/workout\/([^/]+)$/)?.[1] ?? null)
 
   // "Page · Fitness" (most specific first: tabs cut off the end). Home is
   // the tool's front page, so it names the whole set instead.
-  const TITLES: Record<string, string> = { '/plans': 'Plans', '/history': 'History' }
+  const TITLES: Record<string, string> = { '/plans': 'Plans', '/progress': 'Progress' }
   $effect(() => {
     if (router.path === '/') {
       document.title = 'Fitness · Home Tools'
       return
     }
+    // The journey page sets its own title (the exercise's name) once loaded.
+    if (journeyId) return
     const title = workoutId
       ? 'Workout'
       : planId
@@ -104,8 +109,12 @@
       {#key planId}
         <PlanEditor {profile} id={planId === 'new' ? null : decodeURIComponent(planId)} />
       {/key}
-    {:else if router.path === '/history'}
-      <HistoryScreen {profile} />
+    {:else if router.path === '/progress'}
+      <ProgressScreen {profile} />
+    {:else if journeyId}
+      {#key journeyId}
+        <ExerciseJourney {profile} id={decodeURIComponent(journeyId)} />
+      {/key}
     {:else}
       <NotFound />
     {/if}
