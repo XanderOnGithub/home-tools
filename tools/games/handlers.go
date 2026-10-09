@@ -24,16 +24,19 @@ type handlers struct {
 	docker *Docker // nil: no Docker socket configured (e.g. local dev)
 	log    *slog.Logger
 	snap   snapshot // last looked-up views, so the list answers instantly
+	acts   activity // joins and leaves, read from the logs
+	heads  *heads   // Minecraft player faces
 }
 
 // Register mounts the games API on mux. docker may be nil: servers are
 // still listed and editable, but show as unavailable.
 func Register(mux *http.ServeMux, store *Store, docker *Docker, log *slog.Logger) {
-	h := &handlers{store: store, docker: docker, log: log}
+	h := &handlers{store: store, docker: docker, log: log, heads: newHeads()}
 	mux.HandleFunc("GET /api/servers", h.getServers)
 	mux.HandleFunc("PUT /api/servers/{id}", h.putServer)
 	mux.HandleFunc("POST /api/servers/{id}/{action}", h.postAction)
 	mux.HandleFunc("GET /api/servers/{id}/logs", h.getLogs)
+	mux.HandleFunc("GET /api/servers/{id}/heads/{name}", h.getHead)
 }
 
 // serverView is what the browser gets about a server: its config minus
@@ -50,14 +53,16 @@ type serverView struct {
 	Error        string   `json:"error,omitempty"`
 	Players      *Players `json:"players,omitempty"`
 	PlayersError string   `json:"players_error,omitempty"`
+	Activity     []Event  `json:"activity,omitempty"` // joins and leaves, newest first
 }
 
 func viewOf(srv Server) serverView {
 	return serverView{ID: srv.ID, Name: srv.Name, Game: srv.Game, Container: srv.Container, Archived: srv.Archived}
 }
 
-// fill asks Docker for srv's state and, if it's running, the game for its
-// players. Errors are worded for people; details go to the log.
+// fill asks Docker for srv's state and, if it's running, who's online:
+// Minecraft over RCON, Valheim from its log. Joins and leaves come from
+// the log for both. Errors are worded for people; details go to the log.
 func (h *handlers) fill(ctx context.Context, v *serverView, srv Server) {
 	st, err := h.inspect(ctx, srv)
 	if err != nil {
@@ -65,16 +70,44 @@ func (h *handlers) fill(ctx context.Context, v *serverView, srv Server) {
 		return
 	}
 	v.State = &st
-	if !st.Running || srv.Query == "" {
+	if !st.Running {
+		v.Activity = h.acts.recentEvents(srv.ID) // the history stays visible
 		return
 	}
-	p, err := queryPlayers(ctx, srv)
-	if err != nil {
-		h.log.Warn("player query", "server", srv.ID, "err", err)
-		v.PlayersError = "couldn't ask the game who's online"
-		return
+	online, events, logErr := h.acts.update(ctx, h.docker, srv, st)
+	if logErr != nil {
+		h.log.Warn("activity from log", "server", srv.ID, "err", logErr)
 	}
-	v.Players = &p
+	v.Activity = events
+
+	switch srv.Game {
+	case GameMinecraft:
+		if srv.Query == "" {
+			return
+		}
+		p, uuids, err := minecraftPlayers(ctx, srv)
+		if err != nil {
+			h.log.Warn("player query", "server", srv.ID, "err", err)
+			v.PlayersError = "couldn't ask the game who's online"
+			return
+		}
+		for name, uuid := range uuids {
+			h.heads.remember(name, uuid)
+		}
+		v.Players = &p
+	case GameValheim:
+		if logErr != nil {
+			v.PlayersError = "couldn't read the server's log"
+			return
+		}
+		p := Players{Online: len(online), Names: online}
+		if srv.Query != "" {
+			if p.Max, err = valheimMax(ctx, srv); err != nil {
+				h.log.Debug("valheim query", "server", srv.ID, "err", err)
+			}
+		}
+		v.Players = &p
+	}
 }
 
 // getServers lists every server with its live state and players, from
@@ -230,6 +263,31 @@ func (h *handlers) getLogs(w http.ResponseWriter, r *http.Request) {
 	default:
 		_ = send("end", "")
 	}
+}
+
+// getHead answers a Minecraft player's face as an 8×8 PNG (decision #40),
+// or 404 when there's none (unknown player, offline-mode server, Mojang
+// unreachable). Only players this server has listed have one.
+func (h *handlers) getHead(w http.ResponseWriter, r *http.Request) {
+	srv, ok := h.server(w, r)
+	if !ok {
+		return
+	}
+	if srv.Game != GameMinecraft {
+		httpx.WriteError(w, http.StatusNotFound, "only Minecraft players have heads")
+		return
+	}
+	face, err := h.heads.face(r.Context(), r.PathValue("name"))
+	if err != nil {
+		if !errors.Is(err, errNoHead) {
+			h.log.Warn("player head", "server", srv.ID, "err", err)
+		}
+		httpx.WriteError(w, http.StatusNotFound, "no head for "+r.PathValue("name"))
+		return
+	}
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400") // a day, like the server's own cache
+	w.Write(face)
 }
 
 // server looks up {id}, answering 404 itself when it's unknown.

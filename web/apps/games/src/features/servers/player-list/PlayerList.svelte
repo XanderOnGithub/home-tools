@@ -1,13 +1,18 @@
 <!--
-  Who's on a server right now. Names come from the game: Minecraft lists
-  everyone; Valheim often reports only a count, so unnamed players are
-  summed up ("+2 more"). Every state says something useful: stopped, not
-  set up (no query address), couldn't ask, nobody on.
+  Who's on a server right now. Minecraft: from RCON, each with their head
+  (from Mojang via our server; a plain icon when there's none). Valheim:
+  character names from its log (decision #40). Every state says something
+  useful: stopped, not set up (Minecraft without RCON), couldn't ask,
+  nobody on. Unnamed players (a count without names) are summed up.
 -->
 <script lang="ts">
-  import type { Server } from '@/features/servers'
+  import { SvelteSet } from 'svelte/reactivity'
+  import { headUrl, type Server } from '@/features/servers'
 
   let { server }: { server: Server } = $props()
+
+  // Players whose head didn't load (offline-mode server, Mojang down…).
+  const noHead = new SvelteSet<string>()
 
   let players = $derived(server.players)
   let unnamed = $derived(players ? Math.max(0, players.online - players.names.length) : 0)
@@ -16,7 +21,7 @@
 <section class="players" aria-labelledby="players-title">
   <div class="head">
     <h2 id="players-title">Players</h2>
-    {#if players}<span class="count">{players.online} / {players.max}</span>{/if}
+    {#if players}<span class="count">{players.online}{players.max ? ` / ${players.max}` : ''}</span>{/if}
   </div>
 
   {#if !server.state?.running}
@@ -28,7 +33,11 @@
       <ul>
         {#each players.names as name (name)}
           <li>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+            {#if server.game === 'minecraft' && !noHead.has(name)}
+              <img class="head" src={headUrl(server.id, name)} alt="" onerror={() => noHead.add(name)} />
+            {:else}
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" /><path d="M4 21a8 8 0 0 1 16 0" /></svg>
+            {/if}
             {name}
           </li>
         {/each}
@@ -40,9 +49,11 @@
       {/if}
     {/if}
   {:else if server.players_error}
-    <p class="muted">Couldn't ask the game who's online.</p>
+    <p class="muted">Couldn't find out who's online.</p>
   {:else}
-    <p class="muted">Not set up: add a <code>query</code> address to this server's file to see who's on.</p>
+    <p class="muted">
+      Not set up: add RCON (<code>query</code> and <code>rcon_password</code>) to this server's file to see who's on.
+    </p>
   {/if}
 </section>
 
@@ -94,6 +105,15 @@
     border-radius: var(--radius-full);
     background: var(--color-accent-subtle);
     font-weight: var(--weight-semibold);
+  }
+
+  /* Minecraft faces are 8×8 pixels: scaled up, kept blocky. */
+  .head {
+    width: 1.5rem;
+    height: 1.5rem;
+    margin: calc(-1 * var(--space-1)) 0;
+    border-radius: var(--radius-sm);
+    image-rendering: pixelated;
   }
 
   li svg {

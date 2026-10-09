@@ -88,8 +88,9 @@ func fakeDocker(t *testing.T) (*Docker, *[]string) {
 	var calls []string
 	mux := http.NewServeMux()
 	inspect := map[string]string{
-		"mc": `{"State":{"Status":"running","Running":true,"StartedAt":"2026-10-08T18:00:00Z"},"Config":{"Tty":false}}`,
-		"vh": `{"State":{"Status":"exited","Running":false,"StartedAt":"2026-10-07T18:00:00Z"},"Config":{"Tty":true}}`,
+		"mc":    `{"State":{"Status":"running","Running":true,"StartedAt":"2026-10-08T18:00:00Z"},"Config":{"Tty":false}}`,
+		"vh":    `{"State":{"Status":"exited","Running":false,"StartedAt":"2026-10-07T18:00:00Z"},"Config":{"Tty":true}}`,
+		"vhrun": `{"State":{"Status":"running","Running":true,"StartedAt":"2026-10-08T18:00:00Z"},"Config":{"Tty":true}}`,
 	}
 	mux.HandleFunc("GET /v1.41/containers/{name}/json", func(w http.ResponseWriter, r *http.Request) {
 		body, ok := inspect[r.PathValue("name")]
@@ -112,7 +113,20 @@ func fakeDocker(t *testing.T) (*Docker, *[]string) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 	mux.HandleFunc("GET /v1.41/containers/{name}/logs", func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("follow") != "1" || r.URL.Query().Get("tail") == "" {
+		q := r.URL.Query()
+		if q.Get("follow") != "1" { // a read for activity: timestamped lines since a time
+			if q.Get("timestamps") != "1" || q.Get("since") == "" {
+				t.Errorf("logs query = %q", r.URL.RawQuery)
+			}
+			switch r.PathValue("name") {
+			case "mc":
+				w.Write(frame(1, "2026-10-08T18:05:00.000000001Z [18:05:00] [Server thread/INFO]: Steve joined the game\n"))
+			case "vhrun":
+				w.Write([]byte("2026-10-08T18:06:00Z 10/08/2026 18:06:00: Got character ZDOID from Ragnhild : 42:1\n"))
+			}
+			return
+		}
+		if q.Get("tail") == "" {
 			t.Errorf("logs query = %q", r.URL.RawQuery)
 		}
 		switch r.PathValue("name") {

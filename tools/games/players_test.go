@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"io"
 	"log/slog"
+	"maps"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -16,24 +17,27 @@ import (
 )
 
 func TestParseMinecraftList(t *testing.T) {
+	const uuid = "069a79f4-44e9-4726-a5be-fca90e38aaf5"
 	tests := []struct {
-		in    string
-		want  Players
-		isErr bool
+		in        string
+		want      Players
+		wantUUIDs map[string]string
+		isErr     bool
 	}{
-		{"There are 2 of a max of 20 players online: alice, bob", Players{2, 20, []string{"alice", "bob"}}, false},
-		{"There are 0 of a max of 20 players online: ", Players{0, 20, []string{}}, false},
-		{"§6There are §c1§6 out of maximum §c10§6 players online.", Players{1, 10, []string{}}, false},
-		{"Unknown command", Players{}, true},
+		{"There are 2 of a max of 20 players online: alice, bob", Players{2, 20, []string{"alice", "bob"}}, map[string]string{}, false},
+		{"There are 0 of a max of 20 players online: ", Players{0, 20, []string{}}, map[string]string{}, false},
+		{"§6There are §c1§6 out of maximum §c10§6 players online.", Players{1, 10, []string{}}, map[string]string{}, false},
+		{"There are 1 of a max of 20 players online: alice (" + uuid + ")", Players{1, 20, []string{"alice"}}, map[string]string{"alice": uuid}, false},
+		{"Unknown command", Players{}, nil, true},
 	}
 	for _, tt := range tests {
-		got, err := parseMinecraftList(tt.in)
+		got, uuids, err := parseMinecraftList(tt.in)
 		if (err != nil) != tt.isErr {
 			t.Errorf("%q: err = %v", tt.in, err)
 			continue
 		}
-		if !tt.isErr && (got.Online != tt.want.Online || got.Max != tt.want.Max || !slices.Equal(got.Names, tt.want.Names)) {
-			t.Errorf("%q = %+v, want %+v", tt.in, got, tt.want)
+		if !tt.isErr && (got.Online != tt.want.Online || got.Max != tt.want.Max || !slices.Equal(got.Names, tt.want.Names) || !maps.Equal(uuids, tt.wantUUIDs)) {
+			t.Errorf("%q = %+v %v, want %+v %v", tt.in, got, uuids, tt.want, tt.wantUUIDs)
 		}
 	}
 }
@@ -87,7 +91,7 @@ func fakeRCON(t *testing.T, password, listReply string) string {
 					switch body {
 					case password:
 						rconWrite(conn, id, 2, "")
-					case "list":
+					case "list", "list uuids":
 						rconWrite(conn, id, 0, listReply)
 					default:
 						rconWrite(conn, -1, 2, "")
@@ -176,6 +180,7 @@ func TestGetServersWithPlayers(t *testing.T) {
 	for _, s := range []Server{
 		{ID: "minecraft", Name: "Minecraft", Game: GameMinecraft, Container: "mc", Query: rcon, RCONPassword: "secret"},
 		{ID: "valheim", Name: "Valheim", Game: GameValheim, Container: "vh", Query: fakeA2S(t)}, // stopped: not asked
+		{ID: "valheim2", Name: "Valheim 2", Game: GameValheim, Container: "vhrun"},              // players from its log
 	} {
 		if err := store.SaveServer(s); err != nil {
 			t.Fatal(err)
@@ -197,9 +202,16 @@ func TestGetServersWithPlayers(t *testing.T) {
 			if v.Players == nil || v.Players.Online != 2 || !slices.Equal(v.Players.Names, []string{"alice", "bob"}) {
 				t.Errorf("minecraft players = %+v (%s)", v.Players, v.PlayersError)
 			}
+			if len(v.Activity) != 1 || v.Activity[0].Player != "Steve" || v.Activity[0].Kind != "join" {
+				t.Errorf("minecraft activity = %+v", v.Activity)
+			}
 		case "valheim":
 			if v.Players != nil {
 				t.Errorf("stopped valheim was asked for players: %+v", v.Players)
+			}
+		case "valheim2":
+			if v.Players == nil || v.Players.Online != 1 || !slices.Equal(v.Players.Names, []string{"Ragnhild"}) || v.Players.Max != 0 {
+				t.Errorf("valheim players = %+v (%s)", v.Players, v.PlayersError)
 			}
 		}
 	}
