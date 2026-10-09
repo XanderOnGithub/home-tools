@@ -123,10 +123,13 @@ func NewSessionID(t time.Time) string {
 }
 
 // SaveSession validates sess and writes it to disk, then to memory.
-// An empty ID means a new session; its ID is derived from StartedAt.
+// An empty ID means a new session; its ID is derived from StartedAt, and
+// if a session with that ID already exists (two started in the same
+// second) it fails with ErrConflict instead of overwriting it.
 // It returns the saved session (with its ID filled in).
 func (s *Store) SaveSession(sess Session) (Session, error) {
-	if sess.ID == "" {
+	create := sess.ID == ""
+	if create {
 		sess.ID = NewSessionID(sess.StartedAt)
 	}
 	if err := sess.Validate(); err != nil {
@@ -140,21 +143,27 @@ func (s *Store) SaveSession(sess Session) (Session, error) {
 		return Session{}, err
 	}
 
-	path := filepath.Join(s.dir, "users", sess.UserID, "sessions", sess.ID+".json")
-	if err := jsonfile.Write(path, sess); err != nil {
-		return Session{}, err
-	}
-
-	// Disk succeeded; now memory. Scan backwards from the newest session:
-	// edits almost always target the latest one, so this usually stops
-	// after one step. The same scan finds the insert point for a session
-	// logged after the fact, keeping the slice sorted.
+	// Scan backwards from the newest session: edits almost always target
+	// the latest one, so this usually stops after one step. The same scan
+	// finds the insert point for a session logged after the fact, keeping
+	// the slice sorted.
 	list := s.sessions[sess.UserID]
 	i := len(list)
 	for i > 0 && list[i-1].ID >= sess.ID {
 		i--
 	}
-	if i < len(list) && list[i].ID == sess.ID {
+	exists := i < len(list) && list[i].ID == sess.ID
+	if create && exists {
+		return Session{}, fmt.Errorf("%w: session %s already exists", ErrConflict, sess.ID)
+	}
+
+	path := filepath.Join(s.dir, "users", sess.UserID, "sessions", sess.ID+".json")
+	if err := jsonfile.Write(path, sess); err != nil {
+		return Session{}, err
+	}
+
+	// Disk succeeded; now memory.
+	if exists {
 		list[i] = sess // update in place
 	} else {
 		list = slices.Insert(list, i, sess) // i == len(list) is a plain append

@@ -257,9 +257,6 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - Fitness handlers: `putExercise`/`putRoutine`/`putUser` are near-copies.
   Consider one generic `put[T]` helper once session handlers exist and
   show whether the pattern really repeats.
-- `POST /api/users/{user}/sessions` silently overwrites an existing session
-  that started in the same second (same ID). Fix: store refuses to create
-  over an existing ID → 409 Conflict.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
 - Muscle recovery map (own screen): per-muscle fatigue computed from recent
   sessions × exercise `activation`, decaying over days; "needs rest" view.

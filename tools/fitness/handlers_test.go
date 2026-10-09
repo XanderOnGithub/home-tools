@@ -194,6 +194,8 @@ func TestSessionHandlers(t *testing.T) {
 		{"POST unknown exercise", "POST", "/api/users/xander/sessions",
 			`{"user_id":"xander","started_at":"2026-10-09T18:00:00Z","entries":[{"exercise_id":"nope","sets":[]}]}`, http.StatusBadRequest},
 		{"PUT id mismatch", "PUT", "/api/users/xander/sessions/other", update, http.StatusBadRequest},
+		// Same second as the session above: must not overwrite it.
+		{"POST same second", "POST", "/api/users/xander/sessions", start, http.StatusConflict},
 	}
 	for _, tt := range errorCases {
 		t.Run(tt.name, func(t *testing.T) {

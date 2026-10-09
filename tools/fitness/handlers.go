@@ -202,11 +202,14 @@ func (h *handlers) saveSession(w http.ResponseWriter, r *http.Request, sess Sess
 	}
 	saved, err := h.store.SaveSession(sess)
 	if err != nil {
-		if errors.Is(err, ErrInvalid) {
+		switch {
+		case errors.Is(err, ErrInvalid):
 			httpx.WriteError(w, http.StatusBadRequest, err.Error())
-			return
+		case errors.Is(err, ErrConflict):
+			httpx.WriteError(w, http.StatusConflict, "a workout already started at this time; try again in a second")
+		default:
+			httpx.ServerError(w, r, h.log, err)
 		}
-		httpx.ServerError(w, r, h.log, err)
 		return
 	}
 	httpx.WriteJSON(w, status, saved) // saved has the server-assigned ID

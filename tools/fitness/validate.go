@@ -13,6 +13,10 @@ import (
 // errors.Is (e.g. to answer HTTP 400 instead of 500).
 var ErrInvalid = errors.New("invalid")
 
+// ErrConflict marks a create that would overwrite existing data
+// (HTTP 409).
+var ErrConflict = errors.New("conflict")
+
 // Validate checks s against the metrics ex tracks:
 //   - no value may be negative
 //   - a tracked metric must be > 0, except weight on bodyweight exercises

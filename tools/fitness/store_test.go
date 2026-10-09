@@ -227,6 +227,22 @@ func TestSaveSessionRejects(t *testing.T) {
 	}
 }
 
+func TestSaveSessionNoOverwrite(t *testing.T) {
+	s := newTestStore(t)
+	first := Session{UserID: "xander", StartedAt: at(7, 18), Entries: []Entry{{ExerciseID: "squat"}}}
+	if _, err := s.SaveSession(first); err != nil {
+		t.Fatal(err)
+	}
+	// A second new session in the same second gets the same ID.
+	_, err := s.SaveSession(Session{UserID: "xander", StartedAt: at(7, 18)})
+	if !errors.Is(err, ErrConflict) {
+		t.Fatalf("err = %v, want ErrConflict", err)
+	}
+	if got := s.sessions["xander"]; len(got) != 1 || len(got[0].Entries) != 1 {
+		t.Errorf("sessions = %+v, want the first one untouched", got)
+	}
+}
+
 func TestRecentSessions(t *testing.T) {
 	s := newTestStore(t)
 	for day := 1; day <= 5; day++ {
