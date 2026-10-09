@@ -157,3 +157,24 @@ textarea {
   cursor: default;
   opacity: 0.35;
 }
+
+/* Modal dialogs (<dialog> + showModal()). Shared look; each component sets
+ * its own width/height and padding. Open dialogs are a flex column, so a
+ * fixed header can sit above a scrolling list. */
+.dialog {
+  padding: 0;
+  border: none;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface-raised);
+  color: var(--color-text);
+  box-shadow: var(--shadow-md);
+}
+
+.dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.dialog::backdrop {
+  background: var(--color-backdrop);
+}

@@ -123,7 +123,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 30 | Plans are one shared household list (anyone creates/edits); each person's routine (`schedule` in their `fitness.json`) picks which plan on which day. Plans page = "Your routine" planner + the shared list; create/edit is its own page (`/plans/new`, `/plans/<id>`) | ✅ | 2026-10-08. Confirms #7/#27. A page, not a dialog: picking from 876 exercises needs room on phones. |
 | 33 | Vocabulary: **Plan** = a named list of exercises (was "Routine"; Go `Plan`, `/api/plans`, `fitness/plans/`, `plan_id` on sessions). **Routine** = a person's weekly schedule of plans (JSON key stays `schedule`). **Workout** (UI) = **Session** (code) | ✅ | 2026-10-08. Matches how Xander thinks about it. Renamed everywhere with no data migration (nothing to keep yet). |
 | 34 | Starting and discarding workouts: home's Today card has "Other workout" (or "Start a workout" when nothing is scheduled) → dialog: any plan or an **empty workout**; workout mode has "+ Add exercise" (catalog picker, appended at the end; removable until a set is logged). An in-progress workout can be **discarded** from the Today card (trash icon → inline confirm) = archived (#16) | ✅ | 2026-10-08. Xander: archive, not delete. |
-| 35 | Rest between sets: optional `rest_sec` per plan exercise (0 = default 90 s, max 3600), a hint like `suggested_sets`; typed as seconds in the plan editor. In workout mode ±15 s changes that exercise's rest for the rest of the workout. Rest end: vibrate (Android) + a Web Audio chime (iOS, unlocked by the ✓ tap). Timed sets are entered as min + sec boxes, distance in km/mi per profile units | ✅ | 2026-10-08. Phone number pads have no ":" key, hence seconds / two boxes instead of "1:30". |
+| 35 | Rest between sets: optional `rest_sec` per plan exercise (0 = default 60 s, shown as the field's placeholder; max 3600), a hint like `suggested_sets`; typed as seconds in the plan editor. In workout mode ±15 s changes that exercise's rest for the rest of the workout. Rest end: vibrate (Android) + a Web Audio chime (iOS, unlocked by the ✓ tap). Timed sets are entered as min + sec boxes, distance in km/mi per profile units | ✅ | 2026-10-08. Phone number pads have no ":" key, hence seconds / two boxes instead of "1:30". |
 | 31 | Deployment: one Docker image (root `Dockerfile`: pnpm build → static Go build with `-tags webembed` → distroless), run with Caddy via `deploy/compose.yaml`; data is a bind-mounted host folder (`DATA_DIR`, e.g. under `/var/lib/casaos_data/.media/Vault/`), never in the image | ✅ | 2026-10-08. Same as the game servers: data stays plain files on the host. Without the tag the binary serves no UI (dev uses Vite), so `make check` needs no web build. Embed package: `web/apps/fitness/embed.go`. |
 | 32 | Images built by GitHub Actions on push to `main` (checks first), multi-arch (amd64 + arm64, cross-compiled, no emulation), published **public** on GHCR (`ghcr.io/xanderongithub/home-tools`, `…/home-tools-caddy`, tags `latest` + `sha-<commit>`); ZimaOS installs via its compose form as two apps (its importer keeps one service per app): `deploy/zimaos-home-tools.yaml` (publishes :8080) + `deploy/zimaos-caddy.yaml` (proxies to `host.docker.internal:8080`). Caddyfile baked into the Caddy image | ✅ | 2026-10-08. Fits how other apps are installed; server never builds. No secrets in images: domain + token are env vars in the form. |
 
@@ -182,7 +182,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `SaveSession` (backward scan from newest; same scan finds insert point),
   `RecentSessions`; all IDs pass `validID` (they become paths). `make test`
   runs with -race. Also `Exercises`/`SaveExercise`,
-  `Plans`/`SaveRoutine` (catalog-checked). `Open` trusts files no more
+  `Plans`/`SavePlan` (catalog-checked). `Open` trusts files no more
   than API input: each must pass `Validate`, `id` must match its filename,
   session `user_id` must match its folder, and catalog refs must resolve;
   any failure aborts startup with the file's path. Exercise catalog import works
@@ -240,7 +240,7 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
   `/workout/<session id>` (full screen, outside AppShell): one exercise
   at a time, sets pre-filled from the last finished session with that
   exercise, ✓ saves the whole session (PUT) and starts a rest timer
-  (default 90 s, ±15 s, skip; computed from an end timestamp; vibrates
+  (default 60 s since #35, ±15 s, skip; computed from an end timestamp; vibrates
   where supported); Leave keeps it in progress (home shows Resume),
   Finish sets `ended_at`. Screen Wake Lock while open (HTTPS/localhost
   only, see #8). HTTPS decided (#8, #9): `deploy/` has the Caddy
@@ -264,15 +264,9 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 
 
 ## 8. Improvements (later, not urgent)
-- Fitness handlers: `putExercise`/`putRoutine`/`putUser` are near-copies.
-  Consider one generic `put[T]` helper once session handlers exist and
-  show whether the pattern really repeats.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
 - Muscle recovery map (own screen): per-muscle fatigue computed from recent
   sessions × exercise `activation`, decaying over days; "needs rest" view.
-- Older components (picker, profile dialog, onboarding, check-in, menu) still
-  define their own button styles; move them to the shared `.btn` classes
-  in `app.css`.
 - Workout mode: a mute toggle for the rest chime, if it turns out to be
   annoying in a shared gym.
 - Profile picker → app: a smooth wipe transition in the chosen person's

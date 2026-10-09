@@ -6,10 +6,11 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte'
+  import { LoadError } from '@/components/load-error'
   import { getCatalog, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
-  import { getPlans, savePlan, type Plan } from '@/features/plans'
+  import { DEFAULT_REST_SEC, getPlans, savePlan, type Plan } from '@/features/plans'
   import { idFromName } from '@/ids'
   import { router } from '@/router'
 
@@ -152,10 +153,7 @@
   {#if status === 'missing'}
     <p>That plan doesn't exist. <a href="/plans">Back to plans</a></p>
   {:else if status === 'error'}
-    <div role="alert">
-      <p>Couldn't load. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
-    </div>
+    <LoadError what="the plan" onretry={load} />
   {:else if status === 'ready'}
     <form class="form" onsubmit={save} novalidate>
       <div class="field">
@@ -199,7 +197,13 @@
                   <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
                 </label>
                 <label class="sets rest">
-                  <input type="text" inputmode="numeric" maxlength="4" placeholder="–" bind:value={item.rest} />
+                  <input
+                    type="text"
+                    inputmode="numeric"
+                    maxlength="4"
+                    placeholder={String(DEFAULT_REST_SEC)}
+                    bind:value={item.rest}
+                  />
                   <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
                 </label>
                 <span class="tools">

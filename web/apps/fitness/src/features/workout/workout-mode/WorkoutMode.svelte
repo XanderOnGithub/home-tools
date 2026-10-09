@@ -5,7 +5,7 @@
     exercise ("Last: 8 × 135 lb" beside it); tapping ✓ completes it.
   - Completing a set saves the whole session (so a refresh or a dead
     battery loses nothing) and starts the rest timer: the plan's rest for
-    that exercise, else 90 s (#35). When it ends: vibrate (Android) and a
+    that exercise, else 60 s (#35). When it ends: vibrate (Android) and a
     short chime.
   - Timed sets take min + sec (phone number pads have no ":"); distance
     is km or mi per the profile's units.
@@ -17,11 +17,12 @@
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
+  import { LoadError } from '@/components/load-error'
   import { getCatalog, getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePhotos } from '@/features/exercises/exercise-photos'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@/features/profiles/types'
-  import { getPlans, type Plan } from '@/features/plans'
+  import { DEFAULT_REST_SEC, getPlans, type Plan } from '@/features/plans'
   import { playChime, unlockChime } from '@/features/workout/chime'
   import { RestTimer } from '@/features/workout/rest-timer'
   import {
@@ -38,7 +39,6 @@
   let { profile, sessionId }: { profile: Profile; sessionId: string } = $props()
 
   const DEFAULT_SETS = 3
-  const DEFAULT_REST_SEC = 90
 
   // One editable row per set. Values are kept as typed text; `done` rows
   // are the ones saved to the server. `fromKg`/`fromM` remember the exact
@@ -410,9 +410,8 @@
   {#if status === 'missing'}
     <p class="message">This workout doesn't exist anymore. <a href="/">Go home</a></p>
   {:else if status === 'error'}
-    <div class="message" role="alert">
-      <p>Couldn't load the workout. Check that the server is running.</p>
-      <button type="button" class="btn btn-primary" onclick={load}>Try again</button>
+    <div class="message">
+      <LoadError what="the workout" onretry={load} />
     </div>
   {:else if status === 'ready'}
     <div class="progress" aria-hidden="true">

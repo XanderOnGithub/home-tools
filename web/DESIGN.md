@@ -67,7 +67,20 @@ An interactive element isn't done until each state is designed:
 And each **view** answers: empty (first use), loading, error, and full/long
 content (long names, 50 items).
 
-## 7. Before calling a view done
+## 7. Shared building blocks (use these, don't restyle)
+- **Buttons:** `.btn` + one of `.btn-primary`, `.btn-secondary`,
+  `.btn-quiet`, `.btn-danger`, `.btn-text-danger`, `.btn-icon` (icon only;
+  needs `aria-label`). Same classes on an `<a>` that looks like a button.
+  All states (hover, pressed, disabled) are in `app.css`.
+- **Dialogs:** `<dialog class="dialog">` + `showModal()`. Shared look and
+  backdrop in `app.css`; the component sets only its size and padding.
+- **Failed loads:** `<LoadError what="your week" onretry={load} />`
+  (`src/components/load-error`).
+- **Destructive actions:** an inline confirm in place of the buttons
+  ("Keep it" / red "Discard"), with focus moved to the safe choice.
+- **Screen-reader-only text:** `.visually-hidden`.
+
+## 8. Before calling a view done
 1. `pnpm --dir web check` passes, with no a11y warnings from svelte-check.
 2. Checked in light and dark, on a phone-sized window.
 3. Used it with only the keyboard.

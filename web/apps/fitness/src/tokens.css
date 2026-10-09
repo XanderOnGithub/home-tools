@@ -45,6 +45,15 @@
   --color-on-danger: light-dark(#ffffff, #450a0a);
   --color-danger-text: light-dark(#b91c1c, #f87171);
   --color-danger-subtle: light-dark(#fef2f2, #2a1414);
+
+  /* Fixed in both themes: they sit on photos or over the page, not on a
+   * themed surface. */
+  --color-backdrop: rgb(0 0 0 / 0.45); /* behind modal dialogs */
+  --color-photo-bg: #ffffff; /* exercise photos have white backgrounds */
+  --color-overlay: rgb(0 0 0 / 0.55); /* controls on top of a photo */
+  --color-on-overlay: #ffffff;
+  --color-on-overlay-muted: rgb(255 255 255 / 0.45);
+  --color-avatar-eye: #1c1917; /* the blob's eyes are character, not chrome */
 }
 
 /* ---- Accents (one per profile color) ----

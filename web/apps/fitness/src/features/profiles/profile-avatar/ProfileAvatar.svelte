@@ -83,7 +83,7 @@
   /* Simple dark ovals. Same in light and dark mode: they're the
    * character, not UI chrome, so they don't follow the theme. */
   .eye {
-    fill: #1c1917;
+    fill: var(--color-avatar-eye);
   }
 
   /* Transforms on SVG parts pivot around their own center. */

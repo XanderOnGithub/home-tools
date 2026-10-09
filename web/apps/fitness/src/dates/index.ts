@@ -12,12 +12,6 @@ export function today(): string {
   return isoDate(new Date())
 }
 
-/** Parses "YYYY-MM-DD" as a local date (midnight), not UTC. */
-export function parseDate(iso: string): Date {
-  const [y, m, d] = iso.split('-').map(Number)
-  return new Date(y, m - 1, d)
-}
-
 /** Monday 00:00 (local) of the week containing d. Weeks start Monday. */
 export function startOfWeek(d: Date): Date {
   const start = new Date(d.getFullYear(), d.getMonth(), d.getDate())

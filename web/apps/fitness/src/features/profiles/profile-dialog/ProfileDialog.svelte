@@ -194,10 +194,10 @@
           Archived.
         </p>
         <div class="actions">
-          <button type="button" class="button button-secondary" bind:this={keepButton} onclick={keep}>
+          <button type="button" class="btn btn-secondary" bind:this={keepButton} onclick={keep}>
             Keep
           </button>
-          <button type="button" class="button button-danger" onclick={remove} disabled={saving}>
+          <button type="button" class="btn btn-danger" onclick={remove} disabled={saving}>
             {saving ? 'Removing…' : 'Remove'}
           </button>
         </div>
@@ -205,15 +205,15 @@
     {:else}
       <div class="actions">
         {#if editing}
-          <button type="button" class="button button-text-danger" bind:this={removeButton} onclick={askRemove}>
+          <button type="button" class="btn btn-text-danger" bind:this={removeButton} onclick={askRemove}>
             Remove
           </button>
           <span class="spacer"></span>
         {/if}
-        <button type="button" class="button button-secondary" onclick={() => (open = false)}>
+        <button type="button" class="btn btn-secondary" onclick={() => (open = false)}>
           Cancel
         </button>
-        <button type="submit" class="button button-primary" disabled={saving}>
+        <button type="submit" class="btn btn-primary" disabled={saving}>
           {#if saving}Saving…{:else if editing}Save{:else}Create profile{/if}
         </button>
       </div>
@@ -227,15 +227,6 @@
     max-height: calc(100dvh - 2 * var(--space-4));
     overflow-y: auto;
     padding: var(--space-6);
-    border: none;
-    border-radius: var(--radius-lg);
-    background: var(--color-surface-raised);
-    color: var(--color-text);
-    box-shadow: var(--shadow-md);
-  }
-
-  .dialog::backdrop {
-    background: rgb(0 0 0 / 0.45);
   }
 
   .form {
@@ -391,23 +382,6 @@
     gap: var(--space-3);
   }
 
-  .button {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-5);
-    border-radius: var(--radius-full);
-    font-weight: var(--weight-semibold);
-    cursor: pointer;
-    transition:
-      background var(--duration-fast) var(--ease-out),
-      border-color var(--duration-fast) var(--ease-out);
-  }
-
-  .button-primary {
-    border: none;
-    background: var(--color-accent);
-    color: var(--color-on-accent);
-  }
-
   .spacer {
     flex: 1;
   }
@@ -423,41 +397,5 @@
 
   .confirm p {
     margin: 0;
-  }
-
-  .button-danger {
-    border: none;
-    background: var(--color-danger);
-    color: var(--color-on-danger);
-  }
-
-  .button-text-danger {
-    border: none;
-    background: none;
-    color: var(--color-danger-text);
-    padding: 0 var(--space-3);
-  }
-
-  .button-secondary {
-    border: 1px solid var(--color-border-strong);
-    background: none;
-  }
-
-  @media (hover: hover) {
-    .button-primary:hover {
-      background: var(--color-accent-hover);
-    }
-    .button-secondary:hover {
-      border-color: var(--color-text);
-    }
-  }
-
-  .button-primary:active {
-    background: var(--color-accent-pressed);
-  }
-
-  .button:disabled {
-    cursor: progress;
-    opacity: 0.7;
   }
 </style>
