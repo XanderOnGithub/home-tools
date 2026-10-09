@@ -13,6 +13,7 @@ root `AGENTS.md` first; this file is what's specific to games.
 | `docker.go` | Docker Engine API client: plain `net/http` over a unix socket, API `v1.41`; `Inspect`, `Do` (start/stop/restart), `Logs` (follow), `LogsSince` (timestamped, no follow) (+ `demux` for Docker's multiplexed stream). |
 | `players.go` | Who's online: Minecraft over RCON (`list uuids`, falls back to `list`); Valheim's slots over A2S. |
 | `activity.go` | Joins/leaves and Valheim's online players, parsed from the Docker log on demand (#40). |
+| `console.go` | Minecraft console + whitelist over RCON (#41): the routes the Discord bot uses. |
 | `heads.go` | Minecraft faces: Mojang profile → skin → 8×8 face + hat, cached. |
 | `rcon.go` | Minecraft RCON client (Source RCON protocol over TCP). |
 | `a2s.go` | Steam A2S query client (UDP), as Valheim answers it. |
@@ -25,7 +26,7 @@ UI: `web/apps/games` (Svelte, on `@home-tools/ui` incl. the shared
 cards), `server-card` (icon, name, status, players; the whole card links
 to the server page), `server-menu` (⋯ popover: Start or Stop, Restart;
 confirm dialog), `server-page` (header + players + log), `player-list`,
-`server-status`, `game-icon`, `activity-list` (joins/leaves by day), `log-view` (SSE client), `live-servers` (one
+`server-status`, `game-icon`, `activity-list` (joins/leaves by day), `console-view` (Minecraft commands), `log-view` (SSE client), `live-servers` (one
 shared list for every page, polled every 5 s while visible, so moving
 between pages never refetches).
 
@@ -62,7 +63,21 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
 | `PUT /api/servers/{id}` | Create or replace a server's config (`httpx.PutByID`). |
 | `POST /api/servers/{id}/{start\|stop\|restart}` | Do it; answers with the new state. 502 = Docker refused / no such container; 503 = Docker not connected. |
 | `GET /api/servers/{id}/heads/{name}` | A Minecraft player's face, 8×8 PNG (1-day cache); 404 when there's none. Only players RCON has listed. |
+| `POST /api/servers/{id}/console` | Minecraft: `{"command": "say hi"}` → `{"output": "…"}` (§ codes removed; leading `/` fine; no line breaks). 409 = RCON not set up, 502 = game unreachable. |
+| `GET /api/servers/{id}/whitelist` | Minecraft: `{"players": [...]}` |
+| `PUT` / `DELETE /api/servers/{id}/whitelist/{player}` | Minecraft: add / remove; `{"output"}` is the game's own answer ("Added Steve to the whitelist", "That player does not exist"). 400 = not a valid username. |
 | `GET /api/servers/{id}/logs` | Server-Sent Events: the last 200 lines, then live. `data:` = one line; `event: end` = the container stopped; `event: failure` = a message. |
+
+## For the Discord bot (#41)
+No login: the bot calls these over the LAN, and decides itself which
+Discord users may use which. Stable routes:
+`POST /api/servers/{id}/restart` (any game; waits up to a minute),
+`GET/PUT/DELETE /api/servers/{id}/whitelist[/{player}]` and
+`POST /api/servers/{id}/console` (Minecraft), `GET /api/servers` (status,
+players). Errors are `{"error": "…"}` worded for people, safe to show.
+Routing is by Host header (`internal/hostroute`): call
+`https://games.<domain>/api/...`, or plain HTTP to port 8080 with
+`Host: games.<domain>`. A bare IP gets 404.
 
 ## Gotchas
 - **SSE event names:** never send `event: error`; `EventSource` uses that
@@ -88,6 +103,5 @@ editor in the UI yet (`PUT /api/servers/{id}` works).
   from the server, never from browsers. Offline-mode servers get no heads.
 - **RCON is a password-protected admin port:** reachable from the LAN is
   fine, never forward it on the router.
-- **Later (scope, not built):** console commands (RCON), who-may-do-what
-  permissions, a server config editor, an HTTP API the Discord bot can
-  call (AGENTS.md §5).
+- **Later (scope, not built):** a server config editor; the Discord bot
+  itself (AGENTS.md §5).

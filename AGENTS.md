@@ -140,6 +140,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 38 | Games v2: same look as fitness (shared `AppShell` in `@home-tools/ui`, nav links per tool, no phone tab bar with one link). Cards: game icon (own drawings in the accent color, not the games' logos), name, status, "Up 2 h · 2 of 20 online"; the whole card opens the server page; a ⋯ menu top-right holds Start or Stop + Restart (confirm dialog). Server page: header, Players, Log. **Players online:** Minecraft via **RCON** (`list`; password in the server file as `rcon_password`, never sent to browsers), Valheim via Steam **A2S**; address = a `query` field per server | ✅ | 2026-10-08. Xander chose RCON over Server List Ping (it also opens the door to console commands), a query field over guessing from Docker, and the menu top-right. |
 | 39 | Fitness Progress replaces the History tab (Home · Plans · Progress): summary, weight journey chart, logged exercises → per-exercise journey (`/progress/<exercise>`), then the workout history list. Journey charts: weight + reps → heaviest set per workout (+ records), timed → longest duration, distance cardio → distance and pace; every logged set below. Charts are hand-rolled SVG (no dependency); swap for a library only if they turn out hard to read or not responsive enough. All derived from sessions + weight log, nothing new stored; all-time data via `GET /api/users/{u}/exercise-log[/{exercise}]` (finished workouts only; the sessions list stays capped at 100) | ✅ | 2026-10-09. Must be easy to read and follow; for looking at progress before and after a workout, nothing added to workout mode. |
 | 40 | Games activity + heads. **Joins/leaves** read from each server's Docker log, on demand and incremental (only while someone looks: lines since the last read, `timestamps` + `since`; first look catches up from the container's start), last 50 events + who's online in memory, reset per container run; shown as an Activity list on the server page. **Valheim players** come from that log (character names; `query`/A2S now only gives slots). **Minecraft heads**: RCON `list uuids` → Mojang session server → skin → 8×8 face + hat layer cropped in Go (`image/png`), cached a day (failures an hour), served at `/api/servers/{id}/heads/{name}`; browsers never call a third party. Skin downloads only from `textures.minecraft.net` | ✅ | 2026-10-09. Xander chose Mojang-direct over mc-heads.net/crafatar (privacy, no third party) and on-demand over an always-on watcher. NameMC has no public API. Join/leave lines checked against the real Valheim log (2026-10-09); "Connections 0" clears anyone missed. |
+| 41 | Minecraft console + bot API. Anyone on the LAN may run commands (no login, #10). Routes: `POST /api/servers/{id}/console` (`{command}` → `{output}`, any command, one per request), `GET /api/servers/{id}/whitelist`, `PUT`/`DELETE /api/servers/{id}/whitelist/{player}` (name checked against Minecraft's username rule), and the existing `POST …/restart` for every game. **Who may do what is the Discord bot's job** (trusted roles), not this API's. Server page gets a Console section (Minecraft with RCON). Every command is logged | ✅ | 2026-10-09. Xander: LAN is trusted; the bot (later its own home-tool) connects to these routes. Valheim: restart only. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
@@ -164,8 +165,9 @@ ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37).
 - Live logs (stream to browser; SSE or WebSocket, decide later).
 - Players: Minecraft via RCON (`list`); Valheim via Steam A2S query or log parsing.
 - Console commands: Minecraft RCON; Valheim TBD.
-- HTTP API designed so a future Discord bot (migrating Xander's existing Go bot)
-  can call it; permission config (who may restart what) editable in UI.
+- HTTP API for Xander's Discord bot (#41): whitelist + restart routes;
+  the bot decides which Discord users may use them. The bot itself will
+  likely become its own home-tool later.
 
 ### Later ideas (do not build yet)
 Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
@@ -208,14 +210,13 @@ got here: `git log`.
   ⋯ menu for start/stop/restart, server page with players and live log;
   runs on the real server via the socket proxy. Minecraft players via
   RCON with heads; Valheim players and both games' joins/leaves from the
-  log (#40).
+  log (#40); Minecraft console + whitelist/restart API for the bot (#41).
 - **Progress (#39):** summary, weight chart, per-exercise journeys
   (chart, records, every workout's sets), recent workouts. Replaces History.
-- **Not built yet:** games console commands, permissions, server
-  config editor.
+- **Not built yet:** games server config editor; the Discord bot.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow).
-- **Next:** Minecraft console (needs a permissions decision, §5).
+- **Next:** connect the Discord bot to the games API (#41).
 
 ## 8. Improvements (later, not urgent)
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
@@ -227,6 +228,3 @@ got here: `git log`.
   accent color when a profile is tapped (respect reduced motion: fade or
   instant). Likely the View Transitions API or a full-screen accent
   overlay that sweeps across, then reveals home.
-- Games, Minecraft console: send commands over the RCON connection that
-  already works (`say`, `whitelist add`, …) from the server page; needs a
-  decision on who may run what (§5 permissions).
