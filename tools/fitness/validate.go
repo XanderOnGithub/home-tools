@@ -20,7 +20,8 @@ var ErrConflict = errors.New("conflict")
 // Validate checks s against the metrics ex tracks:
 //   - no value may be negative
 //   - a tracked metric must be > 0, except weight on bodyweight exercises
-//     (0 means bodyweight only)
+//     (0 means bodyweight only) and distance (0 means not measured: a run
+//     without a watch still counts)
 //   - an untracked metric must be 0
 func (s Set) Validate(ex Exercise) error {
 	if s.Reps < 0 || s.WeightKg < 0 || s.DurationSec < 0 || s.DistanceM < 0 {
@@ -41,7 +42,7 @@ func (s Set) Validate(ex Exercise) error {
 		// Linear scan: an exercise tracks at most 4 metrics, so this beats
 		// building a map (no allocation, no hashing).
 		tracked := slices.Contains(ex.Metrics, f.metric)
-		optional := f.metric == MetricWeight && ex.Bodyweight
+		optional := (f.metric == MetricWeight && ex.Bodyweight) || f.metric == MetricDistance
 
 		switch {
 		case f.filled && !tracked:

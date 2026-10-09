@@ -56,11 +56,20 @@ var fedbHolds = []string{
 	"Isometric_Neck_Exercise_-_Sides",
 }
 
+// fedbDistance are cardio exercises that cover a distance worth logging
+// (optional per set); other cardio (stair machines, rope jumping) is time
+// only.
+var fedbDistance = []string{
+	"Bicycling", "Bicycling_Stationary", "Elliptical_Trainer", "Jogging_Treadmill", "Recumbent_Bike",
+	"Rowing_Stationary", "Running_Treadmill", "Skating", "Trail_Running_Walking", "Walking_Treadmill",
+}
+
 // ParseFreeExerciseDB converts free-exercise-db's dist/exercises.json into
 // validated exercises. Mapping:
 //   - primary muscles → activation 1.0, secondary → 0.5
 //   - stretching, cardio and static holds (fedbHolds) track duration;
-//     everything else reps + weight
+//     distance cardio (fedbDistance) also distance; everything else
+//     reps + weight
 //   - bodyweight-style equipment makes weight optional
 //
 // Any value outside the dataset's known vocabulary is an error, so a
@@ -103,12 +112,7 @@ func (r fedbExercise) toExercise() (Exercise, error) {
 		ex.Equipment = []Equipment{eq}
 	}
 
-	switch {
-	case ex.Category == CategoryStretching, ex.Category == CategoryCardio, slices.Contains(fedbHolds, r.ID):
-		ex.Metrics = []Metric{MetricDuration}
-	default:
-		ex.Metrics = []Metric{MetricReps, MetricWeight}
-	}
+	ex.Metrics = fedbMetrics(r.ID, ex.Category)
 
 	// Secondary first, then primary, so a muscle listed in both ends at 1.0.
 	for _, m := range r.SecondaryMuscles {
@@ -122,6 +126,20 @@ func (r fedbExercise) toExercise() (Exercise, error) {
 		return Exercise{}, fmt.Errorf("free-exercise-db: %w", err)
 	}
 	return ex, nil
+}
+
+// fedbMetrics decides what an imported exercise tracks (see
+// ParseFreeExerciseDB). The importer's -fix-metrics reapplies it to
+// exercises imported under older rules.
+func fedbMetrics(id string, category Category) []Metric {
+	switch {
+	case slices.Contains(fedbDistance, id):
+		return []Metric{MetricDuration, MetricDistance}
+	case category == CategoryStretching, category == CategoryCardio, slices.Contains(fedbHolds, id):
+		return []Metric{MetricDuration}
+	default:
+		return []Metric{MetricReps, MetricWeight}
+	}
 }
 
 // snake converts the dataset's "lower back" style to our "lower_back".

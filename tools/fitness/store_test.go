@@ -243,6 +243,31 @@ func TestSaveSessionNoOverwrite(t *testing.T) {
 	}
 }
 
+func TestSaveExerciseKeepsLoggedSetsValid(t *testing.T) {
+	s := newTestStore(t)
+	squat, _ := s.Exercise("squat")
+	logged := Session{UserID: "xander", StartedAt: at(7, 18),
+		Entries: []Entry{{ExerciseID: "squat", Sets: []Set{{Reps: 5, WeightKg: 100}}}}}
+	if _, err := s.SaveSession(logged); err != nil {
+		t.Fatal(err)
+	}
+
+	timed := squat
+	timed.Metrics = []Metric{MetricDuration}
+	if err := s.SaveExercise(timed); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("metrics change breaking logged sets: err = %v, want ErrInvalid", err)
+	}
+	if got, _ := s.Exercise("squat"); !slices.Equal(got.Metrics, squat.Metrics) {
+		t.Errorf("metrics changed to %v despite the error", got.Metrics)
+	}
+
+	renamed := squat
+	renamed.Name = "Back Squat"
+	if err := s.SaveExercise(renamed); err != nil {
+		t.Errorf("harmless edit: %v", err)
+	}
+}
+
 func TestRecentSessions(t *testing.T) {
 	s := newTestStore(t)
 	for day := 1; day <= 5; day++ {

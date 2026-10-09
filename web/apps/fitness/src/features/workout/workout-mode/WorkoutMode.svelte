@@ -8,7 +8,9 @@
     that exercise, else 60 s (#35). When it ends: vibrate (Android) and a
     short chime.
   - Timed sets take min + sec (phone number pads have no ":"); distance
-    is km or mi per the profile's units.
+    is km or mi per the profile's units, and optional.
+  - Cardio is one entry (a run, a bike ride): a single row by default, no
+    set number, no rest timer; "+ Add interval" adds more (#36).
   - The screen stays on while this is open (where the browser allows).
   - "+ Add exercise" adds any exercise from the catalog (at the end), so
     an empty workout is built as you go.
@@ -39,6 +41,8 @@
   let { profile, sessionId }: { profile: Profile; sessionId: string } = $props()
 
   const DEFAULT_SETS = 3
+  // A run or a ride is one effort, not sets with rests in between.
+  const isCardio = (ex: Exercise | null) => ex?.category === 'cardio'
 
   // One editable row per set. Values are kept as typed text; `done` rows
   // are the ones saved to the server. `fromKg`/`fromM` remember the exact
@@ -114,7 +118,10 @@
   function makeStep(exerciseId: string, exercise: Exercise | null, doneSets: SetEntry[]): Step {
     const last = lastSets(history, exerciseId, sessionId)
     const suggested = plan?.exercises.find((p) => p.exercise_id === exerciseId)?.suggested_sets
-    const planned = Math.max(doneSets.length, suggested ?? (last.length || DEFAULT_SETS))
+    const planned = Math.max(
+      doneSets.length,
+      suggested ?? (isCardio(exercise) ? 1 : last.length || DEFAULT_SETS),
+    )
     const rows = Array.from({ length: planned }, (_, n): Row => {
       const done = doneSets[n]
       const src = done ?? last[n] ?? last.at(-1)
@@ -240,8 +247,11 @@
     }
     if (tracks(ex, 'distance')) {
       const d = parseNumber(row.distance)
-      if (!(d > 0)) return `Enter the distance in ${distUnit}.`
-      if (row.fromM && row.distance === row.fromM.shown) {
+      if (row.distance.trim() === '') {
+        // Optional: not measured.
+      } else if (!(d > 0)) {
+        return `Enter the distance in ${distUnit}, or leave it empty.`
+      } else if (row.fromM && row.distance === row.fromM.shown) {
         set.distance_m = row.fromM.m // untouched pre-fill: keep the exact value
       } else {
         set.distance_m = Math.round(imperial ? miToM(d) : kmToM(d)) // whole meters
@@ -287,7 +297,9 @@
     }
     if (row.done) {
       const allDone = steps.every((st) => st.rows.every((r) => r.done))
-      if (!allDone) {
+      if (isCardio(current.exercise)) {
+        announce = allDone ? 'All done. Finish when ready.' : `${current.exercise?.name} logged.`
+      } else if (!allDone) {
         restStep = step
         restTotal = current.restSec
         restEndsAt = Date.now() + current.restSec * 1000
@@ -470,7 +482,9 @@
           {#each current.rows as row, i (i)}
             {@const last = current.last[i]}
             <li class="set" class:done={row.done}>
-              <span class="set-num" aria-hidden="true">{i + 1}</span>
+              <span class="set-num" aria-hidden="true">
+                {#if !isCardio(current.exercise) || current.rows.length > 1}{i + 1}{/if}
+              </span>
               <span class="inputs">
                 {#if tracks(current.exercise, 'reps')}
                   <label class="field">
@@ -501,7 +515,8 @@
                     <span>sec<span class="visually-hidden">, set {i + 1}</span></span>
                   </label>
                 {/if}
-                {#if tracks(current.exercise, 'distance')}
+                <!-- Optional, so a logged set without one shows nothing. -->
+                {#if tracks(current.exercise, 'distance') && !(row.done && row.distance.trim() === '')}
                   <label class="field">
                     <input type="text" inputmode="decimal" maxlength="6" bind:value={row.distance} disabled={row.done} />
                     <span>{distUnit}<span class="visually-hidden">, set {i + 1}</span></span>
@@ -536,7 +551,9 @@
         {/if}
 
         <div class="adders">
-          <button type="button" class="btn btn-quiet add-set" onclick={addSet}>+ Add set</button>
+          <button type="button" class="btn btn-quiet add-set" onclick={addSet}>
+            {isCardio(current.exercise) ? '+ Add interval' : '+ Add set'}
+          </button>
           <button type="button" class="btn btn-quiet" onclick={openPicker}>+ Add exercise</button>
         </div>
         {#if saveError}<p class="error" role="alert">{saveError}</p>{/if}

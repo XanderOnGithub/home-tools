@@ -4,10 +4,18 @@
 // It never overwrites an exercise that already exists, so it is safe to
 // re-run and never clobbers hand edits. Photos already on disk are skipped.
 //
+// -fix-metrics is the one exception: for exercises that came from
+// free-exercise-db it re-applies today's metric rules (e.g. planks timed,
+// runs with distance) and touches nothing else. An exercise whose logged
+// sets wouldn't fit the new metrics is left alone and reported.
+// Stop the server first, and start it again afterwards: it keeps
+// exercises in memory and only reads the files at startup.
+//
 //	go run ./cmd/fitness-import -data data/fitness
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +23,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -35,14 +44,15 @@ func main() {
 	dataDir := flag.String("data", "data/fitness", "fitness data folder")
 	usersDir := flag.String("users", "data/users", "shared profiles folder (fitness checks its data against it)")
 	withImages := flag.Bool("images", true, "download exercise photos")
+	fixMetrics := flag.Bool("fix-metrics", false, "update metrics of already-imported exercises to the current rules")
 	flag.Parse()
 
-	if err := run(*dataDir, *usersDir, *withImages); err != nil {
+	if err := run(*dataDir, *usersDir, *withImages, *fixMetrics); err != nil {
 		log.Fatal(err)
 	}
 }
 
-func run(dataDir, usersDir string, withImages bool) error {
+func run(dataDir, usersDir string, withImages, fixMetrics bool) error {
 	body, err := fetch(datasetURL)
 	if err != nil {
 		return err
@@ -61,11 +71,24 @@ func run(dataDir, usersDir string, withImages bool) error {
 		return err
 	}
 
-	var added, skipped int
+	var added, skipped, fixed int
 	var images []string
 	for _, ex := range exercises {
-		if _, exists := store.Exercise(ex.ID); exists {
+		if old, exists := store.Exercise(ex.ID); exists {
 			skipped++
+			if fixMetrics && old.Source == fitness.SourceFreeExerciseDB && !slices.Equal(old.Metrics, ex.Metrics) {
+				old.Metrics = ex.Metrics
+				if err := store.SaveExercise(old); err != nil {
+					// Logged sets don't fit (ErrInvalid): keep it, say so.
+					if !errors.Is(err, fitness.ErrInvalid) {
+						return err
+					}
+					fmt.Printf("kept %s: %v\n", ex.ID, err)
+					continue
+				}
+				fmt.Printf("fixed %s: metrics now %v\n", ex.ID, ex.Metrics)
+				fixed++
+			}
 		} else {
 			if err := store.SaveExercise(ex); err != nil {
 				return err
@@ -75,6 +98,9 @@ func run(dataDir, usersDir string, withImages bool) error {
 		images = append(images, ex.Images...)
 	}
 	fmt.Printf("exercises: %d added, %d already present\n", added, skipped)
+	if fixMetrics {
+		fmt.Printf("metrics: %d fixed\n", fixed)
+	}
 
 	if !withImages {
 		return nil

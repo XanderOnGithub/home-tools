@@ -196,16 +196,19 @@
                   <input type="text" inputmode="numeric" maxlength="2" placeholder="–" bind:value={item.sets} />
                   <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
                 </label>
-                <label class="sets rest">
-                  <input
-                    type="text"
-                    inputmode="numeric"
-                    maxlength="4"
-                    placeholder={String(DEFAULT_REST_SEC)}
-                    bind:value={item.rest}
-                  />
-                  <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
-                </label>
+                {#if ex?.category !== 'cardio'}
+                  <!-- Cardio is one effort: no rest between sets. -->
+                  <label class="sets rest">
+                    <input
+                      type="text"
+                      inputmode="numeric"
+                      maxlength="4"
+                      placeholder={String(DEFAULT_REST_SEC)}
+                      bind:value={item.rest}
+                    />
+                    <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
+                  </label>
+                {/if}
                 <span class="tools">
                   <button
                     type="button"
