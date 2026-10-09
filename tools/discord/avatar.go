@@ -18,6 +18,11 @@ const (
 	avatarPx  = 256 // Discord shows avatars at ≤ 128 px; 2× stays sharp
 	tweenMs   = 40  // one in-between frame per 40 ms (GIF delays are in 10 ms)
 	eyeLevels = 16  // anti-aliasing shades between body and eye color
+	// avatarZoom shrinks the blob inside the image: Discord crops avatars
+	// to a circle, and at full size the bumps (up to ~47 of 50 units from
+	// the center, more while leaning) touch or cross its edge. At 0.75 the
+	// blob spans at most ~72% of the circle's width, with a clear margin.
+	avatarZoom = 0.75
 )
 
 // pose is one moment of the face: where the eyes look, how open they
@@ -111,11 +116,12 @@ func newFigure(seed string) figure {
 // pair sits at the face point, tilted, then looks; each eye blinks around
 // its own center.
 func (f figure) draw(p pose) (body, eyes *mask) {
-	scale := avatarPx / viewBox
+	scale := avatarPx / viewBox * avatarZoom
+	offset := avatarPx * (1 - avatarZoom) / 2 // centers the shrunken viewBox
 	sin, cos := math.Sincos(p.lean * math.Pi / 180)
 	toPx := func(q point) point { // body transform, then viewBox → pixels
 		dx, dy := q.x-f.center.x, q.y-f.center.y
-		return point{(f.center.x + dx*cos - dy*sin + p.shiftX) * scale, (f.center.y + dx*sin + dy*cos) * scale}
+		return point{(f.center.x+dx*cos-dy*sin+p.shiftX)*scale + offset, (f.center.y+dx*sin+dy*cos)*scale + offset}
 	}
 	body = newMask(avatarPx, avatarPx)
 	poly := make([]point, len(f.body))
