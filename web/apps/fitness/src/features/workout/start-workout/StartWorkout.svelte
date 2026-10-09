@@ -98,21 +98,6 @@
   .dialog {
     width: min(28rem, calc(100vw - 2 * var(--space-3)));
     max-height: min(40rem, calc(100dvh - 2 * var(--space-3)));
-    padding: 0;
-    border: none;
-    border-radius: var(--radius-lg);
-    background: var(--color-surface-raised);
-    color: var(--color-text);
-    box-shadow: var(--shadow-md);
-  }
-
-  .dialog[open] {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .dialog::backdrop {
-    background: rgb(0 0 0 / 0.45);
   }
 
   .top {

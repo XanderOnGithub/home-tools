@@ -227,15 +227,6 @@
     max-height: calc(100dvh - 2 * var(--space-4));
     overflow-y: auto;
     padding: var(--space-6);
-    border: none;
-    border-radius: var(--radius-lg);
-    background: var(--color-surface-raised);
-    color: var(--color-text);
-    box-shadow: var(--shadow-md);
-  }
-
-  .dialog::backdrop {
-    background: rgb(0 0 0 / 0.45);
   }
 
   .form {
