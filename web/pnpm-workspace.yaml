@@ -1,3 +1,4 @@
-# One pnpm workspace for all web apps (later: packages/ui).
+# One pnpm workspace for all web apps and the shared UI package.
 packages:
   - "apps/*"
+  - "packages/*"

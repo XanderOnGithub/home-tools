@@ -54,8 +54,7 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
   tool on every host (`make run TOOL=fitness`).
 - **Frontend:** Svelte + Vite, no SSR, pnpm workspaces. Packages named
   `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`
-  (`-tags webembed`). Shared UI moves to `@home-tools/ui` when a second app
-  exists.
+  (`-tags webembed`). Shared UI lives in `@home-tools/ui` (`web/packages/ui`).
 - **Storage:** JSON files under a configurable data dir (e.g. `data/<tool>/`).
   In-memory index loaded at start; mutations written atomically
   (write temp → fsync → rename); files are loaded as strictly as API input.
@@ -69,6 +68,7 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
     cmd/fitness-import/    exercise catalog importer (-fix-metrics)
     internal/              shared Go: jsonfile, httpx, users (shared profiles), hostroute
     tools/fitness/         Go package: model, rules, store, API (+ its AGENTS.md)
+    web/packages/ui/       @home-tools/ui: tokens, base CSS, shared components, profiles, api/router helpers
     web/apps/fitness/      @home-tools/fitness (Vite SPA) + embed.go
     web/DESIGN.md          UI rules and shared building blocks
     deploy/                Caddy image (HTTPS), compose + ZimaOS app files, setup steps
@@ -76,7 +76,8 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
     docs/decisions/        ADRs (index in its README)
     docs/adding-a-tool.md  checklist for the next tool
     data/                  runtime JSON (gitignored)
-    later: tools/games/, web/apps/games/, web/packages/ui/
+    tools/games/           Go package: game servers via the Docker API (socket proxy)
+    later: web/apps/games/
 
 Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 "@home-tools/fitness" is an *import path*
@@ -174,7 +175,9 @@ Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
 - Web layout: one folder per component or module, never a loose file.
   Folders are kebab-case; Svelte files are PascalCase (Svelte components
   must be capitalized when used: `<ProfilePicker />`).
-  `src/components/<name>/` = generic UI (Button, Dialog; knows no domain).
+  Generic UI (knows no domain) and anything two apps share lives in
+  `@home-tools/ui` (`web/packages/ui/src/<module>/`); an app's own
+  generic pieces go in its `src/components/<name>/`.
   `src/features/<feature>/` = everything for one feature (its components,
   api, types, helpers), e.g. `features/profiles/profile-picker/`:
   `ProfilePicker.svelte` + `index.ts` (re-export; Vite can't resolve an

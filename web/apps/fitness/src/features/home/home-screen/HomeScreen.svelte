@@ -3,14 +3,14 @@
   weekly weight check-in (only when due), today's plan, and this week.
 -->
 <script lang="ts">
-  import { LoadError } from '@/components/load-error'
-  import { isoDate, isoWeek, startOfWeek, weekDays } from '@/dates'
+  import { LoadError } from '@home-tools/ui/components/load-error'
+  import { isoDate, isoWeek, startOfWeek, weekDays } from '@home-tools/ui/dates'
   import { getWeights, type FitnessProfile, type WeightEntry } from '@/features/fitness-profile'
   import { ThisWeek } from '@/features/home/this-week'
   import { UpNext } from '@/features/home/up-next'
   import { WeightCheckIn } from '@/features/home/weight-check-in'
-  import { ProfileAvatar } from '@/features/profiles/profile-avatar'
-  import type { Profile } from '@/features/profiles/types'
+  import { ProfileAvatar } from '@home-tools/ui/profiles/profile-avatar'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
   import { getRecentSessions, inProgress, type Session } from '@/features/sessions'
 

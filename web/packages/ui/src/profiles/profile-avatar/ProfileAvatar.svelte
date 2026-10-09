@@ -12,7 +12,7 @@
   import { untrack } from 'svelte'
   import { cubicOut } from 'svelte/easing'
   import { prefersReducedMotion, Tween } from 'svelte/motion'
-  import { blobFace, blobPath } from '@/features/profiles/blob'
+  import { blobFace, blobPath } from '../blob'
 
   let { id }: { id: string } = $props()
 

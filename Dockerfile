@@ -12,6 +12,7 @@ RUN npm install -g pnpm@10.28.0
 WORKDIR /src/web
 # Manifests first, so dependencies are cached until they change.
 COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
+COPY web/packages/ui/package.json packages/ui/
 COPY web/apps/fitness/package.json apps/fitness/
 RUN pnpm install --frozen-lockfile
 COPY web/ ./

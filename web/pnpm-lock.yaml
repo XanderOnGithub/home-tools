@@ -10,9 +10,9 @@ importers:
 
   apps/fitness:
     dependencies:
-      '@fontsource/figtree':
-        specifier: 5.3.0
-        version: 5.3.0
+      '@home-tools/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
     devDependencies:
       '@sveltejs/vite-plugin-svelte':
         specifier: ^7.3.0
@@ -35,6 +35,25 @@ importers:
       vite:
         specifier: ^8.3.0
         version: 8.3.4(@types/node@24.19.1)
+
+  packages/ui:
+    dependencies:
+      '@fontsource/figtree':
+        specifier: 5.3.0
+        version: 5.3.0
+    devDependencies:
+      '@tsconfig/svelte':
+        specifier: ^5.0.8
+        version: 5.0.8
+      svelte:
+        specifier: ^5.57.0
+        version: 5.57.2
+      svelte-check:
+        specifier: ^4.7.6
+        version: 4.7.6(picomatch@4.0.7)(svelte@5.57.2)(typescript@6.0.3)
+      typescript:
+        specifier: ~6.0.2
+        version: 6.0.3
 
 packages:
 

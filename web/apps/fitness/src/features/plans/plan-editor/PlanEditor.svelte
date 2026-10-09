@@ -6,13 +6,13 @@
 -->
 <script lang="ts">
   import { tick } from 'svelte'
-  import { LoadError } from '@/components/load-error'
+  import { LoadError } from '@home-tools/ui/components/load-error'
   import { getCatalog, label, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
-  import type { Profile } from '@/features/profiles/types'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import { DEFAULT_REST_SEC, getPlans, savePlan, type Plan } from '@/features/plans'
-  import { idFromName } from '@/ids'
-  import { router } from '@/router'
+  import { idFromName } from '@home-tools/ui/ids'
+  import { router } from '@home-tools/ui/router'
 
   let { profile, id }: { profile: Profile; id: string | null } = $props()
 

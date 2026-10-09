@@ -6,8 +6,8 @@
   aria-expanded automatically. We only position it under the button.
 -->
 <script lang="ts">
-  import { ProfileAvatar } from '@/features/profiles/profile-avatar'
-  import type { Profile } from '@/features/profiles/types'
+  import { ProfileAvatar } from '../profile-avatar'
+  import type { Profile } from '../types'
 
   let { profile, onswitch }: { profile: Profile; onswitch: () => void } = $props()
 

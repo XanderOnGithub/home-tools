@@ -1,5 +1,5 @@
 // Plans (Go: fitness.Plan). Shared by everyone; `created_by` = user ID.
-import { api } from '@/api'
+import { api } from '@home-tools/ui/api'
 
 export type Plan = {
   id: string

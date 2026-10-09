@@ -11,11 +11,11 @@
   import { tick } from 'svelte'
   import { prefersReducedMotion } from 'svelte/motion'
   import { fly } from 'svelte/transition'
-  import { today } from '@/dates'
+  import { today } from '@home-tools/ui/dates'
   import { saveFitnessProfile, saveWeight, type FitnessProfile } from '@/features/fitness-profile'
-  import { ProfileAvatar } from '@/features/profiles/profile-avatar'
-  import type { Profile } from '@/features/profiles/types'
-  import { cmToM, ftInToM, lbToKg, parseNumber } from '@/units'
+  import { ProfileAvatar } from '@home-tools/ui/profiles/profile-avatar'
+  import type { Profile } from '@home-tools/ui/profiles/types'
+  import { cmToM, ftInToM, lbToKg, parseNumber } from '@home-tools/ui/units'
 
   let { profile, oncomplete }: { profile: Profile; oncomplete: (fp: FitnessProfile) => void } =
     $props()

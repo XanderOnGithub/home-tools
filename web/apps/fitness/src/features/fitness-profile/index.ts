@@ -1,5 +1,5 @@
 // The fitness "workout profile" and weight log (Go: tools/fitness/body.go).
-import { api, ApiError } from '@/api'
+import { api, ApiError } from '@home-tools/ui/api'
 
 // Mirrors fitness.Profile in Go (snake_case keys, decision #14).
 export type FitnessProfile = {

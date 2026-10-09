@@ -5,10 +5,10 @@
   exercise picker.
 -->
 <script lang="ts">
-  import type { Profile } from '@/features/profiles/types'
+  import type { Profile } from '@home-tools/ui/profiles/types'
   import type { Plan } from '@/features/plans'
   import { startSession } from '@/features/sessions'
-  import { router } from '@/router'
+  import { router } from '@home-tools/ui/router'
 
   let {
     open = $bindable(false),

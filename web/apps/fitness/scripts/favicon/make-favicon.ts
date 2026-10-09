@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { blobFace, blobPath } from '../../src/features/profiles/blob/index.ts'
+import { blobFace, blobPath } from '../../../../packages/ui/src/profiles/blob/index.ts'
 
 const SEED = 'gym'
 const GREEN = { fill: '#4ade80', bg: '#f0fdf4' } // accent (dark-theme shade) + subtle

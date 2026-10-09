@@ -29,15 +29,14 @@ Local dev: `-tool <name>` (`make run TOOL=<name>`).
 - [ ] Tests (table-driven) for rules, store and handlers.
 - [ ] In `main.go`: open its store after users, mount on its host.
 
-## 3. Shared UI package (first time only)
-ADR 0004: extract `@home-tools/ui` once a second app needs it.
-- [ ] Create `web/packages/ui` and move what isn't fitness-specific out of
-      `web/apps/fitness/src`: `tokens.css`, `app.css`, `components/`,
-      `features/profiles/`, `router/`, `api/`, `dates/`, `units/`, `ids/`,
-      `wake-lock/`.
-- [ ] Fitness imports them from `@home-tools/ui`; `pnpm --dir web check`
-      still passes; the favicon script still finds the blob code.
-- [ ] Move `web/DESIGN.md` references accordingly.
+## 3. Shared UI package (done, 2026-10-08)
+`@home-tools/ui` (`web/packages/ui`, consumed as source, no build step):
+`tokens.css`, `app.css`, `components/`, `profiles/` (picker, dialog, menu,
+avatar blob, remembered profile), `api`, `router`, `dates`, `units`, `ids`.
+- [ ] Add `"@home-tools/ui": "workspace:*"` to the new app's dependencies;
+      import `@home-tools/ui/app.css` in its `main.ts`.
+- [ ] Anything new that two apps need goes into the package (relative
+      imports inside it; apps import `@home-tools/ui/<module>`).
 
 ## 4. Web app `web/apps/<name>`
 - [ ] Copy fitness's scaffold (`package.json` as `@home-tools/<name>`,
