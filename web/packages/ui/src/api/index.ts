@@ -40,6 +40,7 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
       message = 'The server may be out of date. Try restarting it.'
     throw new ApiError(res.status, message)
   }
+  if (res.status === 204) return undefined as T // No Content: nothing to parse
   return res.json()
 }
 
@@ -47,4 +48,5 @@ export const api = {
   get: <T>(path: string) => request<T>('GET', path),
   put: <T>(path: string, body: unknown) => request<T>('PUT', path, body),
   post: <T>(path: string, body: unknown) => request<T>('POST', path, body),
+  del: <T = void>(path: string) => request<T>('DELETE', path),
 }

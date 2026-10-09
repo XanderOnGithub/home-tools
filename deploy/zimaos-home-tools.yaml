@@ -15,6 +15,10 @@ services:
           memory: 256M
     # Games: talk to Docker through the socket proxy (zimaos-docker-proxy.yaml).
     command: ["-docker", "/run/docker-proxy/docker.sock"]
+    environment:
+      # Discord bot (decision #42): paste the token in the ZimaOS form,
+      # never into this file. Empty = the bot stays offline.
+      DISCORD_TOKEN: ""
     volumes:
       - type: bind
         source: /var/lib/casaos_data/.media/Vault/Apps/HomeTools
@@ -22,6 +26,11 @@ services:
       - type: bind
         source: /run/home-tools-docker
         target: /run/docker-proxy
+      # Valheim's whitelist (optional, deploy/README.md → Discord bot):
+      # the folder with its permittedlist.txt, read-write.
+      # - type: bind
+      #   source: <the Valheim app's folder with permittedlist.txt>
+      #   target: /valheim
 
 x-casaos:
   title:

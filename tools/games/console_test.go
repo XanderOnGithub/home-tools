@@ -69,7 +69,7 @@ func TestConsoleHandlers(t *testing.T) {
 		{"PUT", "/api/servers/minecraft/whitelist/bob%20op", "", 400, "username"},
 		{"POST", "/api/servers/norcon/console", `{"command":"say hi"}`, 409, "RCON"},
 		{"POST", "/api/servers/valheim/console", `{"command":"say hi"}`, 404, ""},
-		{"PUT", "/api/servers/valheim/whitelist/bob", "", 404, ""},
+		{"PUT", "/api/servers/valheim/whitelist/76561198000000001", "", 409, "permitted_list"},
 		{"POST", "/api/servers/nope/console", `{"command":"say hi"}`, 404, ""},
 	}
 	for _, tt := range tests {

@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strconv"
@@ -28,7 +29,11 @@ type Server struct {
 	// RCONPassword logs in to Minecraft's RCON. It stays on the server:
 	// the API never sends it to a browser (see serverView).
 	RCONPassword string `json:"rcon_password,omitempty"`
-	Archived     bool   `json:"archived,omitempty"`
+	// PermittedList is Valheim's permittedlist.txt as the Home Tools
+	// container sees it (its folder mounted in), e.g.
+	// "/valheim/config/adminlist/permittedlist.txt". Empty = no whitelist.
+	PermittedList string `json:"permitted_list,omitempty"`
+	Archived      bool   `json:"archived,omitempty"`
 }
 
 // Game says what's running, for icons now and game-specific features
@@ -71,6 +76,14 @@ func (s Server) Validate() error {
 		return fmt.Errorf("%w server %s: Minecraft's query (RCON) needs rcon_password", ErrInvalid, s.ID)
 	case s.Game != GameMinecraft && s.RCONPassword != "":
 		return fmt.Errorf("%w server %s: rcon_password is only for Minecraft", ErrInvalid, s.ID)
+	case s.PermittedList != "" && s.Game != GameValheim:
+		return fmt.Errorf("%w server %s: permitted_list is only for Valheim", ErrInvalid, s.ID)
+	// The app rewrites this file, so it must be exactly Valheim's list: an
+	// absolute, clean path ending in permittedlist.txt, never any other file.
+	case s.PermittedList != "" && (!filepath.IsAbs(s.PermittedList) ||
+		filepath.Clean(s.PermittedList) != s.PermittedList ||
+		filepath.Base(s.PermittedList) != permittedListName):
+		return fmt.Errorf("%w server %s: permitted_list must be an absolute path to %s, got %q", ErrInvalid, s.ID, permittedListName, s.PermittedList)
 	}
 	return nil
 }

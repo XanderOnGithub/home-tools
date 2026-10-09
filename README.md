@@ -14,8 +14,12 @@ and back up by copying a folder.
   (public domain).
 - **Game servers** (`games.<domain>`): status, start/stop/restart and live
   logs for the household's Minecraft and Valheim servers (Docker
-  containers, reached through a filtered socket proxy). Players online and
-  console commands are next.
+  containers, reached through a filtered socket proxy), who's online,
+  joins and leaves, a Minecraft console and whitelists.
+- **Discord** (`discord.<domain>`): the household's Discord bot and its
+  settings: `/sens` (sensitivity between games), `/restart` and
+  `/whitelist` for verified people, live server statuses in a channel,
+  and a blob avatar with a new name and color every day.
 
 Everyone picks their profile Netflix-style; there are no passwords (it's a
 trusted home network).
@@ -31,9 +35,10 @@ Needs Go 1.27+, Node 24+ and pnpm 10.
 
     pnpm --dir web install
     go run ./cmd/fitness-import -data data/fitness -users data/users   # catalog + photos, ~30 s
-    make run    # API on :8080 (data in ./data); one tool: TOOL=fitness (default) or TOOL=games
+    make run    # API on :8080 (data in ./data); one tool: TOOL=fitness (default), games or discord
     make web    # fitness UI on http://localhost:5173 (proxies the API)
     make web-games   # games UI on http://localhost:5174
+    make web-discord # Discord settings on http://localhost:5175 (bot needs DISCORD_TOKEN)
 
 Before committing: `make check` and `pnpm --dir web check`.
 
@@ -48,9 +53,11 @@ ZimaOS apps) and day-to-day tasks: [`deploy/README.md`](deploy/README.md).
     internal/             shared Go: profiles (users), JSON files, HTTP helpers
     tools/fitness/        fitness: model, rules, store, API
     tools/games/          game servers: config, Docker API client, API
+    tools/discord/        Discord bot: commands, status boards, persona, settings API
     web/packages/ui/      shared UI: tokens, styles, components, profiles
     web/apps/fitness/     fitness web app (Svelte)
     web/apps/games/       games web app (Svelte)
+    web/apps/discord/     Discord settings web app (Svelte)
     web/DESIGN.md         UI rules: tokens, accessibility, shared pieces
     deploy/               Docker, Caddy, ZimaOS app files
     docs/                 decisions (ADRs), how to add a tool

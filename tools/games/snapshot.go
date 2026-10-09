@@ -89,3 +89,15 @@ func (s *snapshot) reset() {
 	defer s.mu.Unlock()
 	s.views = nil
 }
+
+// setBusy marks one server's view as having action a running ("" = none),
+// so every viewer sees it at once instead of after the next refresh.
+func (s *snapshot) setBusy(id string, a Action) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for i := range s.views {
+		if s.views[i].ID == id {
+			s.views[i].Busy = a
+		}
+	}
+}

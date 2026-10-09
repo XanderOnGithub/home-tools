@@ -91,6 +91,19 @@ const (
 	ActionRestart Action = "restart"
 )
 
+// ing is the action as a word for messages: "restarting".
+func (a Action) ing() string {
+	switch a {
+	case ActionStart:
+		return "starting"
+	case ActionStop:
+		return "stopping"
+	case ActionRestart:
+		return "restarting"
+	}
+	return string(a)
+}
+
 // Do starts, stops or restarts the container. Stop and restart wait up to
 // stopTimeoutSec for a clean shutdown. Starting a running container (or
 // stopping a stopped one) is not an error.

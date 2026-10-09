@@ -65,7 +65,7 @@
   class="btn btn-icon trigger"
   popovertarget={menuId}
   aria-label="Actions for {server.name}"
-  disabled={!!pending || !server.state}
+  disabled={!!pending || !!server.busy || !server.state}
 >
   <svg viewBox="0 0 24 24"><path d="M5 12h.01 M12 12h.01 M19 12h.01" /></svg>
 </button>

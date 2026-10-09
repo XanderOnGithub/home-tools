@@ -29,13 +29,25 @@ func Read[T any](path string) (T, error) {
 }
 
 // Write atomically replaces the file at path with v as indented JSON,
-// creating parent directories as needed.
+// creating parent directories as needed (see WriteFile).
+func Write(path string, v any) error {
+	data, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return fmt.Errorf("encode %s: %w", path, err)
+	}
+	return WriteFile(path, append(data, '\n'), 0o600) // as before: owner only
+}
+
+// WriteFile atomically replaces the file at path with data, creating
+// parent directories as needed. perm is the new file's mode.
 //
 // It writes to a temp file in the same directory, flushes it to disk, then
 // renames it over path. Rename within one directory is atomic, so path is
 // never half-written. Temp files start with "." so directory scans can skip
-// any left behind by a crash.
-func Write(path string, v any) error {
+// any left behind by a crash. Replacing an existing file keeps its owner
+// when we're allowed to (root). (A bind-mounted single file can't be
+// renamed over: mount its folder instead.)
+func WriteFile(path string, data []byte, perm os.FileMode) error {
 	dir := filepath.Dir(path)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -49,12 +61,16 @@ func Write(path string, v any) error {
 	// name no longer exists and this is a harmless no-op.
 	defer os.Remove(tmp.Name())
 
-	enc := json.NewEncoder(tmp)
-	enc.SetIndent("", "  ")
-	if err := enc.Encode(v); err != nil {
+	if _, err := tmp.Write(data); err != nil {
 		tmp.Close()
-		return fmt.Errorf("encode %s: %w", path, err)
+		return err
 	}
+	// CreateTemp makes 0600 files; other programs (a game) may need to read it.
+	if err := tmp.Chmod(perm); err != nil {
+		tmp.Close()
+		return err
+	}
+	keepOwner(tmp, path)
 	if err := tmp.Sync(); err != nil {
 		tmp.Close()
 		return err
