@@ -64,6 +64,9 @@ with the revision, reloads on 409), `today-card`, `status-boards`,
   UI). Without it the bot stays offline; the page says so.
 - `data/discord/config.json`: hand-editable, loaded strictly; the bot
   reads the store on every use, so saves apply at once.
+- **Time zone:** `TZ` env (e.g. `America/New_York`); "midnight" (persona)
+  and poll times are local to it. Unset = UTC. The zone data is built
+  into the binary (`time/tzdata` in `main.go`): the image has none.
 - `-games-url`: where the games API is. Default: this same server
   (`http://127.0.0.1:<port>`, `Host: games.internal`; host routing only
   looks at the first label).

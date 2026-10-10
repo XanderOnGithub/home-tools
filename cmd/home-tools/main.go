@@ -5,7 +5,8 @@
 //	go run ./cmd/home-tools -tool fitness                     # local dev: one tool on every host
 //
 // The Discord bot's token comes from the DISCORD_TOKEN environment
-// variable (a secret: never a flag, which shows up in `ps`).
+// variable (a secret: never a flag, which shows up in `ps`). TZ sets the
+// local time zone (e.g. America/New_York); unset = UTC.
 package main
 
 import (
@@ -23,6 +24,10 @@ import (
 	"slices"
 	"syscall"
 	"time"
+	// Time zone data built in: the runtime image (distroless) has none, so
+	// without it TZ=America/New_York would silently fall back to UTC and
+	// "midnight" (the bot's persona, its poll times) would be UTC's.
+	_ "time/tzdata"
 
 	"github.com/XanderOnGithub/home-tools/internal/hostroute"
 	"github.com/XanderOnGithub/home-tools/internal/httpx"

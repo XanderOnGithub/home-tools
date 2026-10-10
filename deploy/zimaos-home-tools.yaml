@@ -19,6 +19,9 @@ services:
       # Discord bot (decision #42): paste the token in the ZimaOS form,
       # never into this file. Empty = the bot stays offline.
       DISCORD_TOKEN: ""
+      # Local time zone: the bot's daily persona and poll times follow it
+      # (unset = UTC, so "midnight" would be 8 pm in New York).
+      TZ: America/New_York
     volumes:
       - type: bind
         source: /var/lib/casaos_data/.media/Vault/Apps/HomeTools

@@ -10,6 +10,8 @@ services:
     environment:
       # The Discord bot's token (decision #42); empty = bot offline.
       DISCORD_TOKEN: ${DISCORD_TOKEN:-}
+      # Local time zone for the bot's midnight and poll times (unset = UTC).
+      TZ: ${TZ:-America/New_York}
     volumes:
       # Plain host folder (users/, fitness/, games/, discord/), so it's
       # backed up and editable like any other files.
