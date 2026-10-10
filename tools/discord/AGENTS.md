@@ -28,6 +28,11 @@ to the bot.
   none repeat before all were asked.
 - **`/blob name color [animated]`:** anyone; PNG 512 px (transparent,
   with margin) or the blinking GIF 256 px. The page has a maker.
+- **Status:** the bot's custom status, a new phrase every local hour
+  (`rotate` keyed by the hour), `{name}` = the day's name. With
+  `live_games`, an hour when someone's playing may say "Watching Steve
+  play Minecraft" instead, never two hours running. Resent on reconnect
+  (Discord forgets it).
 - **Adding a feature:** a struct in `Features` (`model.go`, zero value =
   off, defaults in `fillDefaults`, rules in `Validate`); its commands in
   `commands(f)` behind its switch (and a check in `handle`, since Discord
@@ -47,6 +52,7 @@ to the bot.
 | `sens.go` | The conversion table (from Starport-Assistant) and math. |
 | `persona.go` | `PersonaFor(date, names)` and `rotate` (shuffled turns, no repeats back to back), both pure. Shares the blob's seeded generator. |
 | `poll.go` | Poll schedule (`nextPollSlot`, pure), the posting loop, "post now". |
+| `status.go` | Hourly status: `pickStatus` + `gameStatus` (pure), the loop. |
 | `blob.go` | Go port of the frontend blob (shape + face); tested against the TypeScript's numbers. |
 | `raster.go` | Scanline polygon fill with anti-aliasing (edge table + active list). |
 | `avatar.go` | The animation script (rest → blink ×2 → look left → right → back) → GIF, plus a still PNG. |
@@ -56,7 +62,8 @@ UI: `web/apps/discord` (Svelte, shared `AppShell`): `features/bot/`:
 `settings` (shared state, polls the bot every 15 s while visible; saves
 with the revision, reloads on 409), `today-card`, `status-boards`,
 `name-list`, `commands-help`, `overview-page` (`/`), `features-page`
-(`/features`: `poll-settings` + `poll-questions`, `blob-maker`),
+(`/features`: `poll-settings` + `poll-questions`, `status-settings`,
+`blob-maker`),
 `people-page` (`/people`); `components/toggle-switch`.
 
 ## Configuration

@@ -22,8 +22,15 @@ export type PollFeature = {
   questions: PollQuestion[]
 }
 
+/** The bot's custom status: a new phrase every hour (decision #45). */
+export type StatusFeature = {
+  enabled: boolean
+  live_games: boolean // now and then show who's playing instead
+  phrases: string[] // "{name}" becomes the day's name
+}
+
 /** Optional parts of the bot, each with an on/off switch. */
-export type Features = { poll: PollFeature; blob: { enabled: boolean } }
+export type Features = { poll: PollFeature; blob: { enabled: boolean }; status: StatusFeature }
 
 /** config.json: everything this page edits. */
 export type Config = {
@@ -36,6 +43,9 @@ export type Config = {
 
 /** Discord's poll limits, mirrored from tools/discord/model.go. */
 export const POLL_LIMITS = { question: 300, answer: 55, answers: 10 }
+
+/** Discord's custom status limit. */
+export const STATUS_MAX = 128
 
 export type Persona = { name: string; color: ProfileColor; date: string }
 
@@ -57,6 +67,7 @@ export type BotView = {
   persona: Persona
   requests: AccessRequest[]
   next_poll?: string // when the next poll goes out; missing = poll off
+  status?: string // the bot's custom status right now
   servers: GameServer[]
   servers_error?: string
 }

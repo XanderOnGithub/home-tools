@@ -35,8 +35,54 @@ type Config struct {
 // flags: each feature has settings of its own, validated like everything
 // else. New features start off (the zero value).
 type Features struct {
-	Poll PollFeature `json:"poll"`
-	Blob BlobFeature `json:"blob"`
+	Poll   PollFeature   `json:"poll"`
+	Blob   BlobFeature   `json:"blob"`
+	Status StatusFeature `json:"status"`
+}
+
+// StatusFeature is the bot's custom status ("I'm blobbing it"): a new
+// phrase from Phrases every hour. With LiveGames, an hour when someone is
+// on a game server may show that instead ("Watching Steve play
+// Minecraft"), but never two hours running. "{name}" in a phrase becomes
+// the day's name.
+type StatusFeature struct {
+	Enabled   bool     `json:"enabled"`
+	LiveGames bool     `json:"live_games"`
+	Phrases   []string `json:"phrases"`
+}
+
+// DefaultPhrases: blob as a noun, a verb, an adjective, a lifestyle.
+var DefaultPhrases = []string{
+	"I'm blobbing it",
+	"Blobbing responsibly",
+	"Just a little guy, blobbing",
+	"Blob mode: on",
+	"Living my best blob life",
+	"Too blob to function",
+	"Out here blobbin'",
+	"Feeling extra blobby today",
+	"Blobbed out",
+	"Blob. James Blob.",
+	"Thinking blobby thoughts",
+	"Blobs before jobs",
+	"Mostly blob, partly snack",
+	"Wobbling with purpose",
+	"Born to blob, forced to work",
+	"Blobbin' and vibin'",
+	"One blob, many feelings",
+	"Certified blob moment",
+	"Gone blobbing, back soon",
+	"Blob o'clock",
+	"100% organic blob",
+	"Blobbing at full capacity",
+	"A blob of all trades",
+	"Blob now, think later",
+	"Just blobbed in",
+	"Peak blob performance",
+	"Blob it till you make it",
+	"Professionally blobby",
+	"{name} is blobbing it",
+	"Today's blob: {name}",
 }
 
 // PollFeature posts a poll from Questions every EveryDays days at PostAt
@@ -85,6 +131,9 @@ const (
 	maxNames    = 500
 	maxNameLen  = 32 // Discord's nickname limit
 	maxLabelLen = 100
+
+	maxPhrases   = 500
+	maxPhraseLen = 128 // Discord's custom status limit
 
 	maxQuestions   = 500
 	maxQuestionLen = 300 // Discord's poll limits
@@ -136,6 +185,12 @@ func (c *Config) fillDefaults() {
 	if p.Questions == nil {
 		p.Questions = []PollQuestion{}
 	}
+	// No phrase list at all = never set up: start with the defaults and
+	// game news on. (An emptied list is [] and stays empty.)
+	if s := &c.Features.Status; s.Phrases == nil {
+		s.Phrases = append([]string(nil), DefaultPhrases...)
+		s.LiveGames = true
+	}
 }
 
 // Validate checks c's own rules. Whether a board's server exists is not
@@ -185,7 +240,33 @@ func (c Config) Validate() error {
 		}
 		names[key] = struct{}{}
 	}
+	if err := c.Features.Status.validate(); err != nil {
+		return err
+	}
 	return c.Features.Poll.validate()
+}
+
+// validate checks the status phrases: Discord's length limit, no
+// duplicates, and at least one while it's on.
+func (s StatusFeature) validate() error {
+	if s.Enabled && len(s.Phrases) == 0 {
+		return fmt.Errorf("%w: add a status before turning statuses on", ErrInvalid)
+	}
+	if len(s.Phrases) > maxPhrases {
+		return fmt.Errorf("%w: at most %d statuses", ErrInvalid, maxPhrases)
+	}
+	seen := make(map[string]struct{}, len(s.Phrases))
+	for _, p := range s.Phrases {
+		if p != strings.TrimSpace(p) || p == "" || utf8.RuneCountInString(p) > maxPhraseLen {
+			return fmt.Errorf("%w status %q: 1–%d characters, no spaces around it", ErrInvalid, p, maxPhraseLen)
+		}
+		key := strings.ToLower(p)
+		if _, dup := seen[key]; dup {
+			return fmt.Errorf("%w: the status %q is listed twice", ErrInvalid, p)
+		}
+		seen[key] = struct{}{}
+	}
+	return nil
 }
 
 // validate checks the poll's settings. Turning it on needs a channel and

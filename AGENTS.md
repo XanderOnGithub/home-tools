@@ -147,6 +147,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 42 | Discord tool (working name "Discord", renamed later; replaces Starport-Assistant): `tools/discord` + `web/apps/discord` at `discord.<domain>`, in the same binary; the bot dials **out** to Discord's gateway with **`discordgo`** (approved dependency; guilds intent only, no privileged intents) and reaches games through the **games HTTP API**, not an import (ADR 0012). Token = `DISCORD_TOKEN` env only. Only `/sens` carries over (17-game table); news + lobby dropped. **Statuses:** channel per server set in the UI only; one message per board, edited. **Restart + whitelist:** verified users only (Discord user IDs in the config). Valheim whitelist = SteamID64 on `permittedlist.txt` (games tool, `permitted_list` path), "added after the next server restart". Games refuses a second action on a busy server (409). **Persona:** daily name + one of the 4 profile colors as a **per-server nickname** + per-server avatar (Modify Current Member), avatar = the household blob for that name as a looping GIF (rest → blink ×2 → look left → right → back), still PNG / nickname-only fallbacks | ✅ | 2026-10-09. Xander chose UI-only statuses, nicknames, verified-only whitelist, `discordgo`, HTTP to games. Animated per-server avatars unconfirmed until the first deploy (fallbacks logged). |
 | 43 | Discord details (agent's call, review): unverified attempts become **access requests** (People page: Verify / Dismiss; newest 20 kept) so nobody looks up user IDs; `/restart` has a **2-minute cooldown** per server on top of the 409; config saves carry a **`revision`** (409 if someone saved in between); names = a shuffled pass through the list (each name once before repeats, never the same two days running), colors rotate daily; the blob's seed is the day's name (Jim always looks like Jim); GIF edge is hard (GIF has on/off transparency), eyes anti-aliased; `/whitelist add/remove` replies publicly, `list` privately; status embeds show uptime as a Discord relative timestamp (no edits needed to keep it current) | 🟡 | 2026-10-09. Xander delegated ("whatever is best"); review. |
 | 44 | Discord **features with on/off switches**: `features` in `config.json`, a typed struct (each feature has its own settings), new features start off. Off = its commands are removed from Discord (re-registered on save, only when the set changed) and its jobs stop; no restart. Features page in the UI. **Poll:** a native Discord poll every 1–7 days (default **every 2**, so friends don't get annoyed) at a set local time in one channel, votes open 6 h–3 days; questions written together for the group, edited in the UI, shuffled so none repeat until all were asked; schedule is a pure function of the date (`last_poll` in `state.json` prevents double posts); "Post one now" takes the next slot. **`/blob name color [animated]`:** anyone; the 4 profile colors; a 512 px transparent PNG with margin (works as a profile picture), or the blinking 256 px GIF; the page has a maker with preview + download (`GET /api/blob`) | ✅ | 2026-10-09. Xander chose: poll + blob only (no join announcements, game night, birthdays…), palette colors, PNG with optional GIF, every other day. "No engagement features" (§1) is about the tools; an opt-in bot for friends is fine. |
+| 45 | Discord **status** feature (third switch): custom status text only, a new phrase every hour on the local hour, shuffled (no repeats before all were shown); 30 starter "blob" phrases (blob as noun/verb/adjective, e.g. "I'm blobbing it"), editable, `{name}` = the day's name. **Live games** (on by default): an hour when someone's on a server may show "Watching Steve play Minecraft" / "Watching 3 blobs play Valheim" instead, never two hours running | ✅ | 2026-10-09. Xander: hourly, custom text, blob-themed phrases, game status only once in a while. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
@@ -177,7 +178,7 @@ ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37, #41–#42).
 ### Discord (`discord.<domain>`): built (#42), see `tools/discord/AGENTS.md`
 - Bot: `/sens`, `/restart` + `/whitelist` for verified people, live
   server status messages, a daily blob persona (name + color).
-- Features with on/off switches (#44): a poll every few days, `/blob`.
+- Features with on/off switches (#44, #45): a poll every few days, `/blob`, an hourly blob status.
 - Settings page: today's persona and connection, status channels,
   names, verified people and access requests.
 
@@ -228,7 +229,7 @@ got here: `git log`.
 - **Discord (#42, ADR 0012):** bot with `/sens`, `/restart`,
   `/whitelist` (Minecraft + Valheim's permitted list), status boards,
   daily blob persona; settings page (Bot, Features, People). Features
-  (#44): poll every few days, `/blob` maker. Not yet run against real
+  (#44, #45): poll every few days, `/blob` maker, hourly status. Not yet run against real
   Discord.
 - **Not built yet:** games server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
