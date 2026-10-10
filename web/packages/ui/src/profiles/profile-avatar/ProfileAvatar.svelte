@@ -1,11 +1,13 @@
 <!--
   A profile's avatar: their blob, in their color, with eyes that blink and
   glance around (and the blob leans a little when they do). Shape, face
-  and timing all come from the ID, so each person is consistent everywhere.
+  and timing all come from the display name, exactly as typed (decision
+  #22), so each person is consistent everywhere, and a profile called Jim
+  looks like the Discord bot's Jim. Renaming someone changes their blob.
   Decorative: the surrounding UI always shows the name, so it's aria-hidden.
   Color comes from the nearest [data-accent] (--color-avatar).
 
-  When `id` changes (e.g. live preview while typing a name), the shape and
+  When `name` changes (e.g. live preview while typing), the shape and
   eyes morph smoothly to the new ones instead of jumping.
 -->
 <script lang="ts">
@@ -14,7 +16,7 @@
   import { prefersReducedMotion, Tween } from 'svelte/motion'
   import { blobFace, blobPath } from '../blob'
 
-  let { id }: { id: string } = $props()
+  let { name }: { name: string } = $props()
 
   const MORPH_MS = 400
 
@@ -23,16 +25,16 @@
   // numbers element by element.
   const numbers = (d: string) => d.match(/-?\d+(?:\.\d+)?/g)!.map(Number)
 
-  let face = $derived(blobFace(id)) // timing uses this directly: no tweening
-  // Start at the first ID's look (untrack: only the starting value is
-  // wanted here); the effect below morphs to every later ID.
-  const shape = new Tween(untrack(() => numbers(blobPath(id))))
-  const eyes = new Tween(untrack(() => blobFace(id)))
+  let face = $derived(blobFace(name)) // timing uses this directly: no tweening
+  // Start at the first name's look (untrack: only the starting value is
+  // wanted here); the effect below morphs to every later name.
+  const shape = new Tween(untrack(() => numbers(blobPath(name))))
+  const eyes = new Tween(untrack(() => blobFace(name)))
 
   $effect(() => {
     const duration = prefersReducedMotion.current ? 0 : MORPH_MS
-    shape.set(numbers(blobPath(id)), { duration, easing: cubicOut })
-    eyes.set(blobFace(id), { duration, easing: cubicOut })
+    shape.set(numbers(blobPath(name)), { duration, easing: cubicOut })
+    eyes.set(blobFace(name), { duration, easing: cubicOut })
   })
 
   // Rebuild "M x y C x y x y x y ... Z" from the tweened numbers.

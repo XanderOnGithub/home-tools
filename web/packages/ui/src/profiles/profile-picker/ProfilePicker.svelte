@@ -132,7 +132,7 @@
             onclick={() => (managing ? openEdit(user) : select(user))}
           >
             <span class="profile-avatar">
-              <ProfileAvatar id={user.id} />
+              <ProfileAvatar name={user.name} />
               {#if managing}
                 <span class="edit-badge" aria-hidden="true">
                   <svg viewBox="0 0 24 24">
@@ -170,7 +170,7 @@
         <ul>
           {#each archived as user (user.id)}
             <li class="archived-row" data-accent={user.color}>
-              <span class="archived-avatar"><ProfileAvatar id={user.id} /></span>
+              <span class="archived-avatar"><ProfileAvatar name={user.name} /></span>
               <span class="archived-name">{user.name}</span>
               <button type="button" class="btn btn-quiet" onclick={() => restore(user)}>
                 Restore<span class="visually-hidden"> {user.name}</span>

@@ -37,7 +37,7 @@
   popovertarget="profile-menu"
   aria-label="Profile menu, {profile.name}"
 >
-  <span class="avatar"><ProfileAvatar id={profile.id} /></span>
+  <span class="avatar"><ProfileAvatar name={profile.name} /></span>
   <svg class="caret" class:open viewBox="0 0 24 24" aria-hidden="true">
     <path d="M6 9l6 6 6-6" />
   </svg>

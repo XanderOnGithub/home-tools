@@ -1,5 +1,6 @@
-// Organic avatar blobs, computed from the profile ID: the same person always
-// gets the same shape, and nothing is stored. Decision #22.
+// Organic avatar blobs, computed from the profile's display name: the same
+// name always gets the same shape, and nothing is stored. Decision #22.
+// The Discord bot draws the same blobs in Go (tools/discord/blob.go).
 //
 // The outline is a circle whose radius rises and falls with a few layered
 // waves (3, 4 and 5 bumps around the circle, each at a random strength and
@@ -13,10 +14,10 @@ const SAMPLES = 24 // points along the outline; enough to look smooth
 
 /**
  * Returns an SVG path ("d" attribute) for a smooth blob in a 100×100 viewBox.
- * @param id - The profile's ID, e.g. "xander".
+ * @param seed - The profile's display name, exactly as typed, e.g. "Xander".
  */
-export function blobPath(id: string): string {
-  const next = seededRandom(id)
+export function blobPath(seed: string): string {
+  const next = seededRandom(seed)
   const waves = WAVES.map((bumps) => ({
     bumps,
     strength: 0.4 + next() * 0.6, // never 0, so every wave shows a little
@@ -59,10 +60,10 @@ export type BlobFace = {
 
 /**
  * Returns the face for a profile's blob. Like the shape, it's computed
- * from the ID (with its own seed, so tweaking faces never changes shapes).
+ * from the name (with its own seed, so tweaking faces never changes shapes).
  */
-export function blobFace(id: string): BlobFace {
-  const next = seededRandom(id + ':face')
+export function blobFace(seed: string): BlobFace {
+  const next = seededRandom(seed + ':face')
   const between = (min: number, max: number) => min + next() * (max - min)
   return {
     x: between(47, 53),

@@ -22,7 +22,7 @@
   const today = new Date()
   const todayISO = isoDate(today)
 
-  let blob = $derived(blobPath(profile.id))
+  let blob = $derived(blobPath(profile.name))
 
   let days = $derived(
     weekDays(today).map((d) => {

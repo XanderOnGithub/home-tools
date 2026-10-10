@@ -102,7 +102,7 @@
 
 <main class="onboarding">
   <div class="intro">
-    <span class="avatar"><ProfileAvatar id={profile.id} /></span>
+    <span class="avatar"><ProfileAvatar name={profile.name} /></span>
     <p class="step-count">Step {step + 1} of {STEPS}</p>
     <div class="progress" aria-hidden="true">
       {#each { length: STEPS } as _, i (i)}
