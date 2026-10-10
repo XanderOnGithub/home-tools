@@ -110,6 +110,7 @@ func (b *Bot) Run(ctx context.Context) {
 		b.conn.connected, b.conn.err = false, "Lost the connection to Discord; reconnecting…"
 		b.mu.Unlock()
 	})
+	s.AddHandler(b.onResumed)
 	s.AddHandler(b.onInteraction)
 	b.sess = s
 
@@ -173,6 +174,21 @@ func (b *Bot) onReady(s *discordgo.Session, r *discordgo.Ready) {
 	wake(b.personaWake)
 	wake(b.pollWake)
 	// A new connection starts with no status: send it again.
+	b.status.mu.Lock()
+	b.status.resend = true
+	b.status.mu.Unlock()
+	wake(b.statusWake)
+}
+
+// onResumed runs when discordgo picks the old session back up after a
+// drop. Discord sends no Ready then, so without this the page would say
+// "reconnecting…" forever. Same user, app and commands as before.
+func (b *Bot) onResumed(_ *discordgo.Session, _ *discordgo.Resumed) {
+	b.mu.Lock()
+	b.conn.connected, b.conn.err = true, ""
+	b.mu.Unlock()
+	b.log.Info("discord resumed")
+	b.syncCommands() // in case features changed while we were away
 	b.status.mu.Lock()
 	b.status.resend = true
 	b.status.mu.Unlock()
