@@ -65,7 +65,7 @@
 
 <div class="home">
   <div class="greeting">
-    <span class="avatar"><ProfileAvatar id={profile.id} /></span>
+    <span class="avatar"><ProfileAvatar name={profile.name} /></span>
     <div>
       <h1 tabindex="-1">{greeting}, {profile.name}</h1>
       <p class="date"><time datetime={isoDate(now)}>{date}</time></p>

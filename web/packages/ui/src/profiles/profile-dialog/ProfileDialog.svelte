@@ -4,9 +4,9 @@
   returns on close), Esc to close, and hides the page behind it from
   screen readers.
 
-  The whole dialog takes the chosen color (data-accent). When adding, the
-  preview avatar morphs as the name changes (the shape comes from the ID);
-  when editing, the ID never changes, so the avatar stays the same person.
+  The whole dialog takes the chosen color (data-accent). The preview
+  avatar morphs as the name is typed, when adding and when renaming (the
+  shape comes from the name, decision #22); the ID never changes.
   "Remove" archives (nothing is deleted, decision #16) after a confirm.
 -->
 <script lang="ts">
@@ -124,7 +124,7 @@
     <h2 id="profile-dialog-title">{editing ? 'Edit profile' : 'New profile'}</h2>
 
     <div class="preview">
-      <ProfileAvatar id={id || 'new-profile'} />
+      <ProfileAvatar name={name.trim() || 'new-profile'} />
     </div>
 
     <div class="field">
