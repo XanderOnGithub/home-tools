@@ -82,6 +82,7 @@ type botView struct {
 	BotView
 	Requests     []AccessRequest `json:"requests"`
 	NextPoll     *time.Time      `json:"next_poll,omitempty"` // nil: the poll is off
+	Status       string          `json:"status,omitempty"`    // the bot's custom status right now
 	Servers      []serverOption  `json:"servers"`             // for picking a status board's server
 	ServersError string          `json:"servers_error,omitempty"`
 }
@@ -95,6 +96,7 @@ type serverOption struct {
 
 func (h *handlers) getBot(w http.ResponseWriter, r *http.Request) {
 	v := botView{BotView: h.bot.View(), Requests: h.store.Requests(), Servers: []serverOption{}}
+	v.Status = h.bot.Status()
 	if next := h.bot.NextPoll(); !next.IsZero() {
 		v.NextPoll = &next
 	}

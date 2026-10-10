@@ -39,6 +39,8 @@ type Bot struct {
 	boardsWake  chan struct{} // refresh the status boards now
 	personaWake chan struct{} // re-check the persona in every guild
 	pollWake    chan struct{} // the poll's settings changed: reschedule
+	statusWake  chan struct{} // the status settings changed, or Discord reset it
+	status      statusState
 
 	cmdMu      sync.Mutex // serializes command registration
 	registered string     // the command set Discord has now (names, joined)
@@ -60,6 +62,7 @@ func NewBot(token string, store *Store, games Games, log *slog.Logger) *Bot {
 		boardsWake:  make(chan struct{}, 1),
 		personaWake: make(chan struct{}, 1),
 		pollWake:    make(chan struct{}, 1),
+		statusWake:  make(chan struct{}, 1),
 	}
 	if token == "" {
 		b.conn.err = "No bot token: set DISCORD_TOKEN for Home Tools (see deploy/README.md)."
@@ -81,6 +84,7 @@ func (b *Bot) Changed() {
 	wake(b.boardsWake)
 	wake(b.personaWake)
 	wake(b.pollWake)
+	wake(b.statusWake)
 	go b.syncCommands() // a feature switched on or off adds or removes commands
 }
 
@@ -130,6 +134,7 @@ func (b *Bot) Run(ctx context.Context) {
 	wg.Go(func() { b.runBoards(ctx) })
 	wg.Go(func() { b.runPersona(ctx) })
 	wg.Go(func() { b.runPolls(ctx) })
+	wg.Go(func() { b.runStatus(ctx) })
 	<-ctx.Done()
 	wg.Wait()
 }
@@ -167,6 +172,11 @@ func (b *Bot) onReady(s *discordgo.Session, r *discordgo.Ready) {
 	wake(b.boardsWake)
 	wake(b.personaWake)
 	wake(b.pollWake)
+	// A new connection starts with no status: send it again.
+	b.status.mu.Lock()
+	b.status.resend = true
+	b.status.mu.Unlock()
+	wake(b.statusWake)
 }
 
 // syncCommands registers the commands of the features that are on, if

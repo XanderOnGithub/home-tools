@@ -7,6 +7,7 @@
   import { BlobMaker } from '@/features/bot/blob-maker'
   import { PollSettings } from '@/features/bot/poll-settings'
   import { settings } from '@/features/bot/settings'
+  import { StatusSettings } from '@/features/bot/status-settings'
 
   const s = settings()
 </script>
@@ -21,6 +22,7 @@
     <LoadError what="the bot's settings" onretry={s.load} />
   {:else if s.config && s.bot}
     <PollSettings config={s.config} bot={s.bot} save={s.save} onposted={s.refreshBot} />
+    <StatusSettings config={s.config} bot={s.bot} save={s.save} />
     <BlobMaker config={s.config} save={s.save} />
   {/if}
 </div>

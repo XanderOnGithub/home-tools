@@ -95,6 +95,7 @@ func (s *Store) Config() Config {
 	c.Verified = slices.Clone(c.Verified)
 	c.Names = slices.Clone(c.Names)
 	c.Features.Poll.Questions = slices.Clone(c.Features.Poll.Questions)
+	c.Features.Status.Phrases = slices.Clone(c.Features.Status.Phrases)
 	return c
 }
 
