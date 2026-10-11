@@ -23,7 +23,8 @@ in the UI = **Session** in the code.
 The UI is `web/apps/fitness` (Svelte); its `src/features/<feature>/`
 folders mirror these concepts: `exercises` (catalog, picker, photos),
 `plans` (list, editor, routine planner), `sessions` (API + helpers),
-`workout` (workout mode, start dialog, rest timer, chime), `home`,
+`workout` (workout mode, start dialog, rest timer, chime, the summary
+after Finish), `home`,
 `progress` (summary, weight + exercise charts, workout list), `body`
 (muscle map, Home card, `/body` page; #49), `training` (what a plan or
 week works + notes, `load-summary`, `routine-builder`, `guidance` rep

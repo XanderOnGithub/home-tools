@@ -52,3 +52,13 @@ export function getCatalog(): Promise<Exercise[]> {
   })
   return catalog
 }
+
+/**
+ * The picker's "show these first" list: exercises you've done (pass them
+ * most recent first), then those in the household's plans, each once.
+ */
+export function preferredIds(yours: string[], plans: { archived?: boolean; exercises: { exercise_id: string }[] }[]): string[] {
+  const out = new Set(yours)
+  for (const plan of plans) if (!plan.archived) for (const e of plan.exercises) out.add(e.exercise_id)
+  return [...out]
+}

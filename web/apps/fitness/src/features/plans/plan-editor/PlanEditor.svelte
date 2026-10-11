@@ -8,7 +8,8 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import { LoadError } from '@home-tools/ui/components/load-error'
-  import { getCatalog, label, primaryMuscles, type Exercise } from '@/features/exercises'
+  import { getCatalog, label, preferredIds, primaryMuscles, type Exercise } from '@/features/exercises'
+  import { getExerciseLog } from '@/features/progress'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { DEFAULT_REST_SEC, getPlans, savePlan, type Plan } from '@/features/plans'
@@ -25,6 +26,7 @@
 
   let plans = $state<Plan[]>([])
   let catalog = $state<Exercise[]>([])
+  let logged = $state<string[]>([]) // your exercises, most recent first: the picker shows them first
   let original = $state<Plan | null>(null)
   let name = $state('')
   let items = $state<Item[]>([])
@@ -38,7 +40,9 @@
   async function load() {
     status = 'loading'
     try {
-      ;[plans, catalog] = await Promise.all([getPlans(), getCatalog()])
+      let log
+      ;[plans, catalog, log] = await Promise.all([getPlans(), getCatalog(), getExerciseLog(profile.id)])
+      logged = log.map((l) => l.exercise_id)
       if (id) {
         original = plans.find((r) => r.id === id) ?? null
         if (!original) {
@@ -297,7 +301,7 @@
       {/if}
     </form>
 
-    <ExercisePicker bind:open={picking} {catalog} {selected} ontoggle={toggle} />
+    <ExercisePicker bind:open={picking} {catalog} {selected} preferred={preferredIds(logged, plans)} ontoggle={toggle} />
   {/if}
 </div>
 

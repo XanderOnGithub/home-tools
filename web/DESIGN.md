@@ -72,7 +72,8 @@ content (long names, 50 items).
 - **Buttons:** `.btn` + one of `.btn-primary`, `.btn-secondary`,
   `.btn-quiet`, `.btn-danger`, `.btn-text-danger`, `.btn-icon` (icon only;
   needs `aria-label`). Same classes on an `<a>` that looks like a button.
-  All states (hover, pressed, disabled) are in `@home-tools/ui/app.css`.
+  All states (hover, pressed, disabled) are in `@home-tools/ui/app.css`;
+  pressed = a slight shrink (`scale: 0.97`) plus a color change.
 - **Dialogs:** `<dialog class="dialog">` + `showModal()`. Shared look and
   backdrop in `@home-tools/ui/app.css`; the component sets only its size
   and padding.
