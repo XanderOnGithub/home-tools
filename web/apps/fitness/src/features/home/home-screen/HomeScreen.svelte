@@ -88,7 +88,7 @@
       <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
     {/if}
     <div class="grid">
-      <UpNext {profile} {fitness} sessions={thisWeek} {plans} active={inProgress(sessions)}
+      <UpNext {profile} {fitness} sessions={thisWeek} {plans} {recovery} active={inProgress(sessions)}
         ondiscarded={(id) => (sessions = sessions.filter((s) => s.id !== id))}
       />
       <div class="side">
