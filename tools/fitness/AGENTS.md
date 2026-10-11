@@ -13,6 +13,7 @@ in the UI = **Session** in the code.
 | `validate.go` | Each type's own rules (`Validate`), with `ErrInvalid` / `ErrConflict`. |
 | `store.go` | `Store`: loads everything at `Open`, serves reads from memory, writes through to JSON. Exercises, plans, sessions. |
 | `progress.go` | Progress reads (#39): exercise log + one exercise's all-time history. |
+| `strength.go` | Strength trends (#50): estimated max / best reps per exercise, change vs 4 weeks before (or the first time), per muscle; pure (`strength`), table-tested. |
 | `recovery.go` | Muscle recovery estimate (#49): fatigue per muscle from the last 7 days, pure (`recovery`), table-tested. |
 | `body.go` | Fitness profile (`fitness.json`, incl. the routine) and the weight log. |
 | `handlers.go` | HTTP API (`Register`). |
@@ -72,6 +73,7 @@ All JSON; bodies are decoded strictly (unknown fields → 400).
 | `GET /api/users/{user}/exercise-log` | Progress (#39): exercises with logged sets, `{exercise_id, last_done, workouts}`, most recent first |
 | `GET /api/users/{user}/exercise-log/{exercise}` | One exercise's history, all time, newest first: `{session_id, started_at, sets}` per workout. Both count only finished, non-archived workouts |
 | `GET /api/users/{user}/recovery` | Every muscle's recovery (#49): `{muscle, state: ready\|recovering\|rest, ready_at?, last_worked?, sets_7d, exercises}`, `AllMuscles` order. Counts in-progress workouts too |
+| `GET /api/users/{user}/strength` | Trends (#50): `{muscles: [{muscle, change, basis: 4_weeks\|since_start, exercises}], exercises: [{exercise_id, measure: max_kg\|reps, best, recent, change, basis?}]}`. Finished workouts only |
 | `GET`/`PUT /api/users/{user}/fitness` | Fitness profile + routine (404 = not onboarded) |
 | `GET /api/users/{user}/weights`, `PUT …/weights/{date}` | Weight log (upsert by date) |
 | `GET /images/<path>` | Exercise photos (no listings, 1-day cache) |

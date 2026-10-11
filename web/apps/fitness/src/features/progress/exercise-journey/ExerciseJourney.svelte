@@ -1,12 +1,13 @@
 <!--
-  One exercise's journey (/progress/<exercise id>): the chart (what it
-  shows depends on what the exercise tracks, see `journey`), records,
-  then every workout's sets, newest first.
+  One exercise's journey (/progress/<exercise id>): its strength trend
+  (#50), the chart (what it shows depends on what the exercise tracks,
+  see `journey`), records, then every workout's sets, newest first.
 -->
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { LineChart } from '@/components/line-chart'
+  import { changeLabel, getStrength, isStronger, type ExerciseStrength } from '@/features/body'
   import { getExercise, type Exercise } from '@/features/exercises'
   import { getExerciseHistory, journey, setLabel, type ExerciseWorkout } from '@/features/progress'
 
@@ -14,12 +15,15 @@
 
   let exercise = $state<Exercise | null>(null)
   let history = $state<ExerciseWorkout[]>([])
+  let trend = $state<ExerciseStrength | undefined>()
   let status = $state<'loading' | 'ready' | 'error'>('loading')
 
   async function load() {
     status = 'loading'
     try {
-      ;[exercise, history] = await Promise.all([getExercise(id), getExerciseHistory(profile.id, id)])
+      let strength
+      ;[exercise, history, strength] = await Promise.all([getExercise(id), getExerciseHistory(profile.id, id), getStrength(profile.id)])
+      trend = strength.exercises.find((e) => e.exercise_id === id)
       status = 'ready'
     } catch (err) {
       console.error('Loading exercise progress failed:', err)
@@ -56,6 +60,9 @@
         {history.length === 1 ? 'workout' : 'workouts'}{#if history.length > 0}&nbsp;· since
           <time datetime={history.at(-1)!.started_at}>{when(history.at(-1)!.started_at)}</time>{/if}
       </p>
+      {#if trend?.basis}
+        <p class="trend" class:up={isStronger(trend.change)}>{changeLabel(trend.change, trend.basis)}</p>
+      {/if}
     </header>
 
     {#if !j}
@@ -164,6 +171,15 @@
 
   p {
     margin: 0;
+  }
+
+  .trend {
+    margin: var(--space-1) 0 0;
+    font-weight: var(--weight-semibold);
+  }
+
+  .trend.up {
+    color: var(--color-accent-text);
   }
 
   .muted {
