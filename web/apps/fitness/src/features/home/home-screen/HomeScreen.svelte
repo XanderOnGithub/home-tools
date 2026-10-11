@@ -1,10 +1,13 @@
 <!--
   Home: a greeting with the person's blob, today's date under it, then the
-  weekly weight check-in (only when due), today's plan, and this week.
+  weekly weight check-in (only when due), today's plan, this week, and
+  the body's muscle map (#49).
 -->
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { isoDate, isoWeek, startOfWeek, weekDays } from '@home-tools/ui/dates'
+  import { getRecovery, type MuscleRecovery } from '@/features/body'
+  import { BodyCard } from '@/features/body/body-card'
   import { getWeights, type FitnessProfile, type WeightEntry } from '@/features/fitness-profile'
   import { ThisWeek } from '@/features/home/this-week'
   import { UpNext } from '@/features/home/up-next'
@@ -27,16 +30,18 @@
   let sessions = $state<Session[]>([])
   let plans = $state<Plan[]>([])
   let weights = $state<WeightEntry[]>([])
+  let recovery = $state<MuscleRecovery[]>([])
   let status = $state<'loading' | 'ready' | 'error'>('loading')
 
   async function load() {
     status = 'loading'
     try {
       // Independent requests: fetch in parallel.
-      ;[sessions, plans, weights] = await Promise.all([
+      ;[sessions, plans, weights, recovery] = await Promise.all([
         getRecentSessions(profile.id),
         getPlans(),
         getWeights(profile.id),
+        getRecovery(profile.id),
       ])
       status = 'ready'
     } catch (err) {
@@ -82,7 +87,10 @@
       <UpNext {profile} {fitness} sessions={thisWeek} {plans} active={inProgress(sessions)}
         ondiscarded={(id) => (sessions = sessions.filter((s) => s.id !== id))}
       />
-      <ThisWeek {profile} {fitness} sessions={thisWeek} {plans} />
+      <div class="side">
+        <ThisWeek {profile} {fitness} sessions={thisWeek} {plans} />
+        <BodyCard {recovery} />
+      </div>
     </div>
   {/if}
 </div>
@@ -107,6 +115,12 @@
       grid-template-columns: 3fr 2fr;
       gap: var(--space-7);
     }
+  }
+
+  .side {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-7);
   }
 
   .greeting {
