@@ -17,6 +17,11 @@ func TestRecovery(t *testing.T) {
 		return Session{StartedAt: now.Add(-ago), Entries: entries}
 	}
 	sets := func(id string, n int) Entry { return Entry{ExerciseID: id, Sets: make([]Set, n)} }
+	// Done 10 days ago: too old to tire anything, recent enough that the
+	// exercises aren't new (no novelty factor), so the cases below show
+	// volume and decay alone.
+	familiar := workout(10*24*time.Hour, sets("bench", 1), sets("squat", 1))
+	known := func(s ...Session) []Session { return append([]Session{familiar}, s...) }
 
 	type want struct {
 		state   RecoveryState
@@ -31,27 +36,45 @@ func TestRecovery(t *testing.T) {
 		{"nothing logged", nil, map[Muscle]want{MuscleChest: {StateReady, 0, 0}}},
 		{
 			// chest 6 → ready after 24 h · log2(6) ≈ 62 h; triceps 3 (half
-			// credit) → 38 h, and 3 is exactly "rest".
-			"6 sets of bench just now", []Session{workout(0, sets("bench", 6))},
+			// credit), 3 is exactly "rest", and arms are slower (26.4 h
+			// half-life): 26.4 h · log2(3) ≈ 41.8 h.
+			"6 sets of bench just now", known(workout(0, sets("bench", 6))),
 			map[Muscle]want{
 				MuscleChest:      {StateRest, 62*time.Hour + 2*time.Minute, 6},
-				MuscleTriceps:    {StateRest, 38*time.Hour + 2*time.Minute, 3},
+				MuscleTriceps:    {StateRest, 41*time.Hour + 50*time.Minute, 3},
 				MuscleQuadriceps: {StateReady, 0, 0},
 			},
 		},
 		{
 			// 48 h later: chest 6/4 = 1.5 → recovering for 24 h · log2(1.5) ≈ 14 h;
-			// triceps 0.75 → ready.
-			"6 sets of bench two days ago", []Session{workout(48*time.Hour, sets("bench", 6))},
+			// triceps 3 · 2^(-48/26.4) ≈ 0.85 → ready.
+			"6 sets of bench two days ago", known(workout(48*time.Hour, sets("bench", 6))),
 			map[Muscle]want{
 				MuscleChest:   {StateRecovering, 14*time.Hour + 2*time.Minute, 6},
 				MuscleTriceps: {StateReady, 0, 3},
 			},
 		},
 		{
-			"fatigue adds up across workouts", []Session{workout(24*time.Hour, sets("squat", 2)), workout(0, sets("squat", 2))},
-			// 2 sets a day ago (now 1) + 2 now = 3 → rest, ready in 24 h · log2(3) ≈ 38 h.
-			map[Muscle]want{MuscleQuadriceps: {StateRest, 38*time.Hour + 2*time.Minute, 4}},
+			// Quads fade faster (21.6 h): 2 · 2^(-24/21.6) ≈ 0.93 left of a
+			// day ago + 2 now = 2.93 → recovering, ready in 21.6 h · log2(2.93) ≈ 33.5 h.
+			"fatigue adds up across workouts", known(workout(24*time.Hour, sets("squat", 2)), workout(0, sets("squat", 2))),
+			map[Muscle]want{MuscleQuadriceps: {StateRecovering, 33*time.Hour + 28*time.Minute, 4}},
+		},
+		{
+			// A first time counts 1.5×: 3 sets of a new exercise = 4.5 →
+			// ready in 24 h · log2(4.5) ≈ 52 h, not the 38 h of a familiar one.
+			"a new exercise counts more", []Session{workout(0, sets("bench", 3))},
+			map[Muscle]want{MuscleChest: {StateRest, 52*time.Hour + 5*time.Minute, 3}},
+		},
+		{
+			// 20 days off = new again; the familiar session doesn't help.
+			"back after a layoff", []Session{workout(20*24*time.Hour, sets("bench", 3)), workout(0, sets("bench", 3))},
+			map[Muscle]want{MuscleChest: {StateRest, 52*time.Hour + 5*time.Minute, 3}},
+		},
+		{
+			// 10 days since: still familiar, 3 sets = exactly 3 → 38 h.
+			"done within two weeks", known(workout(0, sets("bench", 3))),
+			map[Muscle]want{MuscleChest: {StateRest, 38*time.Hour + 2*time.Minute, 3}},
 		},
 		{
 			"stretches, discarded workouts and old ones don't count", []Session{

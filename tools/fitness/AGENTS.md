@@ -14,7 +14,7 @@ in the UI = **Session** in the code.
 | `store.go` | `Store`: loads everything at `Open`, serves reads from memory, writes through to JSON. Exercises, plans, sessions. |
 | `progress.go` | Progress reads (#39): exercise log + one exercise's all-time history. |
 | `strength.go` | Strength trends (#50): estimated max / best reps per exercise, change vs 4 weeks before (or the first time), per muscle; pure (`strength`), table-tested. |
-| `recovery.go` | Muscle recovery estimate (#49): fatigue per muscle from the last 7 days, pure (`recovery`), table-tested. |
+| `recovery.go` | Muscle recovery estimate (#49): fatigue per muscle from the last 7 days (per-muscle speed, new exercises count 1.5×), pure (`recovery`), table-tested. The research behind it: `docs/research/muscle-recovery.md`. |
 | `body.go` | Fitness profile (`fitness.json`, incl. the routine) and the weight log. |
 | `handlers.go` | HTTP API (`Register`). |
 | `fedb.go` | free-exercise-db → Exercise mapping (`fedbMetrics`, holds, distance cardio). |
