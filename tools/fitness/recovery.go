@@ -13,24 +13,85 @@ import (
 // is right now, from the user's recent workouts. Nothing is stored; it's
 // a pure function of the sessions, the catalog and the time.
 //
-// The model, kept deliberately simple (it's a guide, not a measurement):
+// The model, kept deliberately simple (it's a guide, not a measurement;
+// the research behind it: docs/research/muscle-recovery.md):
 //   - Every logged set adds fatigue to each muscle it works, as much as the
 //     exercise's activation (1 for a primary muscle, 0.5 for a secondary
-//     one), at the time the workout started. Stretches add none.
-//   - Fatigue halves every recoveryHalfLife. With the thresholds below, a
-//     muscle hit with 3 hard sets is ready again after about 1.5 days, 6
-//     sets after about 2.5 days and 10 after 3.3: the usual 48–72 h advice.
+//     one), at the time the workout started. Stretches add none. We don't
+//     log effort, so every set counts as a hard one (near failure).
+//   - Sets of an exercise not done in the 14 days before count 1.5×
+//     (noveltyFactor): new or returning movements do more damage, and the
+//     protection of having done it fades over 1–2 weeks (repeated bout
+//     effect). Gentler than the research's 5-day floor for a first
+//     exposure, which would tell every beginner to wait 5 days.
+//   - Fatigue halves every recoveryHalfLife × the muscle's multiplier
+//     (muscleSpeed: legs a little faster, arms and hamstrings a little
+//     slower; design defaults, size matters little). With the thresholds
+//     below, 3 hard sets are ready again after about 1.5 days, 6 after
+//     2.5 and 10 after 3.3: the research's 48–96 h for hard to very hard
+//     sessions.
 //   - Rest from fatigue ≥ restFatigue, Recovering from ≥ readyFatigue,
 //     Ready below that.
 //
-// O(sets in the last recoveryWindow) per call.
+// O(all sets of the user) per call: novelty needs the whole history.
 
 const (
 	recoveryHalfLife = 24 * time.Hour
 	recoveryWindow   = 7 * 24 * time.Hour // older sets have decayed to < 1% of a set
 	restFatigue      = 3.0                // about 3 hard sets, recently
 	readyFatigue     = 1.0                // less than one hard set's worth left
+	noveltyFactor    = 1.5                // sets of a new (or returning) exercise
+	noveltyGap       = 14 * 24 * time.Hour
 )
+
+// muscleSpeed scales recoveryHalfLife per muscle (missing = 1): the
+// research doc's defaults (§3): quads, calves and glutes recover a little
+// faster, hamstrings and arms a little slower. Kept small on purpose.
+var muscleSpeed = map[Muscle]float64{
+	MuscleQuadriceps: 0.9,
+	MuscleCalves:     0.9,
+	MuscleGlutes:     0.9,
+	MuscleHamstrings: 1.1,
+	MuscleBiceps:     1.1,
+	MuscleTriceps:    1.1,
+}
+
+// halfLife is how fast m's fatigue fades.
+func halfLife(m Muscle) time.Duration {
+	if f, ok := muscleSpeed[m]; ok {
+		return time.Duration(float64(recoveryHalfLife) * f)
+	}
+	return recoveryHalfLife
+}
+
+// novelExercises marks, per session index, the exercises that hadn't been
+// done (with logged sets) in the noveltyGap before it. Discarded workouts
+// don't count. sessions are oldest → newest; O(all sets).
+func novelExercises(sessions []Session) []map[string]bool {
+	last := map[string]time.Time{} // exercise ID → latest start with sets
+	out := make([]map[string]bool, len(sessions))
+	for i, sess := range sessions {
+		if sess.Archived {
+			continue
+		}
+		novel := map[string]bool{}
+		for _, e := range sess.Entries {
+			if len(e.Sets) == 0 {
+				continue
+			}
+			if at, ok := last[e.ExerciseID]; !ok || sess.StartedAt.Sub(at) > noveltyGap {
+				novel[e.ExerciseID] = true
+			}
+		}
+		for _, e := range sess.Entries { // after the check: an exercise twice in one session is novel twice
+			if len(e.Sets) > 0 {
+				last[e.ExerciseID] = sess.StartedAt
+			}
+		}
+		out[i] = novel
+	}
+	return out
+}
 
 // RecoveryState is how ready a muscle is to be trained again.
 type RecoveryState string
@@ -82,6 +143,7 @@ func recovery(sessions []Session, exercise func(id string) (Exercise, bool), now
 		by[m] = &acc{}
 	}
 
+	novel := novelExercises(sessions)
 	for i := len(sessions) - 1; i >= 0; i-- { // newest first: stop at the window's edge
 		sess := sessions[i]
 		age := now.Sub(sess.StartedAt)
@@ -91,19 +153,22 @@ func recovery(sessions []Session, exercise func(id string) (Exercise, bool), now
 		if sess.Archived || age < 0 { // discarded, or a clock in the future
 			continue
 		}
-		decay := math.Exp2(-float64(age) / float64(recoveryHalfLife))
 		for _, e := range sess.Entries {
 			ex, ok := exercise(e.ExerciseID)
 			if !ok || len(e.Sets) == 0 || ex.Category == CategoryStretching {
 				continue
 			}
 			n := float64(len(e.Sets))
+			load := n
+			if novel[i][ex.ID] {
+				load *= noveltyFactor
+			}
 			for m, a := range ex.Activation {
 				st := by[m]
 				if st == nil {
 					continue // not a muscle we know (validation prevents this)
 				}
-				st.fatigue += n * a * decay
+				st.fatigue += load * a * math.Exp2(-float64(age)/float64(halfLife(m)))
 				st.sets += n * a
 				if st.lastWorked.IsZero() {
 					st.lastWorked = sess.StartedAt // newest first: the first one is the latest
@@ -128,7 +193,7 @@ func recovery(sessions []Session, exercise func(id string) (Exercise, bool), now
 				r.State = StateRest
 			}
 			// fatigue · 2^(-t/h) = readyFatigue  ⇒  t = h · log2(fatigue / readyFatigue)
-			wait := time.Duration(float64(recoveryHalfLife) * math.Log2(st.fatigue/readyFatigue))
+			wait := time.Duration(float64(halfLife(m)) * math.Log2(st.fatigue/readyFatigue))
 			r.ReadyAt = now.Add(wait).Truncate(time.Minute)
 		}
 		out = append(out, r)
