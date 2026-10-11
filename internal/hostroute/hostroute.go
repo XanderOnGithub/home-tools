@@ -1,5 +1,10 @@
 // Package hostroute sends each request to a tool by the first label of its
 // Host: fitness.example.com → "fitness" (decision #5, ADR 0003).
+//
+// With a domain set, only <tool>.<domain> is served (decision #48). That
+// stops DNS rebinding: a website that points its own name at the server's
+// LAN IP (games.evil.com → 192.168.1.5) would otherwise get the whole API
+// through a visitor's browser, which sends Host: games.evil.com.
 package hostroute
 
 import (
@@ -12,15 +17,24 @@ import (
 // Router picks a tool's handler by subdomain. Build it with New, add tools
 // with Handle before serving; it's read-only afterwards, so it needs no lock.
 type Router struct {
-	tools map[string]http.Handler
-	only  string // set: every host goes to this tool (local dev)
+	tools  map[string]http.Handler
+	only   string // set: every host goes to this tool (local dev)
+	domain string // set: only <tool>.<domain> (and <tool>.internal) is served
 }
+
+// internal is the parent the server uses for calls to itself (the
+// Discord bot → games.internal). ".internal" is reserved for private use
+// (ICANN, 2024): no public DNS name ends in it, so no website can make a
+// browser send it.
+const internal = "internal"
 
 // New returns a router. only = "" routes by subdomain; a tool name sends
 // every request to that tool, whatever the host: localhost and bare IPs
 // have no subdomain, so local dev runs one tool at a time (-tool flag).
-func New(only string) *Router {
-	return &Router{tools: make(map[string]http.Handler), only: only}
+// domain (e.g. "example.com") limits routing by subdomain to that domain;
+// "" accepts any (local dev).
+func New(only, domain string) *Router {
+	return &Router{tools: make(map[string]http.Handler), only: only, domain: strings.ToLower(strings.TrimSuffix(domain, "."))}
 }
 
 // Handle mounts h as the tool called name ("fitness" serves fitness.*).
@@ -41,7 +55,7 @@ func (rt *Router) Names() []string {
 func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	name := rt.only
 	if name == "" {
-		name = subdomain(r.Host)
+		name = subdomain(r.Host, rt.domain)
 	}
 	h, ok := rt.tools[name]
 	if !ok {
@@ -52,17 +66,18 @@ func (rt *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // subdomain returns host's first label, without a port: "fitness" for
-// "fitness.example.com:443". Bare hosts ("localhost") and IPs have none.
-func subdomain(host string) string {
+// "fitness.example.com:443". Bare hosts ("localhost") and IPs have none,
+// and with a domain set, neither does a host under any other domain.
+func subdomain(host, domain string) string {
 	if h, _, err := net.SplitHostPort(host); err == nil {
 		host = h
 	}
 	if net.ParseIP(host) != nil {
 		return ""
 	}
-	label, _, found := strings.Cut(host, ".")
-	if !found {
+	label, rest, found := strings.Cut(strings.ToLower(strings.TrimSuffix(host, ".")), ".")
+	if !found || domain != "" && rest != domain && rest != internal {
 		return ""
 	}
-	return strings.ToLower(label)
+	return label
 }

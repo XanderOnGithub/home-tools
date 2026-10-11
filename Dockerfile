@@ -8,6 +8,7 @@
 
 # 1. Web UI
 FROM --platform=$BUILDPLATFORM node:24-alpine AS web
+# Same pnpm as "packageManager" in web/package.json (keep them in sync).
 RUN npm install -g pnpm@10.28.0
 WORKDIR /src/web
 # Manifests first, so dependencies are cached until they change.
@@ -33,7 +34,9 @@ COPY --from=web /src/web/apps/fitness/dist web/apps/fitness/dist
 COPY --from=web /src/web/apps/games/dist web/apps/games/dist
 COPY --from=web /src/web/apps/discord/dist web/apps/discord/dist
 COPY --from=web /src/web/apps/tools/dist web/apps/tools/dist
-RUN go build -tags webembed -trimpath -ldflags="-s -w" -o /out/home-tools ./cmd/home-tools \
+# VERSION (the commit, from CI) shows in the log and /healthz.
+ARG VERSION=dev
+RUN go build -tags webembed -trimpath -ldflags="-s -w -X main.version=$VERSION" -o /out/home-tools ./cmd/home-tools \
  && go build -trimpath -ldflags="-s -w" -o /out/fitness-import ./cmd/fitness-import
 
 # 3. Runtime: no shell, no package manager; CA certs for the importer

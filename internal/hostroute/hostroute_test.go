@@ -10,10 +10,12 @@ func TestRouter(t *testing.T) {
 	tool := func(name string) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.Write([]byte(name)) })
 	}
-	byHost := New("")
+	byHost := New("", "")
 	byHost.Handle("fitness", tool("fitness"))
 	byHost.Handle("games", tool("games"))
-	dev := New("games")
+	dev := New("games", "")
+	locked := New("", "example.com")
+	locked.Handle("games", tool("games"))
 	dev.Handle("fitness", tool("fitness"))
 	dev.Handle("games", tool("games"))
 
@@ -32,6 +34,12 @@ func TestRouter(t *testing.T) {
 		{"IPv6", byHost, "[::1]:8080", ""},
 		{"dev: localhost", dev, "localhost:8080", "games"},
 		{"dev: any host", dev, "fitness.example.com", "games"},
+		{"domain: own", locked, "games.example.com:443", "games"},
+		{"domain: case and trailing dot", locked, "Games.Example.com.", "games"},
+		{"domain: the bot's own calls", locked, "games.internal", "games"},
+		{"domain: DNS rebinding", locked, "games.evil.com", ""},
+		{"domain: lookalike suffix", locked, "games.notexample.com", ""},
+		{"domain: deeper subdomain", locked, "games.x.example.com", ""},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

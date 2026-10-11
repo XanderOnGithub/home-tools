@@ -1,6 +1,7 @@
 {
   "name": "@home-tools/web",
   "private": true,
+  "packageManager": "pnpm@10.28.0",
   "scripts": {
     "dev:fitness": "pnpm --filter @home-tools/fitness dev",
     "build": "pnpm -r build",
