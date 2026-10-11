@@ -22,6 +22,11 @@ services:
       # Local time zone: the bot's daily persona and poll times follow it
       # (unset = UTC, so "midnight" would be 8 pm in New York).
       TZ: America/New_York
+      # The domain the tools live under, same as Caddy's (e.g.
+      # example.com). Only <tool>.<DOMAIN> is served, so a website can't
+      # reach the API by pointing its own name at this server (DNS
+      # rebinding, decision #48). Empty = any domain (logged as a warning).
+      DOMAIN: ""
     volumes:
       - type: bind
         source: /var/lib/casaos_data/.media/Vault/Apps/HomeTools

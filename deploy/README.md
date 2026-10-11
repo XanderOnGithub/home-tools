@@ -40,8 +40,9 @@ test).
          -data /data/fitness -users /data/users
 
 4. **Install:** ZimaOS → App Store → Custom Install → Import, once per
-   app: `zimaos-home-tools.yaml`, then `zimaos-caddy.yaml` with the domain
-   and token filled in (keep that copy as the gitignored
+   app: `zimaos-home-tools.yaml` with `DOMAIN` filled in (the same domain
+   as Caddy's; without it the log warns and any domain is served), then
+   `zimaos-caddy.yaml` with the domain and token filled in (keep that copy as the gitignored
    `zimaos-caddy.local.yaml`).
 5. **Local DNS (UniFi):** Policy Table → DNS Record, type Host (A):
    `fitness.<domain>` → the server's LAN IP (likewise `games.`,
@@ -102,6 +103,13 @@ Check the log after the first start (`sudo docker logs <home-tools>`):
 "discord connected", then "discord persona" per server. If the avatar
 was refused, the log says so and the bot keeps a still image or just
 the nickname.
+
+## After updating to the security release (decision #48)
+Once: ZimaOS → Home Tools app → settings: environment `DOMAIN` = your
+domain (e.g. `example.com`, no `*.`), same as Caddy's. The log then says
+`domain=example.com` on start, and `/healthz` answers `ok <commit>`
+(which build is running). `https://<tool>.<domain>` keeps working; only
+other names get "no tool here".
 
 ## Tools home page
 Once: UniFi DNS record `tools.<domain>` → the server's LAN IP, then

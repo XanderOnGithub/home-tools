@@ -52,7 +52,11 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
   domain is only in the deploy config, never in git).
   API under `/api/...` per host; everything else serves the tool's SPA.
   `internal/hostroute`; a bare IP or unknown subdomain gets a 404, and
-  `/healthz` answers on any host. Local dev: `-tool <name>` serves one
+  `/healthz` answers on any host. With `DOMAIN` set (production), only
+  `<tool>.<DOMAIN>` is served (#48).
+- **Security (#48):** no logins (#10), so the browser is the boundary:
+  `httpx.Secure` wraps the server (Go's `CrossOriginProtection` refuses
+  cross-site writes; CSP, nosniff, Referrer-Policy on every response). Local dev: `-tool <name>` serves one
   tool on every host (`make run TOOL=fitness`).
 - **Frontend:** Svelte + Vite, no SSR, pnpm workspaces. Packages named
   `@home-tools/<name>`. Built assets embedded into the Go binary via `embed`
@@ -152,6 +156,7 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 45 | Discord **status** feature (third switch): custom status text only, a new phrase every hour on the local hour, shuffled (no repeats before all were shown); 30 starter "blob" phrases (blob as noun/verb/adjective, e.g. "I'm blobbing it"), editable, `{name}` = the day's name. **Live games** (on by default): an hour when someone's on a server may show "Watching Steve play Minecraft" / "Watching 3 blobs play Valheim" instead, never two hours running | ✅ | 2026-10-09. Xander: hourly, custom text, blob-themed phrases, game status only once in a while. |
 | 46 | **Tools home page** at `tools.<domain>`: one page linking to every tool (one bookmark). No profile picker, no API, no Go package (`web/apps/tools` + a mount in `main.go`). The tool list is **one TS registry** `TOOLS` in `@home-tools/ui/tools` (id = subdomain, name, description, blob seed, color); the favicon script draws icons from the same list, so page and icons never drift. Links swap the first label of the current host (`tools.x` → `fitness.x`), so the domain stays out of git. Page accent purple, blob seed `tools`; tool blobs animated like avatars (still with reduced motion). Every app's profile menu has an "All tools" link back to it (shared `ProfileMenu`, 2026-10-11) | ✅ | 2026-10-11. Xander chose the TS list (rebuild to change) over a JSON file + editor, host swapping over a configured domain, purple, animated blobs. |
 | 47 | **Poll packs**: questions live in named packs (`features.poll.packs`: `{name, enabled, questions}`), each with its own switch, in `config.json`, edited in the UI; the **Overwatch** pack (21 questions, written by Xander) is a default a fresh install starts with (`pollpacks.go`). A poll = a random question from the packs that are on that wasn't asked this round; when all were, a new round (never the same twice in a row). The bot records what was asked in `state.json` (`asked_polls` key → date, `last_question`); the UI shows "asked Oct 9" and a per-pack "Start over". A question is identified by its text + answers (the same question with other answers is fine; the same poll twice isn't). Old single lists become a "My questions" pack. Replaces the stateless rotation of #44 for polls | ✅ | 2026-10-11. Xander chose editable packs in config over built-in read-only ones, one shuffled pool over taking turns between packs, and new rounds over stopping. |
+| 48 | **Security pass** (from the "perfection checklist" review): (1) **cross-site writes refused** for every request (`http.CrossOriginProtection` in `httpx.Secure`): a text/plain POST from any website needed no preflight, and the console runs any Minecraft command; (2) **`DOMAIN` env** (= Caddy's): only `<tool>.<DOMAIN>` and `<tool>.internal` (the bot's own calls) are routed, against DNS rebinding; unset = any domain + a warning; (3) **headers**: CSP (`'self'` only; inline styles allowed for Svelte), nosniff, `Referrer-Policy: same-origin`, `frame-ancestors 'none'`; (4) CI runs **govulncheck** (Go → 1.27.2 for 10 stdlib fixes); (5) the image stamps its **commit** (`/healthz` → `ok <commit>`, startup log); (6) **fuzz tests** for the games parsers; (7) pnpm pinned by `packageManager`. Not done: staticcheck (v0.8.1 can't read Go 1.27.2 yet), non-root container (needs a `chown` on the server), Vitest, backups (open question) | 🟡 | 2026-10-11. Xander delegated ("do whatever you think is needed"); review. Skipped as not fitting: DB/migrations (#4), auth (#10), SvelteKit (#3), OpenAPI, metrics, goreleaser. |
 
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
@@ -242,7 +247,8 @@ got here: `git log`.
 - **Tools home page (#46):** `tools.<domain>` links to every tool.
 - **Not built yet:** games server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
-  profile management flow), #43 (review the Discord details).
+  profile management flow), #43 (review the Discord details), #48
+  (review the security pass; set `DOMAIN` on the server).
 - **Next:** deploy
   the bot (deploy/README.md → Discord bot), confirm per-server animated
   avatars, pick the bot's real name.

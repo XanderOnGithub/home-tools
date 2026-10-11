@@ -6,7 +6,9 @@
 //
 // The Discord bot's token comes from the DISCORD_TOKEN environment
 // variable (a secret: never a flag, which shows up in `ps`). TZ sets the
-// local time zone (e.g. America/New_York); unset = UTC.
+// local time zone (e.g. America/New_York); unset = UTC. DOMAIN (or
+// -domain) is the domain the tools live under; only <tool>.<DOMAIN> is
+// served (decision #48: DNS rebinding).
 package main
 
 import (
@@ -41,9 +43,14 @@ import (
 	toolsweb "github.com/XanderOnGithub/home-tools/web/apps/tools"
 )
 
+// version is the build, set by the image build (-ldflags "-X
+// main.version=<commit>"), so the log and /healthz say which one runs.
+var version = "dev"
+
 // config is everything the command line sets.
 type config struct {
 	addr    string // listen address
+	domain  string // only serve <tool>.<domain>; "" = any domain (local dev)
 	dataDir string // one subfolder per tool
 	tool    string // serve only this tool (local dev); "" = route by subdomain
 	docker  string // Docker API socket for games (the socket proxy's); "" = none
@@ -54,6 +61,7 @@ func main() {
 	var cfg config
 	flag.StringVar(&cfg.addr, "addr", ":8080", "listen address")
 	flag.StringVar(&cfg.dataDir, "data", "data", "data folder (one subfolder per tool)")
+	flag.StringVar(&cfg.domain, "domain", os.Getenv("DOMAIN"), "the domain the tools live under (default $DOMAIN); only <tool>.<domain> is served, empty = any (local dev)")
 	flag.StringVar(&cfg.tool, "tool", "", "serve only this tool, on every host (local dev: localhost has no subdomain); empty = route by subdomain")
 	flag.StringVar(&cfg.docker, "docker", "", "Docker API unix socket for the games tool (the socket proxy's); empty = games can't see or control servers")
 	flag.StringVar(&cfg.games, "games-url", "", "games API the Discord bot calls (e.g. http://127.0.0.1:8081 in local dev); empty = this server")
@@ -102,7 +110,7 @@ func run(cfg config, log *slog.Logger) error {
 	log.Info("stores loaded", "users", len(us.Users()), "exercises", len(store.Exercises()), "plans", len(store.Plans()))
 
 	// Each tool gets its own mux on its own subdomain (#5, ADR 0003).
-	tools := hostroute.New(cfg.tool)
+	tools := hostroute.New(cfg.tool, cfg.domain)
 	tools.Handle("fitness", toolMux(us, fitnessweb.Dist, log, func(mux *http.ServeMux) {
 		fitness.Register(mux, store, log)
 	}))
@@ -117,18 +125,21 @@ func run(cfg config, log *slog.Logger) error {
 	if cfg.tool != "" && !slices.Contains(tools.Names(), cfg.tool) {
 		return fmt.Errorf("-tool %q: no such tool (have %v)", cfg.tool, tools.Names())
 	}
-	log.Info("tools mounted", "tools", tools.Names(), "only", cfg.tool, "docker", cfg.docker != "")
+	log.Info("tools mounted", "version", version, "tools", tools.Names(), "only", cfg.tool, "domain", cfg.domain, "docker", cfg.docker != "")
+	if cfg.domain == "" && cfg.tool == "" {
+		log.Warn("no DOMAIN set: any <tool>.<anything> host is served, which DNS rebinding can abuse; set DOMAIN in production")
+	}
 
 	// Health checks answer on any host, including a bare IP.
 	root := http.NewServeMux()
 	root.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("ok\n"))
+		w.Write([]byte("ok " + version + "\n"))
 	})
 	root.Handle("/", tools)
 
 	srv := &http.Server{
 		Addr:    cfg.addr,
-		Handler: root,
+		Handler: httpx.Secure(root), // CSRF + security headers, decision #48
 		// Slow-client limits. No WriteTimeout: it would cut off long-lived
 		// responses like the games tool's live log stream.
 		ReadHeaderTimeout: 5 * time.Second,
