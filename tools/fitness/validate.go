@@ -125,6 +125,9 @@ func (r Plan) Validate() error {
 	if len(r.Exercises) == 0 {
 		return fmt.Errorf("%w plan %s: no exercises", ErrInvalid, r.ID)
 	}
+	if r.Goal != "" && !slices.Contains(AllGoals, r.Goal) {
+		return fmt.Errorf("%w plan %s: unknown goal %q", ErrInvalid, r.ID, r.Goal)
+	}
 	for i, ex := range r.Exercises {
 		if ex.ExerciseID == "" {
 			return fmt.Errorf("%w plan %s: exercise %d missing exercise_id", ErrInvalid, r.ID, i)

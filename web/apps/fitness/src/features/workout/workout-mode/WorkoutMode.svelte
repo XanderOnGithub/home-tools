@@ -72,6 +72,7 @@
   let allPlans: Plan[] = [] // the household's, for the picker's "show first"
   let preferred = $state<string[]>([]) // the picker's "show first": yours, then the household's
   let finished = $state<Session | null>(null) // set by Finish: the summary replaces the workout
+  let planGoal = $state<string | undefined>() // the plan's own goal, if it has one (#56)
   let steps = $state<Step[]>([])
   let step = $state(0)
   let status = $state<'loading' | 'ready' | 'missing' | 'error'>('loading')
@@ -104,6 +105,7 @@
       history = recent
       allPlans = plans
       plan = plans.find((p) => p.id === s.plan_id)
+      planGoal = plan?.goal
       const exercises = await Promise.all(s.entries.map((e) => getExercise(e.exercise_id).catch(() => null)))
       steps = s.entries.map((entry, i) => makeStep(entry.exercise_id, exercises[i], entry.sets))
       session = s
@@ -496,7 +498,7 @@
         {/if}
 
         {#if current.exercise}
-          {@const target = repTarget(current.exercise, goal)}
+          {@const target = repTarget(current.exercise, planGoal ?? goal)}
           {#if target}
             <div class="aim">
               <p><strong>Aim for {target.min}–{target.max} reps</strong> · {target.effort}</p>
@@ -504,8 +506,8 @@
               <details class="why">
                 <summary>Why?</summary>
                 <p>
-                  Stopping 1–2 reps before you couldn't do another is close enough to build strength and muscle, and far
-                  enough to recover in 2–3 days; going all the way to failure every set adds a day or two. Once every set
+                  Stopping a little before you couldn't do another rep ({target.effort}) is close enough to make you
+                  stronger, and far enough to recover in 2–3 days; going all the way to failure every set adds a day or two. Once every set
                   reaches {target.max}, it's time for a bit more weight and back to {target.min}: that's how you keep
                   getting stronger.
                 </p>

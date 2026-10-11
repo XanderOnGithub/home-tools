@@ -10,7 +10,8 @@ export type FitnessProfile = {
   weight_prompt_skipped?: string // ISO week, e.g. "2026-W41"
 }
 
-export type Goal = 'strength' | 'muscle' | 'endurance' | 'general'
+// Mirrors fitness.AllGoals; rep ranges per goal: features/training/guidance.ts.
+export type Goal = 'muscle' | 'strength' | 'strength_size' | 'fat_loss' | 'bone' | 'general' | 'endurance'
 
 export type Weekday =
   | 'monday'

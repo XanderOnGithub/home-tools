@@ -154,7 +154,10 @@ type Plan struct {
 	Name      string         `json:"name"`
 	CreatedBy string         `json:"created_by"` // user ID
 	Exercises []PlanExercise `json:"exercises"`  // in suggested order
-	Archived  bool           `json:"archived,omitempty"`
+	// Goal, if set, decides the rep ranges for this plan's workouts
+	// instead of each person's own goal (e.g. a "Bone health" plan).
+	Goal     Goal `json:"goal,omitempty"`
+	Archived bool `json:"archived,omitempty"`
 }
 
 // PlanExercise is one step of a plan. SuggestedSets and RestSec are
@@ -215,18 +218,23 @@ type Profile struct {
 	WeightPromptSkipped string `json:"weight_prompt_skipped,omitempty"`
 }
 
-// Goal is what a user trains for; it shapes advice (reps, rest), not data.
+// Goal is what a user (or a plan) trains for; it shapes advice (rep
+// ranges, how hard), not data. The ranges live in the frontend
+// (features/training/goals.ts, decision #56).
 type Goal string
 
 const (
-	GoalStrength  Goal = "strength"
-	GoalMuscle    Goal = "muscle"
-	GoalEndurance Goal = "endurance"
-	GoalGeneral   Goal = "general"
+	GoalMuscle       Goal = "muscle"        // build muscle (size)
+	GoalStrength     Goal = "strength"      // get stronger
+	GoalStrengthSize Goal = "strength_size" // both: strength + size
+	GoalFatLoss      Goal = "fat_loss"      // lose fat, keep muscle
+	GoalBone         Goal = "bone"          // bone health, healthy aging
+	GoalGeneral      Goal = "general"       // stay fit
+	GoalEndurance    Goal = "endurance"
 )
 
 // AllGoals lists every valid Goal (for validation and UI options).
-var AllGoals = []Goal{GoalStrength, GoalMuscle, GoalEndurance, GoalGeneral}
+var AllGoals = []Goal{GoalMuscle, GoalStrength, GoalStrengthSize, GoalFatLoss, GoalBone, GoalGeneral, GoalEndurance}
 
 // Weekday keys a Schedule. Lowercase English names, so the JSON reads
 // naturally: {"monday": "upper", "tuesday": "lower"}.

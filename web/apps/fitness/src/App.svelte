@@ -118,7 +118,7 @@
       <RoutineBuilder {profile} bind:fitness />
     {:else if planId}
       {#key planId}
-        <PlanEditor {profile} id={planId === 'new' ? null : decodeURIComponent(planId)} />
+        <PlanEditor {profile} goal={fitness.goal} id={planId === 'new' ? null : decodeURIComponent(planId)} />
       {/key}
     {:else if router.path === '/guide'}
       <GuideScreen />

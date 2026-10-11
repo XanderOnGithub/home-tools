@@ -48,6 +48,7 @@ ADR 0007). Units are metric with the unit in the key (`weight_kg`,
   - A set must fill every metric its exercise tracks, and nothing else.
     Exceptions: weight on bodyweight exercises (0 = bodyweight only) and
     distance (0 = not measured).
+  - Plan `goal`: empty or one of `AllGoals` (#56).
   - Plan hints: `suggested_sets ≥ 0`, `rest_sec` 0–3600 (0 = 60 s
     default, the constant lives in the UI: `DEFAULT_REST_SEC`).
 - **References** → the store (it has the data): exercises a session or

@@ -149,7 +149,7 @@ export function weekChecks(week: WeekLoad, goal?: string): Check[] {
   const checks: Check[] = []
 
   // Staying fit isn't about growth: only flag what's barely worked at all.
-  const fit = goal === 'general' || goal === 'endurance'
+  const fit = goal === 'general' || goal === 'endurance' || goal === 'bone'
   const low = MAIN.filter((g) => g.sets(week.total) < (fit ? 2 : 5)).map((g) => g.name)
   if (low.length > 0) {
     checks.push({

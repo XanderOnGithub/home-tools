@@ -127,6 +127,8 @@ func TestPlanValidate(t *testing.T) {
 		{"negative suggested sets", with(func(r *Plan) {
 			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", SuggestedSets: -1}}
 		}), true},
+		{"plan goal", with(func(r *Plan) { r.Goal = GoalBone }), false},
+		{"unknown plan goal", with(func(r *Plan) { r.Goal = "superhuman" }), true},
 		{"rest hint", with(func(r *Plan) {
 			r.Exercises = []PlanExercise{{ExerciseID: "bench_press", RestSec: 120}}
 		}), false},
