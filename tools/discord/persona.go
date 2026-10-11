@@ -64,10 +64,11 @@ func PersonaFor(t time.Time, names []string) Persona {
 
 // rotate returns which of n items has turn k (k = 0, 1, 2, …): the items
 // go in a shuffled order, a new shuffle each pass of n turns, so every
-// item gets a turn before any repeats, the order isn't predictable, and
-// no item has two turns in a row. Each pass is a Fisher–Yates shuffle
-// seeded by salt + the pass number: O(n) time and space per call, no
-// state to store (n ≤ 500, so microseconds).
+// item gets a turn before any repeats and the order isn't predictable.
+// Across a pass boundary an item waits at least n/3 + 1 turns (Ted, Pam,
+// Ted can't happen). Each pass is a Fisher–Yates shuffle seeded by salt +
+// the pass number: O(n) time and space per call, no state to store
+// (n ≤ 500, so microseconds).
 func rotate(k int64, n int, salt string) int {
 	switch n {
 	case 1:
@@ -77,12 +78,27 @@ func rotate(k int64, n int, salt string) int {
 	}
 	pass, i := floorDiv(k, int64(n)), mod(k, int64(n))
 	order := shuffled(int64(n), salt, pass)
-	// Passes are independent shuffles, so the last item of one pass could
-	// open the next. Swapping the first two of the new pass fixes that; it
-	// never moves the pass's last item (n ≥ 3), so no new clash appears.
-	if prev := shuffled(int64(n), salt, pass-1); order[0] == prev[n-1] {
-		order[0], order[1] = order[1], order[0]
+	// Passes are independent shuffles, so the end of one pass could open
+	// the next. The last g of the previous pass ("recent") are kept out of
+	// this pass's first g turns: stable-partition everything but the last
+	// g, non-recent first. There are ≤ g recent items and n-g ≥ 2g slots,
+	// so ≥ g non-recent ones lead. The last g never move, so the next
+	// pass's check sees the same items the raw shuffle had there.
+	g := n / 3
+	recent := map[int]bool{}
+	for _, v := range shuffled(int64(n), salt, pass-1)[n-g:] {
+		recent[v] = true
 	}
+	head := make([]int, 0, n)
+	var held []int
+	for _, v := range order[:n-g] {
+		if recent[v] {
+			held = append(held, v)
+		} else {
+			head = append(head, v)
+		}
+	}
+	order = append(append(head, held...), order[n-g:]...)
 	return order[i]
 }
 

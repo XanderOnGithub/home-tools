@@ -50,7 +50,7 @@ to the bot.
 | `boards.go` | Status board sync: one games request per tick, edit only when an embed's hash changed. |
 | `games.go` | Client for the games HTTP API (`Games` interface; fakes in tests). |
 | `sens.go` | The conversion table (from Starport-Assistant) and math. |
-| `persona.go` | `PersonaFor(date, names)` and `rotate` (shuffled turns, no repeats back to back), both pure. Shares the blob's seeded generator. |
+| `persona.go` | `PersonaFor(date, names)` and `rotate` (shuffled turns; across passes an item waits ≥ n/3 + 1 turns), both pure. Shares the blob's seeded generator. |
 | `poll.go` | Poll schedule (`nextPollSlot`, pure), the posting loop, "post now". |
 | `status.go` | Hourly status: `pickStatus` + `gameStatus` (pure), the loop. |
 | `blob.go` | Go port of the frontend blob (shape + face); tested against the TypeScript's numbers. |
