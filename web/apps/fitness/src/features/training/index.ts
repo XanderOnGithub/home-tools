@@ -11,7 +11,8 @@
 // guideline for building muscle:
 //   - one workout: 1–2 sets light, 3–5 solid, 6+ a lot; 10+ gets a note
 //     (6–8 hard sets already take 3–4 days to recover from)
-//   - one week: about 10 hard sets per muscle or more to build it
+//   - one week: under 5 hard sets per muscle builds little, 5–9 builds
+//     muscle, 10+ builds it fastest (the volume dose-response research)
 //   - the same muscle worked hard (3+ sets) on back-to-back days won't
 //     have recovered (2–3 days)
 import type { Exercise, Muscle } from '@/features/exercises'
@@ -138,16 +139,31 @@ function list(names: string[]) {
   return names.length <= 1 ? names.join('') : `${names.slice(0, -1).join(', ')} and ${names.at(-1)}`
 }
 
-/** Notes for the week: muscles under 10 sets, imbalances, back-to-back days. */
-export function weekChecks(week: WeekLoad): Check[] {
+/**
+ * Notes for the week: muscles with few sets, imbalances, back-to-back
+ * days. goal (the fitness profile's) decides whether 5–9 sets get a note:
+ * only when building muscle is the point (or no goal is set).
+ */
+export function weekChecks(week: WeekLoad, goal?: string): Check[] {
   if (week.days.size === 0) return []
   const checks: Check[] = []
 
-  const low = MAIN.filter((g) => g.sets(week.total) < 10).map((g) => g.name)
+  // Staying fit isn't about growth: only flag what's barely worked at all.
+  const fit = goal === 'general' || goal === 'endurance'
+  const low = MAIN.filter((g) => g.sets(week.total) < (fit ? 2 : 5)).map((g) => g.name)
   if (low.length > 0) {
     checks.push({
       tone: 'warn',
-      text: `Under 10 sets a week: ${list(low)}. About 10 or more hard sets a week is what builds a muscle.`,
+      text: fit
+        ? `Barely worked this week: ${list(low)}. A couple of sets a week keeps them in shape.`
+        : `Under 5 sets a week: ${list(low)}. Below that a muscle grows very slowly.`,
+    })
+  }
+  const some = MAIN.filter((g) => g.sets(week.total) >= 5 && g.sets(week.total) < 10).map((g) => g.name)
+  if (some.length > 0 && (!goal || goal === 'muscle')) {
+    checks.push({
+      tone: 'info',
+      text: `5–9 sets a week: ${list(some)}. That builds muscle; 10 or more builds it faster.`,
     })
   }
 

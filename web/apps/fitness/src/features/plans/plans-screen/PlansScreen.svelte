@@ -41,7 +41,10 @@
 <div class="page">
   <div class="title-row">
     <h1 tabindex="-1">Plans</h1>
-    <a class="btn btn-primary" href="/plans/new">New plan</a>
+    <div class="title-actions">
+      <a class="btn btn-secondary" href="/plans/build">Build a routine for me</a>
+      <a class="btn btn-primary" href="/plans/new">New plan</a>
+    </div>
   </div>
 
   {#if status === 'error'}
@@ -87,9 +90,16 @@
 
   .title-row {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--space-3);
+  }
+
+  .title-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
   }
 
   h1 {

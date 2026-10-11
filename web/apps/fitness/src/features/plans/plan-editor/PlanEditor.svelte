@@ -111,8 +111,8 @@
       return
     }
 
-    // "new" is reserved: /plans/new is the create page, not a plan.
-    const taken = new Set([...plans.map((r) => r.id), 'new'])
+    // "new" and "build" are reserved: /plans/new and /plans/build are pages, not plans.
+    const taken = new Set([...plans.map((r) => r.id), 'new', 'build'])
     const plan: Plan = {
       id: original?.id ?? idFromName(name, taken),
       name: name.trim(),

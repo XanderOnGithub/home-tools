@@ -7,6 +7,7 @@
   import { forgetProfile } from '@home-tools/ui/profiles/remembered'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { BodyScreen } from '@/features/body/body-screen'
+  import { RoutineBuilder } from '@/features/training/routine-builder'
   import { ExerciseJourney } from '@/features/progress/exercise-journey'
   import { ProgressScreen } from '@/features/progress/progress-screen'
   import { PlanEditor } from '@/features/plans/plan-editor'
@@ -31,7 +32,7 @@
   let status = $state<'idle' | 'loading' | 'ready' | 'error'>('idle')
 
   // /plans/new → editor for a new plan; /plans/<id> → edit it.
-  let planId = $derived(router.path.match(/^\/plans\/([^/]+)$/)?.[1] ?? null)
+  let planId = $derived(router.path === '/plans/build' ? null : (router.path.match(/^\/plans\/([^/]+)$/)?.[1] ?? null))
   // /progress/<exercise id> → that exercise's journey.
   let journeyId = $derived(router.path.match(/^\/progress\/([^/]+)$/)?.[1] ?? null)
   // /workout/<session id> → workout mode (full screen, no navigation).
@@ -39,7 +40,12 @@
 
   // "Page · Fitness" (most specific first: tabs cut off the end). Home is
   // the tool's front page, so it names the whole set instead.
-  const TITLES: Record<string, string> = { '/plans': 'Plans', '/progress': 'Progress', '/body': 'Your body' }
+  const TITLES: Record<string, string> = {
+    '/plans': 'Plans',
+    '/plans/build': 'Build a routine',
+    '/progress': 'Progress',
+    '/body': 'Your body',
+  }
   $effect(() => {
     if (router.path === '/') {
       document.title = 'Fitness · Home Tools'
@@ -106,6 +112,8 @@
       <HomeScreen {profile} bind:fitness />
     {:else if router.path === '/plans'}
       <PlansScreen bind:fitness />
+    {:else if router.path === '/plans/build'}
+      <RoutineBuilder {profile} bind:fitness />
     {:else if planId}
       {#key planId}
         <PlanEditor {profile} id={planId === 'new' ? null : decodeURIComponent(planId)} />

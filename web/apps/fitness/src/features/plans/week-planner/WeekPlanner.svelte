@@ -79,7 +79,7 @@
   {#if week && week.days.size > 0}
     <section class="works" aria-labelledby="week-works-title">
       <h3 id="week-works-title">What your week works</h3>
-      <LoadSummary load={week.total} checks={weekChecks(week)} mode="week" />
+      <LoadSummary load={week.total} checks={weekChecks(week, fitness.goal)} mode="week" />
     </section>
   {/if}
 </section>
