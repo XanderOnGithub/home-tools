@@ -38,6 +38,7 @@ import (
 	discordweb "github.com/XanderOnGithub/home-tools/web/apps/discord"
 	fitnessweb "github.com/XanderOnGithub/home-tools/web/apps/fitness"
 	gamesweb "github.com/XanderOnGithub/home-tools/web/apps/games"
+	toolsweb "github.com/XanderOnGithub/home-tools/web/apps/tools"
 )
 
 // config is everything the command line sets.
@@ -111,6 +112,8 @@ func run(cfg config, log *slog.Logger) error {
 	tools.Handle("discord", toolMux(us, discordweb.Dist, log, func(mux *http.ServeMux) {
 		discord.Register(mux, discordStore, bot, log)
 	}))
+	// The tools home page (#46): shortcuts only, no API of its own.
+	tools.Handle("tools", toolMux(us, toolsweb.Dist, log, func(*http.ServeMux) {}))
 	if cfg.tool != "" && !slices.Contains(tools.Names(), cfg.tool) {
 		return fmt.Errorf("-tool %q: no such tool (have %v)", cfg.tool, tools.Names())
 	}

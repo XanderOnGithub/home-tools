@@ -16,6 +16,8 @@ and back up by copying a folder.
   logs for the household's Minecraft and Valheim servers (Docker
   containers, reached through a filtered socket proxy), who's online,
   joins and leaves, a Minecraft console and whitelists.
+- **Home Tools** (`tools.<domain>`): one page with a shortcut to every
+  tool, so there's one thing to bookmark.
 - **Discord** (`discord.<domain>`): the household's Discord bot and its
   settings: `/sens` (sensitivity between games), `/restart` and
   `/whitelist` for verified people, live server statuses in a channel,
@@ -35,10 +37,11 @@ Needs Go 1.27+, Node 24+ and pnpm 10.
 
     pnpm --dir web install
     go run ./cmd/fitness-import -data data/fitness -users data/users   # catalog + photos, ~30 s
-    make run    # API on :8080 (data in ./data); one tool: TOOL=fitness (default), games or discord
+    make run    # API on :8080 (data in ./data); one tool: TOOL=fitness (default), games, discord or tools
     make web    # fitness UI on http://localhost:5173 (proxies the API)
     make web-games   # games UI on http://localhost:5174
     make web-discord # Discord settings on http://localhost:5175 (bot needs DISCORD_TOKEN)
+    make web-tools   # tools home page on http://localhost:5176 (no API)
 
 Before committing: `make check` and `pnpm --dir web check`.
 

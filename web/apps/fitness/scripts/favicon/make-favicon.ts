@@ -1,7 +1,7 @@
 // Generates every app's icons from the same blob code as the profile
-// avatars (decision #22), so each icon is "one of us":
-//   fitness: the blob for seed "gym", green
-//   games:   the blob for seed "games", orange
+// avatars (decision #22), so each icon is "one of us": each tool's seed
+// and color come from TOOLS + HOME in @home-tools/ui (decision #46), the
+// same list the tools home page draws its shortcuts from.
 //   deploy/icons/https.png: the fitness blob in blue (Caddy's ZimaOS tile)
 //
 //   pnpm --filter @home-tools/fitness favicon
@@ -17,11 +17,16 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { blobFace, blobPath } from '../../../../packages/ui/src/profiles/blob/index.ts'
+import type { ProfileColor } from '../../../../packages/ui/src/profiles/types.ts'
+import { HOME, TOOLS } from '../../../../packages/ui/src/tools/index.ts'
 
 // Accent (dark-theme shade, reads on light and dark tab bars) + its subtle bg.
-const GREEN = { fill: '#4ade80', bg: '#f0fdf4' }
-const BLUE = { fill: '#60a5fa', bg: '#eff6ff' }
-const ORANGE = { fill: '#fb923c', bg: '#fff7ed' }
+const COLORS: Record<ProfileColor, { fill: string; bg: string }> = {
+  green: { fill: '#4ade80', bg: '#f0fdf4' },
+  blue: { fill: '#60a5fa', bg: '#eff6ff' },
+  orange: { fill: '#fb923c', bg: '#fff7ed' },
+  purple: { fill: '#c084fc', bg: '#faf5ff' },
+}
 const EYE = '#1c1917' // same as the avatar's eyes
 const EYE_SCALE = 1.35 // bigger than the avatar's, so they survive 16 px
 const CHROME = process.env.CHROME ?? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'
@@ -66,11 +71,8 @@ function squareIcon(seed: string, { fill, bg }: { fill: string; bg: string }, ou
   ], { stdio: 'ignore' })
 }
 
-const apps = [
-  { app: 'fitness', seed: 'gym', colors: GREEN },
-  { app: 'games', seed: 'games', colors: ORANGE },
-]
-for (const { app, seed, colors } of apps) {
+for (const { id: app, seed, color } of [...TOOLS, HOME]) {
+  const colors = COLORS[color]
   const pub = join(appsDir, app, 'public')
   mkdirSync(pub, { recursive: true })
   tabIcon(seed, colors.fill, join(pub, 'favicon.svg'))
@@ -78,5 +80,5 @@ for (const { app, seed, colors } of apps) {
   console.log(`wrote ${app}/public/favicon.svg, apple-touch-icon.png`)
 }
 mkdirSync(deployIcons, { recursive: true })
-squareIcon('gym', BLUE, join(deployIcons, 'https.png'))
+squareIcon('gym', COLORS.blue, join(deployIcons, 'https.png'))
 console.log('wrote deploy/icons/https.png')

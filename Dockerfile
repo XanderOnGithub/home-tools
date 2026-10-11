@@ -16,6 +16,7 @@ COPY web/packages/ui/package.json packages/ui/
 COPY web/apps/fitness/package.json apps/fitness/
 COPY web/apps/games/package.json apps/games/
 COPY web/apps/discord/package.json apps/discord/
+COPY web/apps/tools/package.json apps/tools/
 RUN pnpm install --frozen-lockfile
 COPY web/ ./
 RUN pnpm build
@@ -31,6 +32,7 @@ COPY . .
 COPY --from=web /src/web/apps/fitness/dist web/apps/fitness/dist
 COPY --from=web /src/web/apps/games/dist web/apps/games/dist
 COPY --from=web /src/web/apps/discord/dist web/apps/discord/dist
+COPY --from=web /src/web/apps/tools/dist web/apps/tools/dist
 RUN go build -tags webembed -trimpath -ldflags="-s -w" -o /out/home-tools ./cmd/home-tools \
  && go build -trimpath -ldflags="-s -w" -o /out/fitness-import ./cmd/fitness-import
 
