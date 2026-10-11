@@ -44,8 +44,12 @@ avatar blob, remembered profile), `api`, `router`, `dates`, `units`, `ids`.
       `index.html`), then `src/` with only what this tool needs.
 - [ ] Profile picker + accent from `@home-tools/ui`: the chosen profile is
       already remembered across subdomains (cookie on `.<domain>`).
-- [ ] Icon: run the favicon generator with a new seed and accent
-      (`scripts/favicon/`), plus the iPhone home-screen icon and title.
+- [ ] Shortcut + icon: add the tool to `TOOLS` in `@home-tools/ui/tools`
+      (id = subdomain, name, one-line description, blob seed, color); the
+      tools home page links to it from there. Then run the favicon
+      generator (`pnpm --filter @home-tools/fitness favicon`), which draws
+      every tool's tab and iPhone icon from that list, and set the title
+      in `index.html`.
 - [ ] Dev: a `dev:<name>` script in `web/package.json` and a Makefile
       target.
 

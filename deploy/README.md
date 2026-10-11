@@ -103,6 +103,11 @@ Check the log after the first start (`sudo docker logs <home-tools>`):
 was refused, the log says so and the bot keeps a still image or just
 the nickname.
 
+## Tools home page
+Once: UniFi DNS record `tools.<domain>` → the server's LAN IP, then
+bookmark `https://tools.<domain>`. It links to every tool on the same
+domain; new tools show up there after an update.
+
 ## Update
 Merge to `main` → wait for the "images" workflow (GitHub → Actions) →
 update the app in ZimaOS (pulls `latest`). Data is untouched. To roll

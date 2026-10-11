@@ -47,7 +47,8 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
   `cmd/home-tools` mounts all tools. One process = lowest memory.
 - **Routing:** the Go server dispatches by `Host` header
   (`fitness.<domain>` → fitness, `games.<domain>` → games,
-  `discord.<domain>` → discord; the real
+  `discord.<domain>` → discord, `tools.<domain>` → the home page with
+  a shortcut to every tool; the real
   domain is only in the deploy config, never in git).
   API under `/api/...` per host; everything else serves the tool's SPA.
   `internal/hostroute`; a bare IP or unknown subdomain gets a 404, and
@@ -81,6 +82,7 @@ Decided; the reasons are in `docs/decisions/` (ADRs).
     web/apps/games/        @home-tools/games (Vite SPA) + embed.go
     tools/discord/         Go package: Discord bot (commands, status boards, persona) + settings API
     web/apps/discord/      @home-tools/discord (Vite SPA) + embed.go
+    web/apps/tools/        @home-tools/tools: the tools home page (no Go package, no API)
 
 Go module: `github.com/XanderOnGithub/home-tools` (Go 1.27). In Go,
 "@home-tools/fitness" is an *import path*
@@ -149,6 +151,8 @@ Status: ✅ decided · 🟡 proposed (awaiting Xander) · ⬜ open
 | 44 | Discord **features with on/off switches**: `features` in `config.json`, a typed struct (each feature has its own settings), new features start off. Off = its commands are removed from Discord (re-registered on save, only when the set changed) and its jobs stop; no restart. Features page in the UI. **Poll:** a native Discord poll every 1–7 days (default **every 2**, so friends don't get annoyed) at a set local time in one channel, votes open 6 h–3 days; questions written together for the group, edited in the UI, shuffled so none repeat until all were asked; schedule is a pure function of the date (`last_poll` in `state.json` prevents double posts); "Post one now" takes the next slot. **`/blob name color [animated]`:** anyone; the 4 profile colors; a 512 px transparent PNG with margin (works as a profile picture), or the blinking 256 px GIF; the page has a maker with preview + download (`GET /api/blob`) | ✅ | 2026-10-09. Xander chose: poll + blob only (no join announcements, game night, birthdays…), palette colors, PNG with optional GIF, every other day. "No engagement features" (§1) is about the tools; an opt-in bot for friends is fine. |
 | 45 | Discord **status** feature (third switch): custom status text only, a new phrase every hour on the local hour, shuffled (no repeats before all were shown); 30 starter "blob" phrases (blob as noun/verb/adjective, e.g. "I'm blobbing it"), editable, `{name}` = the day's name. **Live games** (on by default): an hour when someone's on a server may show "Watching Steve play Minecraft" / "Watching 3 blobs play Valheim" instead, never two hours running | ✅ | 2026-10-09. Xander: hourly, custom text, blob-themed phrases, game status only once in a while. |
 
+| 46 | **Tools home page** at `tools.<domain>`: one page linking to every tool (one bookmark). No profile picker, no API, no Go package (`web/apps/tools` + a mount in `main.go`). The tool list is **one TS registry** `TOOLS` in `@home-tools/ui/tools` (id = subdomain, name, description, blob seed, color); the favicon script draws icons from the same list, so page and icons never drift. Links swap the first label of the current host (`tools.x` → `fitness.x`), so the domain stays out of git. Page accent purple, blob seed `tools`; tool blobs animated like avatars (still with reduced motion) | ✅ | 2026-10-11. Xander chose the TS list (rebuild to change) over a JSON file + editor, host swapping over a configured domain, purple, animated blobs. |
+
 Every decision goes in this table. Decisions that shape the architecture
 also get an ADR in `docs/decisions/` (index and template in its README;
 ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37, #41–#42).
@@ -181,6 +185,10 @@ ADRs exist for #3–#6, #8–#10, #24, #31–#33, #37, #41–#42).
 - Features with on/off switches (#44, #45): a poll every few days, `/blob`, an hourly blob status.
 - Settings page: today's persona and connection, status channels,
   names, verified people and access requests.
+
+### Tools home page (`tools.<domain>`): built (#46)
+- One bookmark: a shortcut per tool (its blob, name, one line).
+- New tool = one entry in `TOOLS` (`@home-tools/ui/tools`).
 
 ### Later ideas (do not build yet)
 Recipes, Projects (Jira-like), …: each = one `tools/<name>` + one web app.
@@ -231,6 +239,7 @@ got here: `git log`.
   daily blob persona; settings page (Bot, Features, People). Features
   (#44, #45): poll every few days, `/blob` maker, hourly status. Not yet run against real
   Discord.
+- **Tools home page (#46):** `tools.<domain>` links to every tool.
 - **Not built yet:** games server config editor.
 - **Open decisions:** #12 (muscle diagram library), #29 (review the
   profile management flow), #43 (review the Discord details).
