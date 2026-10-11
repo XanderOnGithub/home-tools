@@ -155,7 +155,7 @@
           </li>
         {/each}
       </ol>
-      <p class="reps"><strong>How many reps:</strong> {GOAL_LABELS[goal].reps}</p>
+      <p class="reps"><strong>How many reps:</strong> {GOAL_LABELS[goal].reps} <a href="/guide#reps">Why?</a></p>
       <LoadSummary load={week.total} checks={weekChecks(week, goal)} mode="week" />
     </section>
 

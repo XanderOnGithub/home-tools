@@ -79,6 +79,7 @@
           </li>
         {/each}
       </ul>
+      <a class="why" href="/guide#sets">How many sets is enough?</a>
     {/if}
   </div>
 </div>
@@ -206,5 +207,12 @@
 
   .info {
     color: var(--color-text-muted);
+  }
+
+  .why {
+    align-self: flex-start;
+    color: var(--color-accent-text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
   }
 </style>

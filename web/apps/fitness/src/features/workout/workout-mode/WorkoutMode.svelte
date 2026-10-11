@@ -16,6 +16,8 @@
     an empty workout is built as you go.
   - "Leave" keeps the workout in progress (home offers Resume);
     "Finish" stamps the end time.
+  - Above the sets: what to aim for (reps by goal, how hard) and what to
+    try today, from last time, with a "Why?" that opens in place (#54).
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
@@ -27,6 +29,7 @@
   import { DEFAULT_REST_SEC, getPlans, type Plan } from '@/features/plans'
   import { playChime, unlockChime } from '@/features/workout/chime'
   import { RestTimer } from '@/features/workout/rest-timer'
+  import { progressTip, repTarget } from '@/features/training/guidance'
   import {
     getRecentSessions,
     lastSets,
@@ -38,7 +41,7 @@
   import { formatDuration, kgToLb, kmToM, lbToKg, miToM, mToKm, mToMi, parseNumber } from '@home-tools/ui/units'
   import { keepScreenOn } from '@/wake-lock'
 
-  let { profile, sessionId }: { profile: Profile; sessionId: string } = $props()
+  let { profile, sessionId, goal }: { profile: Profile; sessionId: string; goal?: string } = $props()
 
   const DEFAULT_SETS = 3
   // A run or a ride is one effort, not sets with rests in between.
@@ -478,6 +481,25 @@
           {/if}
         {/if}
 
+        {#if current.exercise}
+          {@const target = repTarget(current.exercise, goal)}
+          {#if target}
+            <div class="aim">
+              <p><strong>Aim for {target.min}–{target.max} reps</strong> · {target.effort}</p>
+              <p class="tip">{progressTip(current.exercise, target, current.last)}</p>
+              <details class="why">
+                <summary>Why?</summary>
+                <p>
+                  Stopping 1–2 reps before you couldn't do another is close enough to build strength and muscle, and far
+                  enough to recover in 2–3 days; going all the way to failure every set adds a day or two. Once every set
+                  reaches {target.max}, it's time for a bit more weight and back to {target.min}: that's how you keep
+                  getting stronger.
+                </p>
+              </details>
+            </div>
+          {/if}
+        {/if}
+
         <ol class="sets">
           {#each current.rows as row, i (i)}
             {@const last = current.last[i]}
@@ -687,6 +709,39 @@
     gap: var(--space-2);
     margin: 0 0 var(--space-2);
     padding-left: var(--space-5);
+    line-height: var(--leading-normal);
+  }
+
+  .aim {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+    background: var(--color-accent-subtle);
+  }
+
+  .aim p {
+    margin: 0;
+  }
+
+  .tip {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .why summary {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--touch-target);
+    color: var(--color-accent-text);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-semibold);
+    cursor: pointer;
+  }
+
+  .why p {
+    font-size: var(--text-sm);
     line-height: var(--leading-normal);
   }
 

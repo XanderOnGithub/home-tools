@@ -8,6 +8,7 @@
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { BodyScreen } from '@/features/body/body-screen'
   import { RoutineBuilder } from '@/features/training/routine-builder'
+  import { GuideScreen } from '@/features/guide/guide-screen'
   import { ExerciseJourney } from '@/features/progress/exercise-journey'
   import { ProgressScreen } from '@/features/progress/progress-screen'
   import { PlanEditor } from '@/features/plans/plan-editor'
@@ -45,6 +46,7 @@
     '/plans/build': 'Build a routine',
     '/progress': 'Progress',
     '/body': 'Your body',
+    '/guide': 'How training works',
   }
   $effect(() => {
     if (router.path === '/') {
@@ -104,7 +106,7 @@
   <OnboardingFlow {profile} oncomplete={(fp) => (fitness = fp)} />
 {:else if status === 'ready' && fitness && workoutId}
   {#key workoutId}
-    <WorkoutMode {profile} sessionId={decodeURIComponent(workoutId)} />
+    <WorkoutMode {profile} sessionId={decodeURIComponent(workoutId)} goal={fitness.goal} />
   {/key}
 {:else if status === 'ready' && fitness}
   <AppShell links={LINKS} {profile} onswitch={switchProfile}>
@@ -118,6 +120,8 @@
       {#key planId}
         <PlanEditor {profile} id={planId === 'new' ? null : decodeURIComponent(planId)} />
       {/key}
+    {:else if router.path === '/guide'}
+      <GuideScreen />
     {:else if router.path === '/body'}
       <BodyScreen {profile} />
     {:else if router.path === '/progress'}

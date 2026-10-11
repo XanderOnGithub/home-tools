@@ -103,7 +103,7 @@
     <h1 tabindex="-1">Your body</h1>
     <p class="muted">
       An estimate from your last week of workouts: every set tires the muscles it works, and they recover over two to three
-      days. A guide, not a rule: how you feel counts too.
+      days. A guide, not a rule: how you feel counts too. <a href="/guide#rest">Why rest matters</a>
     </p>
   </div>
 
