@@ -6,6 +6,7 @@
   import { ProfilePicker } from '@home-tools/ui/profiles/profile-picker'
   import { forgetProfile } from '@home-tools/ui/profiles/remembered'
   import type { Profile } from '@home-tools/ui/profiles/types'
+  import { BodyScreen } from '@/features/body/body-screen'
   import { ExerciseJourney } from '@/features/progress/exercise-journey'
   import { ProgressScreen } from '@/features/progress/progress-screen'
   import { PlanEditor } from '@/features/plans/plan-editor'
@@ -38,7 +39,7 @@
 
   // "Page · Fitness" (most specific first: tabs cut off the end). Home is
   // the tool's front page, so it names the whole set instead.
-  const TITLES: Record<string, string> = { '/plans': 'Plans', '/progress': 'Progress' }
+  const TITLES: Record<string, string> = { '/plans': 'Plans', '/progress': 'Progress', '/body': 'Your body' }
   $effect(() => {
     if (router.path === '/') {
       document.title = 'Fitness · Home Tools'
@@ -109,6 +110,8 @@
       {#key planId}
         <PlanEditor {profile} id={planId === 'new' ? null : decodeURIComponent(planId)} />
       {/key}
+    {:else if router.path === '/body'}
+      <BodyScreen {profile} />
     {:else if router.path === '/progress'}
       <ProgressScreen {profile} />
     {:else if journeyId}

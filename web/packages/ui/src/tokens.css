@@ -105,6 +105,16 @@
   --color-accent-subtle: light-dark(#faf5ff, #221430);
 }
 
+/* ---- Muscle map (fitness, decision #49) ----
+ * The figure is neutral; worked muscles take the person's accent, fuller
+ * the more they need rest. Color is never the only signal: the map always
+ * sits next to a text list of the same states. */
+:root {
+  --color-body: light-dark(#d6d3d1, #44403c); /* the figure; muscles that are ready */
+  --color-muscle-recovering: color-mix(in oklab, var(--color-accent) 45%, var(--color-body));
+  --color-muscle-rest: var(--color-accent);
+}
+
 /* ---- Type ---- */
 :root {
   /* System font as fallback while the font loads, or if it's missing. */

@@ -87,6 +87,8 @@ func TestProgressHandlers(t *testing.T) {
 		{"/api/users/nobody/exercise-log", http.StatusNotFound, 0},
 		{"/api/users/nobody/exercise-log/squat", http.StatusNotFound, 0},
 		{"/api/users/xander/exercise-log/nope", http.StatusNotFound, 0},
+		{"/api/users/xander/recovery", http.StatusOK, len(AllMuscles)}, // every muscle, always
+		{"/api/users/nobody/recovery", http.StatusNotFound, 0},
 	}
 	for _, tt := range tests {
 		t.Run(tt.path, func(t *testing.T) {
