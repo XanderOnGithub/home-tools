@@ -21,6 +21,7 @@ root `AGENTS.md` first; this file is what's specific to games.
 | `handlers.go` | HTTP API, incl. the SSE log stream. `serverView` is what browsers see (no password, no query address). |
 | `snapshot.go` | Stale-while-revalidate cache of all server views, so `GET /api/servers` answers instantly. |
 | `*_test.go` | Rules, store, demux, RCON, A2S, log parsing, heads (fake Mojang), and every handler against fakes. |
+| `fuzz_test.go` | Fuzz tests for every parser of outside bytes (RCON, A2S, `list`/whitelist replies, log lines, demux). `make check` runs the seeds; search longer with `go test ./tools/games -fuzz FuzzA2S -fuzztime 30s`. Finds land in `testdata/fuzz/` (#48). |
 
 UI: `web/apps/games` (Svelte, on `@home-tools/ui` incl. the shared
 `AppShell`): `features/servers/` has the API module, `server-list` (home:

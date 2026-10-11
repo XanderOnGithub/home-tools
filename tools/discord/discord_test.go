@@ -119,8 +119,8 @@ func TestRestart(t *testing.T) {
 	}
 
 	// Not verified: refused privately, and the request is remembered once.
+	restart(bob, "minecraft") // asking twice still makes one request
 	r := restart(bob, "minecraft")
-	r = restart(bob, "minecraft")
 	if !r.sent[0].private || !strings.Contains(r.last(), "Only verified") {
 		t.Errorf("unverified: %+v", r.sent)
 	}
@@ -245,7 +245,7 @@ func TestBoardEmbed(t *testing.T) {
 		t.Errorf("games down = %+v", e)
 	}
 	// Same content → same hash; any change → a new one (that's what triggers an edit).
-	if hashEmbed(boardEmbed("mc", running, true, nil)) != hashEmbed(boardEmbed("mc", running, true, nil)) {
+	if first, again := hashEmbed(boardEmbed("mc", running, true, nil)), hashEmbed(boardEmbed("mc", running, true, nil)); first != again {
 		t.Error("hash isn't stable")
 	}
 	if hashEmbed(boardEmbed("mc", running, true, nil)) == hashEmbed(boardEmbed("mc", busy, true, nil)) {

@@ -1,0 +1,2 @@
+go test fuzz v1
+string("There are 0 out of maximum 0 players online1§00 (00000000000000000000000000000000)")
