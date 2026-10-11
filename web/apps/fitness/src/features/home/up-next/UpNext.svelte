@@ -8,7 +8,9 @@
 <script lang="ts">
   import { tick } from 'svelte'
   import { isoDate, weekdayKey } from '@home-tools/ui/dates'
+  import type { MuscleRecovery } from '@/features/body'
   import { getExercise } from '@/features/exercises'
+  import { TodayReadiness } from '@/features/home/today-readiness'
   import type { FitnessProfile } from '@/features/fitness-profile'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import type { Plan } from '@/features/plans'
@@ -22,6 +24,7 @@
     sessions,
     plans,
     active,
+    recovery,
     ondiscarded,
   }: {
     profile: Profile
@@ -29,6 +32,7 @@
     sessions: Session[]
     plans: Plan[]
     active: Session | undefined // an unfinished workout, if any
+    recovery: MuscleRecovery[] // the body today (#49), checked against the plan (#52)
     ondiscarded: (id: string) => void
   } = $props()
 
@@ -149,6 +153,7 @@
   {#if !hasSchedule}
     <h2 class="title">No routine yet</h2>
     <p class="meta">Set up your routine in <a href="/plans">Plans</a>.</p>
+    <TodayReadiness plan={undefined} {plans} {recovery} {starting} onstart={start} />
   {:else if todays}
     <h2 class="title">{todays.name}</h2>
     <p class="meta">
@@ -165,6 +170,9 @@
           <li class="more">+{todays.exercises.length - PREVIEW} more</li>
         {/if}
       </ul>
+    {/if}
+    {#if !doneToday}
+      <TodayReadiness plan={todays} {plans} {recovery} {starting} onstart={start} />
     {/if}
   {:else}
     <h2 class="title">Rest day</h2>

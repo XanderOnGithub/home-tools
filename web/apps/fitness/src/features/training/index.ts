@@ -15,7 +15,7 @@
 //   - the same muscle worked hard (3+ sets) on back-to-back days won't
 //     have recovered (2–3 days)
 import type { Exercise, Muscle } from '@/features/exercises'
-import { MUSCLE_NAMES } from '@/features/body'
+import { MUSCLE_NAMES, type MuscleRecovery } from '@/features/body'
 import type { Weekday } from '@/features/fitness-profile'
 import type { Plan } from '@/features/plans'
 
@@ -172,3 +172,52 @@ export function weekChecks(week: WeekLoad): Check[] {
   }
   return checks
 }
+
+// ---- Today: a plan against the body's recovery (#52) ----
+
+/** A plan works a muscle hard from this many sets on (Solid or more). */
+const HARD = 3
+
+/** What a plan works hard that isn't ready yet: needs rest, or still recovering. */
+export function planReadiness(load: Load, recovery: MuscleRecovery[]) {
+  const hard = recovery.filter((r) => get(load, r.muscle) >= HARD)
+  return {
+    rest: hard.filter((r) => r.state === 'rest'),
+    recovering: hard.filter((r) => r.state === 'recovering'),
+  }
+}
+
+/**
+ * The plan that suits today best: nothing it works hard needs rest, and
+ * as much of its work as possible lands on ready muscles. undefined when
+ * no plan fits. O(plans × exercises).
+ */
+export function bestPlan(plans: Plan[], byId: Map<string, Exercise>, recovery: MuscleRecovery[], except?: string): Plan | undefined {
+  const state = new Map(recovery.map((r) => [r.muscle, r.state]))
+  let best: { plan: Plan; score: number } | undefined
+  for (const plan of plans) {
+    if (plan.archived || plan.id === except || plan.exercises.length === 0) continue
+    const load = planLoad(plan.exercises, byId)
+    if (planReadiness(load, recovery).rest.length > 0) continue
+    let score = 0
+    for (const [m, sets] of load) if (state.get(m) === 'ready') score += sets
+    if (score > 0 && (!best || score > best.score)) best = { plan, score }
+  }
+  return best?.plan
+}
+
+/** The main muscles (as people name them) that are ready to train. */
+export function readyGroups(recovery: MuscleRecovery[]): string[] {
+  const ready = new Set(recovery.filter((r) => r.state === 'ready').map((r) => r.muscle))
+  const groups: [string, Muscle[]][] = [
+    ['chest', ['chest']],
+    ['back', ['lats', 'middle_back']],
+    ['shoulders', ['shoulders']],
+    ['arms', ['biceps', 'triceps']],
+    ['legs', ['quadriceps', 'hamstrings', 'glutes']],
+    ['core', ['abdominals']],
+  ]
+  return groups.filter(([, ms]) => ms.every((m) => ready.has(m))).map(([name]) => name)
+}
+
+export { list as listNames }
