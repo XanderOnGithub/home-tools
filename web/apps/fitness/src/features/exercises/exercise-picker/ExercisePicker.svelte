@@ -22,11 +22,13 @@
     open = $bindable(false),
     catalog,
     selected,
+    preferred = [],
     ontoggle,
   }: {
     open?: boolean
     catalog: Exercise[]
     selected: Set<string> // exercise IDs already added
+    preferred?: string[] // shown first, in this order: what you've done, the household's plans
     ontoggle: (exercise: Exercise) => void
   } = $props()
 
@@ -50,18 +52,53 @@
     }
   })
 
-  // Every word must appear somewhere in the name: "bench db" finds
-  // "Dumbbell Bench Press" only if both match, so "db" doesn't (no alias
-  // magic; keep it predictable).
+  // What people call muscles → our muscle values. A search word matches a
+  // muscle if it starts the muscle's name or one of these ("bicep" →
+  // biceps, "quad" → quadriceps), so "bicep" finds every curl.
+  const MUSCLE_WORDS: Record<string, Muscle[]> = {
+    abs: ['abdominals'], core: ['abdominals'], pecs: ['chest'], delts: ['shoulders'],
+    back: ['lats', 'middle_back', 'lower_back'], legs: ['quadriceps', 'hamstrings', 'glutes', 'calves'],
+    arms: ['biceps', 'triceps', 'forearms'], butt: ['glutes'], hams: ['hamstrings'], thighs: ['quadriceps', 'adductors', 'abductors'],
+  }
+  function musclesFor(word: string): Muscle[] {
+    const named = MUSCLES.filter((m) => m.startsWith(word) || label(m).toLowerCase().startsWith(word))
+    const said = Object.entries(MUSCLE_WORDS).filter(([w]) => w.startsWith(word)).flatMap(([, ms]) => ms)
+    return word.length >= 3 ? [...named, ...said] : []
+  }
+
+  const LEVELS: Record<string, number> = { beginner: 0, intermediate: 1, expert: 2 }
+
+  // Every word must be in the name or name a muscle the exercise works.
+  // Order: name matches before muscle-only matches; then preferred (what
+  // you've done, the household's plans); then easiest first; then A–Z.
+  // O(n log n) per keystroke for n ≈ 900: instant.
   let results = $derived.by(() => {
     const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-    return catalog.filter(
-      (ex) =>
-        !ex.archived &&
-        words.every((w) => ex.name.toLowerCase().includes(w)) &&
-        (!muscle || (ex.activation[muscle] ?? 0) >= 1) && // primary muscle only
-        (!equipment || !!ex.equipment?.includes(equipment)),
-    )
+    const wordMuscles = words.map(musclesFor)
+    const rank = new Map(preferred.map((id, i) => [id, i]))
+    const scored: { ex: Exercise; byName: boolean }[] = []
+    for (const ex of catalog) {
+      if (ex.archived) continue
+      if (muscle && (ex.activation[muscle] ?? 0) < 1) continue // primary muscle only
+      if (equipment && !ex.equipment?.includes(equipment)) continue
+      const name = ex.name.toLowerCase()
+      let byName = true
+      const ok = words.every((w, i) => {
+        if (name.includes(w)) return true
+        byName = false
+        return wordMuscles[i].some((m) => (ex.activation[m] ?? 0) >= 0.5)
+      })
+      if (ok) scored.push({ ex, byName })
+    }
+    return scored
+      .toSorted(
+        (a, b) =>
+          Number(b.byName) - Number(a.byName) ||
+          (rank.get(a.ex.id) ?? Infinity) - (rank.get(b.ex.id) ?? Infinity) ||
+          (LEVELS[a.ex.level ?? ''] ?? 1) - (LEVELS[b.ex.level ?? ''] ?? 1) ||
+          a.ex.name.localeCompare(b.ex.name),
+      )
+      .map((r) => r.ex)
   })
 
   // New search or filter: start from the top of the results again.
@@ -118,7 +155,9 @@
           {/if}
           <span class="text">
             <span class="name">{ex.name}</span>
-            <span class="muscles">{primaryMuscles(ex).map(label).join(', ')}</span>
+            <span class="muscles">
+              {primaryMuscles(ex).map(label).join(', ')}{#if ex.level}<span class="level">{` · ${label(ex.level)}`}</span>{/if}
+            </span>
           </span>
           <span class="state" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d={added ? 'M5 12l5 5 9-10' : 'M12 5v14 M5 12h14'} /></svg>

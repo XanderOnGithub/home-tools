@@ -87,7 +87,14 @@ textarea {
   transition:
     background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
-    color var(--duration-fast) var(--ease-out);
+    color var(--duration-fast) var(--ease-out),
+    scale var(--duration-fast) var(--ease-out);
+}
+
+/* Every button answers a press at once: a slight shrink (the colors
+ * below change too). --duration-fast is 0 with reduced motion. */
+.btn:active:not(:disabled) {
+  scale: 0.97;
 }
 
 .btn:disabled {
@@ -109,9 +116,16 @@ textarea {
   color: var(--color-text);
 }
 
+.btn-secondary:active:not(:disabled),
+.btn-quiet:active:not(:disabled),
+.btn-icon:active:not(:disabled) {
+  background: var(--color-accent-subtle);
+}
+
 .btn-quiet {
   color: var(--color-text-muted);
 }
+
 
 .btn-danger {
   background: var(--color-danger);

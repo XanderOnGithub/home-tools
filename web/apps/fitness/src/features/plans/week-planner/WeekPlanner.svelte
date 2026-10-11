@@ -23,6 +23,7 @@
   ]
 
   let status = $state('')
+  let hasRoutine = $derived(Object.keys(fitness.schedule ?? {}).length > 0)
 
   // The week's muscles (#51): needs the catalog; until it's here (or if
   // it fails) the planner simply works without the summary.
@@ -76,6 +77,10 @@
     {/each}
   </ul>
 
+  <a class="btn {hasRoutine ? 'btn-quiet' : 'btn-primary'} builder" href="/plans/build">
+    {hasRoutine ? 'Rebuild it for me' : 'Build a routine for me'}
+  </a>
+
   {#if week && week.days.size > 0}
     <section class="works" aria-labelledby="week-works-title">
       <h3 id="week-works-title">What your week works</h3>
@@ -100,6 +105,10 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
+  }
+
+  .builder {
+    align-self: flex-start;
   }
 
   h3 {

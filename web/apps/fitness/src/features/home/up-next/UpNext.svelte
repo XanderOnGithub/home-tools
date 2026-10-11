@@ -152,7 +152,7 @@
 
   {#if !hasSchedule}
     <h2 class="title">No routine yet</h2>
-    <p class="meta">Set up your routine in <a href="/plans">Plans</a>.</p>
+    <p class="meta">Answer three questions and get a week of workouts to start with.</p>
     <TodayReadiness plan={undefined} {plans} {recovery} {starting} onstart={start} />
   {:else if todays}
     <h2 class="title">{todays.name}</h2>
@@ -181,7 +181,10 @@
     {/if}
   {/if}
   <div class="actions">
-    {#if todays && !doneToday}
+    {#if !hasSchedule}
+      <a class="btn btn-primary start" href="/plans/build">Build a routine for me</a>
+      <button type="button" class="btn btn-quiet" onclick={() => (choosing = true)}>Start a workout</button>
+    {:else if todays && !doneToday}
       <button type="button" class="btn btn-primary start" onclick={() => todays && start(todays)} disabled={starting}>
         {starting ? 'Starting…' : 'Start workout'}
       </button>
@@ -251,10 +254,6 @@
     color: var(--color-text-muted);
   }
 
-  .meta a {
-    color: var(--color-accent-text);
-    font-weight: var(--weight-semibold);
-  }
 
   .actions {
     display: flex;

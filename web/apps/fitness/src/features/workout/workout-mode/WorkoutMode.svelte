@@ -15,20 +15,21 @@
   - "+ Add exercise" adds any exercise from the catalog (at the end), so
     an empty workout is built as you go.
   - "Leave" keeps the workout in progress (home offers Resume);
-    "Finish" stamps the end time.
+    "Finish" stamps the end time and shows the summary (#55).
   - Above the sets: what to aim for (reps by goal, how hard) and what to
     try today, from last time, with a "Why?" that opens in place (#54).
 -->
 <script lang="ts">
   import { onDestroy, onMount, tick } from 'svelte'
   import { LoadError } from '@home-tools/ui/components/load-error'
-  import { getCatalog, getExercise, label, primaryMuscles, type Exercise } from '@/features/exercises'
+  import { getCatalog, getExercise, label, preferredIds, primaryMuscles, type Exercise } from '@/features/exercises'
   import { ExercisePhotos } from '@/features/exercises/exercise-photos'
   import { ExercisePicker } from '@/features/exercises/exercise-picker'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { DEFAULT_REST_SEC, getPlans, type Plan } from '@/features/plans'
   import { playChime, unlockChime } from '@/features/workout/chime'
   import { RestTimer } from '@/features/workout/rest-timer'
+  import { WorkoutSummary } from '@/features/workout/workout-summary'
   import { progressTip, repTarget } from '@/features/training/guidance'
   import {
     getRecentSessions,
@@ -68,6 +69,9 @@
   let session = $state<Session | null>(null)
   let history: Session[] = [] // recent sessions, for "Last:" and pre-fills
   let plan: Plan | undefined // the plan this workout started from, if any
+  let allPlans: Plan[] = [] // the household's, for the picker's "show first"
+  let preferred = $state<string[]>([]) // the picker's "show first": yours, then the household's
+  let finished = $state<Session | null>(null) // set by Finish: the summary replaces the workout
   let steps = $state<Step[]>([])
   let step = $state(0)
   let status = $state<'loading' | 'ready' | 'missing' | 'error'>('loading')
@@ -98,6 +102,7 @@
         return
       }
       history = recent
+      allPlans = plans
       plan = plans.find((p) => p.id === s.plan_id)
       const exercises = await Promise.all(s.entries.map((e) => getExercise(e.exercise_id).catch(() => null)))
       steps = s.entries.map((entry, i) => makeStep(entry.exercise_id, exercises[i], entry.sets))
@@ -153,6 +158,7 @@
   async function openPicker() {
     try {
       catalog = await getCatalog()
+      preferred = preferredIds(history.flatMap((s) => s.entries.filter((e) => e.sets.length > 0).map((e) => e.exercise_id)), allPlans)
       picking = true
     } catch (err) {
       saveError = `Couldn't load exercises. ${(err as Error).message}`
@@ -387,8 +393,9 @@
     const ok = await persist()
     if (ok && session) {
       try {
-        await saveSession({ ...session, ended_at: new Date().toISOString() })
-        router.navigate('/')
+        finished = await saveSession({ ...session, ended_at: new Date().toISOString() })
+        await tick()
+        document.getElementById('summary-title')?.focus()
         return
       } catch (err) {
         saveError = `Couldn't finish. ${(err as Error).message}`
@@ -408,6 +415,13 @@
   }
 </script>
 
+{#if finished}
+  <WorkoutSummary
+    {profile}
+    session={finished}
+    exercises={new Map(steps.flatMap((st) => (st.exercise ? [[st.exerciseId, st.exercise] as const] : [])))}
+  />
+{:else}
 <div class="workout">
   <header class="top">
     <a class="btn btn-quiet leave" href="/">
@@ -614,8 +628,15 @@
     {/if}
   {/if}
 
-  <ExercisePicker bind:open={picking} {catalog} selected={inWorkout} ontoggle={toggleExercise} />
+  <ExercisePicker
+    bind:open={picking}
+    {catalog}
+    selected={inWorkout}
+    {preferred}
+    ontoggle={toggleExercise}
+  />
 </div>
+{/if}
 
 <style>
   .workout {
@@ -710,6 +731,14 @@
     margin: 0 0 var(--space-2);
     padding-left: var(--space-5);
     line-height: var(--leading-normal);
+  }
+
+  /* Phones: a smaller photo, so the set you're logging is on screen
+   * without scrolling (the photo letterboxes on its own background). */
+  @media (max-width: 40rem) {
+    .workout :global(.frames) {
+      max-height: 24dvh;
+    }
   }
 
   .aim {

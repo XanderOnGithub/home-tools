@@ -41,10 +41,7 @@
 <div class="page">
   <div class="title-row">
     <h1 tabindex="-1">Plans</h1>
-    <div class="title-actions">
-      <a class="btn btn-secondary" href="/plans/build">Build a routine for me</a>
-      <a class="btn btn-primary" href="/plans/new">New plan</a>
-    </div>
+    <a class="btn btn-primary" href="/plans/new">New plan</a>
   </div>
 
   {#if status === 'error'}
@@ -96,11 +93,6 @@
     gap: var(--space-3);
   }
 
-  .title-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
-  }
 
   h1 {
     font-size: var(--text-2xl);
@@ -119,11 +111,21 @@
     align-items: start;
   }
 
+  /* Phones: your routine first (it's what people come to change), the
+   * list below. */
+  .grid > :global(:last-child) {
+    order: -1;
+  }
+
   /* Wide screens: the list, with your routine beside it. */
   @media (min-width: 56rem) {
     .grid {
       grid-template-columns: 3fr 2fr;
       gap: var(--space-7);
+    }
+
+    .grid > :global(:last-child) {
+      order: 0;
     }
   }
 
