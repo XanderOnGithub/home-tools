@@ -42,6 +42,7 @@ type Bot struct {
 	statusWake  chan struct{} // the status settings changed, or Discord reset it
 	status      statusState
 
+	pollMu     sync.Mutex // serializes posting polls
 	cmdMu      sync.Mutex // serializes command registration
 	registered string     // the command set Discord has now (names, joined)
 }

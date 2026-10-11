@@ -85,15 +85,26 @@ var DefaultPhrases = []string{
 	"Today's blob: {name}",
 }
 
-// PollFeature posts a poll from Questions every EveryDays days at PostAt
-// (local time) in ChannelID, as a native Discord poll.
+// PollFeature posts a poll every EveryDays days at PostAt (local time) in
+// ChannelID, as a native Discord poll. Questions come in packs (#47).
 type PollFeature struct {
-	Enabled       bool           `json:"enabled"`
-	ChannelID     string         `json:"channel_id"`
-	EveryDays     int            `json:"every_days"`     // 1–7
-	PostAt        string         `json:"post_at"`        // "18:00", local time
-	DurationHours int            `json:"duration_hours"` // how long votes are open, 1–168
-	Questions     []PollQuestion `json:"questions"`
+	Enabled       bool       `json:"enabled"`
+	ChannelID     string     `json:"channel_id"`
+	EveryDays     int        `json:"every_days"`     // 1–7
+	PostAt        string     `json:"post_at"`        // "18:00", local time
+	DurationHours int        `json:"duration_hours"` // how long votes are open, 1–168
+	Packs         []PollPack `json:"packs"`
+	// Questions is the single list from before packs: read from old
+	// configs and moved into a "My questions" pack, never written.
+	Questions []PollQuestion `json:"questions,omitempty"`
+}
+
+// PollPack is a named set of questions (e.g. "Overwatch") that can be
+// switched on or off. Polls are drawn from every pack that's on.
+type PollPack struct {
+	Name      string         `json:"name"`
+	Enabled   bool           `json:"enabled"`
+	Questions []PollQuestion `json:"questions"`
 }
 
 // PollQuestion is one poll: a question and its answers (Discord's limits:
@@ -102,6 +113,25 @@ type PollQuestion struct {
 	Question string   `json:"question"`
 	Answers  []string `json:"answers"`
 	Multi    bool     `json:"multi,omitempty"` // people may pick several
+}
+
+// key identifies q in the record of asked polls: its exact text and
+// answers ("\x1f" can't be typed), so the same question with other
+// answers is a different poll, and editing one makes it new. The
+// settings page builds the same key (features/bot pollKey).
+func (q PollQuestion) key() string {
+	return q.Question + "\x1f" + strings.Join(q.Answers, "\x1f")
+}
+
+// questions returns the questions of the packs that are on.
+func (p PollFeature) questions() []PollQuestion {
+	var out []PollQuestion
+	for _, pack := range p.Packs {
+		if pack.Enabled {
+			out = append(out, pack.Questions...)
+		}
+	}
+	return out
 }
 
 // BlobFeature is /blob: anyone can make a blob of their own.
@@ -135,7 +165,8 @@ const (
 	maxPhrases   = 500
 	maxPhraseLen = 128 // Discord's custom status limit
 
-	maxQuestions   = 500
+	maxPacks       = 50
+	maxQuestions   = 500 // across all packs
 	maxQuestionLen = 300 // Discord's poll limits
 	maxAnswerLen   = 55
 	maxAnswers     = 10
@@ -182,8 +213,20 @@ func (c *Config) fillDefaults() {
 	if p.DurationHours == 0 {
 		p.DurationHours = 24
 	}
-	if p.Questions == nil {
-		p.Questions = []PollQuestion{}
+	// No packs at all = from before packs (or never set up): start with
+	// the default packs, plus the old single list if there was one. (A
+	// config whose packs were all removed has [] and stays that way.)
+	if p.Packs == nil {
+		p.Packs = DefaultPollPacks()
+		if len(p.Questions) > 0 {
+			p.Packs = append(p.Packs, PollPack{Name: "My questions", Enabled: true, Questions: p.Questions})
+		}
+	}
+	p.Questions = nil
+	for i := range p.Packs {
+		if p.Packs[i].Questions == nil {
+			p.Packs[i].Questions = []PollQuestion{}
+		}
 	}
 	// No phrase list at all = never set up: start with the defaults and
 	// game news on. (An emptied list is [] and stays empty.)
@@ -284,35 +327,59 @@ func (p PollFeature) validate() error {
 		return fmt.Errorf("%w poll: bad channel ID %q", ErrInvalid, p.ChannelID)
 	case p.Enabled && p.ChannelID == "":
 		return fmt.Errorf("%w: pick a channel for the poll before turning it on", ErrInvalid)
-	case p.Enabled && len(p.Questions) == 0:
-		return fmt.Errorf("%w: add a question before turning the poll on", ErrInvalid)
-	case len(p.Questions) > maxQuestions:
-		return fmt.Errorf("%w: at most %d poll questions", ErrInvalid, maxQuestions)
+	case p.Enabled && len(p.questions()) == 0:
+		return fmt.Errorf("%w: switch on a pack with at least one question before turning the poll on", ErrInvalid)
+	case len(p.Packs) > maxPacks:
+		return fmt.Errorf("%w: at most %d poll packs", ErrInvalid, maxPacks)
 	}
-	seen := make(map[string]struct{}, len(p.Questions))
-	for _, q := range p.Questions {
-		text := strings.TrimSpace(q.Question)
-		switch {
-		case text == "" || utf8.RuneCountInString(q.Question) > maxQuestionLen:
-			return fmt.Errorf("%w poll question %q: 1–%d characters", ErrInvalid, q.Question, maxQuestionLen)
-		case len(q.Answers) < 2 || len(q.Answers) > maxAnswers:
-			return fmt.Errorf("%w poll %q: 2–%d answers", ErrInvalid, q.Question, maxAnswers)
+	packs := make(map[string]struct{}, len(p.Packs))
+	seen := make(map[string]string) // question key (any case) → its pack
+	for _, pack := range p.Packs {
+		name := strings.TrimSpace(pack.Name)
+		if name == "" || name != pack.Name || utf8.RuneCountInString(name) > maxLabelLen {
+			return fmt.Errorf("%w poll pack %q: name must be 1–%d characters, no spaces around it", ErrInvalid, pack.Name, maxLabelLen)
 		}
-		key := strings.ToLower(text)
-		if _, dup := seen[key]; dup {
-			return fmt.Errorf("%w: the poll %q is listed twice", ErrInvalid, q.Question)
+		if _, dup := packs[strings.ToLower(name)]; dup {
+			return fmt.Errorf("%w: there are two poll packs called %q", ErrInvalid, name)
 		}
-		seen[key] = struct{}{}
-		answers := make(map[string]struct{}, len(q.Answers))
-		for _, a := range q.Answers {
-			if strings.TrimSpace(a) == "" || utf8.RuneCountInString(a) > maxAnswerLen {
-				return fmt.Errorf("%w poll %q: answers must be 1–%d characters, got %q", ErrInvalid, q.Question, maxAnswerLen, a)
+		packs[strings.ToLower(name)] = struct{}{}
+		for _, q := range pack.Questions {
+			if err := q.validate(); err != nil {
+				return err
 			}
-			if _, dup := answers[strings.ToLower(a)]; dup {
-				return fmt.Errorf("%w poll %q: the answer %q is there twice", ErrInvalid, q.Question, a)
+			// The same question with other answers is fine ("Which role
+			// swap…?" asked about different heroes); the same poll twice
+			// isn't: the asked record couldn't tell them apart.
+			key := strings.ToLower(q.key())
+			if in, dup := seen[key]; dup {
+				return fmt.Errorf("%w: the poll %q with those answers is in %q already", ErrInvalid, q.Question, in)
 			}
-			answers[strings.ToLower(a)] = struct{}{}
+			seen[key] = name
 		}
+	}
+	if len(seen) > maxQuestions {
+		return fmt.Errorf("%w: at most %d poll questions in all", ErrInvalid, maxQuestions)
+	}
+	return nil
+}
+
+// validate checks q against Discord's poll limits.
+func (q PollQuestion) validate() error {
+	switch {
+	case strings.TrimSpace(q.Question) == "" || utf8.RuneCountInString(q.Question) > maxQuestionLen:
+		return fmt.Errorf("%w poll question %q: 1–%d characters", ErrInvalid, q.Question, maxQuestionLen)
+	case len(q.Answers) < 2 || len(q.Answers) > maxAnswers:
+		return fmt.Errorf("%w poll %q: 2–%d answers", ErrInvalid, q.Question, maxAnswers)
+	}
+	answers := make(map[string]struct{}, len(q.Answers))
+	for _, a := range q.Answers {
+		if strings.TrimSpace(a) == "" || utf8.RuneCountInString(a) > maxAnswerLen {
+			return fmt.Errorf("%w poll %q: answers must be 1–%d characters, got %q", ErrInvalid, q.Question, maxAnswerLen, a)
+		}
+		if _, dup := answers[strings.ToLower(a)]; dup {
+			return fmt.Errorf("%w poll %q: the answer %q is there twice", ErrInvalid, q.Question, a)
+		}
+		answers[strings.ToLower(a)] = struct{}{}
 	}
 	return nil
 }

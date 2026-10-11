@@ -3,6 +3,7 @@ package discord
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -408,6 +409,29 @@ func TestHandlers(t *testing.T) {
 	}
 	if rec := do("POST", "/api/poll", ""); rec.Code != 409 || !strings.Contains(rec.Body.String(), "turn the poll on") {
 		t.Errorf("POST poll = %d %s", rec.Code, rec.Body)
+	}
+
+	// Poll packs: "start over" forgets only that pack's asked questions; a
+	// page from before packs can't save.
+	ow := DefaultPollPacks()[0].Questions[0].key()
+	if err := b.store.SetPollPosted("2026-10-11", ow, map[string]string{ow: "2026-10-11", "other": "2026-10-09"}); err != nil {
+		t.Fatal(err)
+	}
+	if rec := do("GET", "/api/bot", ""); !strings.Contains(rec.Body.String(), `"poll_asked":{`) {
+		t.Errorf("GET bot without poll_asked: %s", rec.Body)
+	}
+	if rec := do("POST", "/api/poll/reset", `{"pack":"Overwatch"}`); rec.Code != 204 {
+		t.Errorf("reset = %d %s", rec.Code, rec.Body)
+	}
+	if asked, _ := b.store.AskedPolls(); len(asked) != 1 || asked["other"] == "" {
+		t.Errorf("after reset: %v", asked)
+	}
+	if rec := do("POST", "/api/poll/reset", `{"pack":"Nope"}`); rec.Code != 404 {
+		t.Errorf("reset unknown pack = %d", rec.Code)
+	}
+	rev := b.store.Config().Revision
+	if rec := do("PUT", "/api/config", fmt.Sprintf(`{"revision":%d,"names":["Jim"],"features":{"poll":{"every_days":2,"post_at":"18:00","duration_hours":24,"questions":[]}}}`, rev)); rec.Code != 400 {
+		t.Errorf("PUT from an old page = %d %s", rec.Code, rec.Body)
 	}
 
 	if err := b.store.AddRequest(AccessRequest{UserID: bob, Name: "Bob"}); err != nil {

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -37,6 +38,11 @@ type state struct {
 	// LastPoll is the date (YYYY-MM-DD) of the last poll posted, so a
 	// restart never posts the same day's poll twice.
 	LastPoll string `json:"last_poll,omitempty"`
+	// AskedPolls maps each poll asked this round (PollQuestion.key) to the
+	// date it went out (#47); LastQuestion is the latest one's key, so a
+	// new round never opens with it.
+	AskedPolls   map[string]string `json:"asked_polls,omitempty"`
+	LastQuestion string            `json:"last_question,omitempty"`
 }
 
 // Store holds the config and the bot's state in memory and writes changes
@@ -94,7 +100,10 @@ func (s *Store) Config() Config {
 	c.StatusBoards = slices.Clone(c.StatusBoards)
 	c.Verified = slices.Clone(c.Verified)
 	c.Names = slices.Clone(c.Names)
-	c.Features.Poll.Questions = slices.Clone(c.Features.Poll.Questions)
+	c.Features.Poll.Packs = slices.Clone(c.Features.Poll.Packs)
+	for i := range c.Features.Poll.Packs {
+		c.Features.Poll.Packs[i].Questions = slices.Clone(c.Features.Poll.Packs[i].Questions)
+	}
 	c.Features.Status.Phrases = slices.Clone(c.Features.Status.Phrases)
 	return c
 }
@@ -196,11 +205,35 @@ func (s *Store) LastPoll() string {
 	return s.st.LastPoll
 }
 
-// SetLastPoll records that the poll for date was posted.
-func (s *Store) SetLastPoll(date string) error {
+// AskedPolls returns a copy of the asked record (key → date) and the
+// last question's key.
+func (s *Store) AskedPolls() (map[string]string, string) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	return maps.Clone(s.st.AskedPolls), s.st.LastQuestion
+}
+
+// SetPollPosted records that the poll for date was posted: the question
+// (key) and the new asked record (from nextQuestion).
+func (s *Store) SetPollPosted(date, key string, asked map[string]string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.writeState(func(st *state) { st.LastPoll = date })
+	return s.writeState(func(st *state) { st.LastPoll, st.LastQuestion, st.AskedPolls = date, key, asked })
+}
+
+// ForgetAsked removes keys from the asked record, so those questions can
+// come up again this round (a pack's "Start over").
+func (s *Store) ForgetAsked(keys []string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	asked := maps.Clone(s.st.AskedPolls)
+	for _, k := range keys {
+		delete(asked, k)
+	}
+	if len(asked) == len(s.st.AskedPolls) {
+		return nil // nothing to forget: skip the disk write
+	}
+	return s.writeState(func(st *state) { st.AskedPolls = asked })
 }
 
 // Requests returns the access requests, newest first (never nil: it's
@@ -226,7 +259,8 @@ func (s *Store) DismissRequest(userID string) error {
 // only then keeps it: memory never runs ahead of the disk (decision #15:
 // the lock is held across the write). Caller holds s.mu.
 func (s *Store) writeState(change func(*state)) error {
-	next := state{StatusMessages: make(map[string]string, len(s.st.StatusMessages)), Requests: s.st.Requests, LastPoll: s.st.LastPoll}
+	next := s.st // Requests and AskedPolls are replaced, never changed in place
+	next.StatusMessages = make(map[string]string, len(s.st.StatusMessages))
 	for k, v := range s.st.StatusMessages {
 		next.StatusMessages[k] = v
 	}

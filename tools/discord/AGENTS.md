@@ -24,8 +24,15 @@ to the bot.
 ### Features (#44): each with an on/off switch
 - **Poll:** a native Discord poll every `every_days` (1–7, default 2) at
   `post_at` (local time) in one channel, open `duration_hours`.
-  Questions are edited on the Features page; `rotate` shuffles them so
-  none repeat before all were asked.
+  Questions come in **packs** (#47): `{name, enabled, questions}` in
+  `features.poll.packs`, edited on the Features page; defaults in
+  `pollpacks.go` (Overwatch). Each poll is a random question from the
+  packs that are on, not yet asked this round (`nextQuestion`); when all
+  were, a new round starts (never the same one twice in a row). The
+  record is `asked_polls` (key → date) + `last_question` in `state.json`;
+  key = question + answers joined by `\x1f` (same question with other
+  answers = another poll; editing one makes it new). A config from
+  before packs gets the defaults plus its old list as "My questions".
 - **`/blob name color [animated]`:** anyone; PNG 512 px (transparent,
   with margin) or the blinking GIF 256 px. The page has a maker.
 - **Status:** the bot's custom status, a new phrase every local hour
@@ -51,7 +58,8 @@ to the bot.
 | `games.go` | Client for the games HTTP API (`Games` interface; fakes in tests). |
 | `sens.go` | The conversion table (from Starport-Assistant) and math. |
 | `persona.go` | `PersonaFor(date, names)` and `rotate` (shuffled turns; across passes an item waits ≥ n/3 + 1 turns), both pure. Shares the blob's seeded generator. |
-| `poll.go` | Poll schedule (`nextPollSlot`, pure), the posting loop, "post now". |
+| `poll.go` | Poll schedule (`nextPollSlot`, pure), question pick (`nextQuestion`, pure), the posting loop, "post now". |
+| `pollpacks.go` | Default poll packs (a fresh install starts with them). |
 | `status.go` | Hourly status: `pickStatus` + `gameStatus` (pure), the loop. |
 | `blob.go` | Go port of the frontend blob (shape + face); tested against the TypeScript's numbers. |
 | `raster.go` | Scanline polygon fill with anti-aliasing (edge table + active list). |
@@ -62,7 +70,7 @@ UI: `web/apps/discord` (Svelte, shared `AppShell`): `features/bot/`:
 `settings` (shared state, polls the bot every 15 s while visible; saves
 with the revision, reloads on 409), `today-card`, `status-boards`,
 `name-list`, `commands-help`, `overview-page` (`/`), `features-page`
-(`/features`: `poll-settings` + `poll-questions`, `status-settings`,
+(`/features`: `poll-settings` → `poll-packs` → `poll-questions`, `status-settings`,
 `blob-maker`),
 `people-page` (`/people`); `components/toggle-switch`.
 
@@ -87,9 +95,10 @@ with the revision, reloads on 409), `today-card`, `status-boards`,
 |---|---|
 | `GET /api/config` | The config. |
 | `PUT /api/config` | Replace it. Body's `revision` must be current: 409 otherwise (someone else saved). 400 = a rule broke. Answers with the new revision. |
-| `GET /api/bot` | Connection (`connected`, `error`, `user`, `invite_url`), `guilds` with postable text channels, today's `persona`, `requests`, games `servers` (+ `servers_error`). |
+| `GET /api/bot` | Connection (`connected`, `error`, `user`, `invite_url`), `guilds` with postable text channels, today's `persona`, `requests`, `poll_asked` (question key → date, this round), games `servers` (+ `servers_error`). |
 | `DELETE /api/requests/{user}` | Dismiss an access request. |
 | `POST /api/poll` | Post the next poll now (takes the next slot). 409 = off, no questions, offline, or Discord refused. |
+| `POST /api/poll/reset` | `{"pack": "Overwatch"}`: forget which of its questions were asked this round ("Start over"). 404 = no such pack. |
 | `GET /api/blob?name=&color=[&animated=1]` | The blob `/blob` would send (immutable cache). |
 | `GET /api/persona.gif` / `.png` | Today's avatar, animated / still (ETag per persona). |
 
