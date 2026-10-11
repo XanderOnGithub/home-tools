@@ -48,6 +48,19 @@ func TestPersonaFor(t *testing.T) {
 		}
 	}
 
+	// Across pass boundaries an item waits at least n/3 + 1 turns, so
+	// nothing comes back right after the shuffle restarts (Ted, Pam, Ted).
+	for _, n := range []int{3, 4, 5, 7, 36, 100} {
+		last := map[int]int64{}
+		for k := int64(-500); k < 5000; k++ {
+			v := rotate(k, n, "names")
+			if prev, ok := last[v]; ok && k-prev < int64(n/3+1) {
+				t.Fatalf("n=%d: item %d at turns %d and %d", n, v, prev, k)
+			}
+			last[v] = k
+		}
+	}
+
 	if got := PersonaFor(day, names).Date; got != "2026-10-09" {
 		t.Errorf("date = %q", got)
 	}
