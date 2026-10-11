@@ -254,6 +254,10 @@ got here: `git log`.
   avatars, pick the bot's real name.
 
 ## 8. Improvements (later, not urgent)
+- **Backups (not set up, 2026-10-11):** the data folder
+  (`Vault/Apps/HomeTools`) has no copy anywhere. Proposed: daily in-app
+  `.tar.gz` snapshots (without the re-downloadable exercise photos, keep
+  14) + a copy off the server (destination undecided) + a restore runbook.
 - Avatar maker (#22): flat 2D avatars from SVG parts on the profile color.
 - Muscle recovery map (own screen): per-muscle fatigue computed from recent
   sessions × exercise `activation`, decaying over days; "needs rest" view.
