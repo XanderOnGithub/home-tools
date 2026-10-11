@@ -6,7 +6,7 @@
   is decorative for them.
 -->
 <script lang="ts">
-  import { isStronger, muscleList, regionStates, type MuscleRecovery, type MuscleStrength } from '@/features/body'
+  import { isStronger, muscleList, recoveryShades, RECOVERY_LEGEND, type MuscleRecovery, type MuscleStrength } from '@/features/body'
   import { MuscleMap } from '@/features/body/muscle-map'
 
   let { recovery, strength }: { recovery: MuscleRecovery[]; strength: MuscleStrength[] } = $props()
@@ -30,7 +30,7 @@
     <a href="/body">Details<span class="visually-hidden"> about your muscles</span></a>
   </div>
 
-  <div class="map"><MuscleMap states={regionStates(recovery)} /></div>
+  <div class="map"><MuscleMap shades={recoveryShades(recovery)} legend={RECOVERY_LEGEND} /></div>
 
   {#if !trained && stronger.length === 0}
     <p class="muted">Log a workout and you'll see here which muscles it worked and when they're ready again.</p>

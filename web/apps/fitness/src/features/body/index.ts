@@ -62,25 +62,38 @@ export const MUSCLE_REGIONS: Record<Muscle, Region[]> = {
   triceps: ['triceps'],
 }
 
-const SEVERITY: Record<RecoveryState, number> = { ready: 0, recovering: 1, rest: 2 }
+/** How strongly a region is drawn: 0 = the plain figure … 3 = the full accent. */
+export type Shade = 0 | 1 | 2 | 3
 
-/** Each region's state: the most worked of the muscles drawn there. */
-export function regionStates(list: MuscleRecovery[]): Partial<Record<Region, RecoveryState>> {
-  const out: Partial<Record<Region, RecoveryState>> = {}
-  for (const m of list) {
-    for (const r of MUSCLE_REGIONS[m.muscle]) {
-      const was = out[r]
-      if (!was || SEVERITY[m.state] > SEVERITY[was]) out[r] = m.state
-    }
+/** One legend entry for the map. */
+export type LegendItem = { shade: Shade; label: string }
+
+/** Each region's shade: the strongest of the muscles drawn there. */
+export function regionShades(shades: Partial<Record<Muscle, Shade>>): Partial<Record<Region, Shade>> {
+  const out: Partial<Record<Region, Shade>> = {}
+  for (const [m, shade] of Object.entries(shades) as [Muscle, Shade][]) {
+    for (const r of MUSCLE_REGIONS[m]) out[r] = Math.max(out[r] ?? 0, shade) as Shade
   }
   return out
 }
+
+const RECOVERY_SHADE: Record<RecoveryState, Shade> = { ready: 0, recovering: 2, rest: 3 }
+
+/** The map's shades for recovery: needs rest = strong, recovering = medium. */
+export const recoveryShades = (list: MuscleRecovery[]) =>
+  regionShades(Object.fromEntries(list.map((m) => [m.muscle, RECOVERY_SHADE[m.state]])))
 
 export const STATE_LABELS: Record<RecoveryState, string> = {
   rest: 'Needs rest',
   recovering: 'Recovering',
   ready: 'Ready',
 }
+
+export const RECOVERY_LEGEND: LegendItem[] = [
+  { shade: 3, label: STATE_LABELS.rest },
+  { shade: 2, label: STATE_LABELS.recovering },
+  { shade: 0, label: STATE_LABELS.ready },
+]
 
 /** The parts of a day, as people say them. */
 function partOfDay(d: Date) {

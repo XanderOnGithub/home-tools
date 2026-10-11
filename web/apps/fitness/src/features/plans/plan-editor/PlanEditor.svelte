@@ -3,6 +3,7 @@
   of exercises, each with an optional suggested number of sets and rest
   between sets (hints, never enforced; decisions #7, #35). Reorder with up/down buttons (keyboard and
   touch friendly; the moved row keeps focus). Archive instead of delete.
+  Below the list, "What this plan works" (#51) updates as you edit.
 -->
 <script lang="ts">
   import { tick } from 'svelte'
@@ -12,6 +13,8 @@
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { DEFAULT_REST_SEC, getPlans, savePlan, type Plan } from '@/features/plans'
   import { idFromName } from '@home-tools/ui/ids'
+  import { planChecks, planLoad } from '@/features/training'
+  import { LoadSummary } from '@/features/training/load-summary'
   import { router } from '@home-tools/ui/router'
 
   let { profile, id }: { profile: Profile; id: string | null } = $props()
@@ -60,6 +63,13 @@
   // id → exercise, so each row's lookup is O(1) instead of scanning 876.
   let byId = $derived(new Map(catalog.map((ex) => [ex.id, ex])))
   let selected = $derived(new Set(items.map((i) => i.exercise_id)))
+  // What the plan works, live: empty or invalid sets count as the default.
+  let muscleLoad = $derived(
+    planLoad(
+      items.map((i) => ({ exercise_id: i.exercise_id, suggested_sets: Number(i.sets) >= 1 && Number(i.sets) <= 20 ? Number(i.sets) : undefined })),
+      byId,
+    ),
+  )
 
   function toggle(ex: Exercise) {
     const i = items.findIndex((it) => it.exercise_id === ex.id)
@@ -248,6 +258,16 @@
         </button>
       </section>
 
+      {#if items.length > 0}
+        <section class="works" aria-labelledby="works-title">
+          <div class="section-head">
+            <h2 id="works-title">What this plan works</h2>
+            <span class="hint">Empty sets count as 3</span>
+          </div>
+          <LoadSummary load={muscleLoad} checks={planChecks(muscleLoad)} mode="workout" />
+        </section>
+      {/if}
+
       {#if formError}<p class="error" role="alert">{formError}</p>{/if}
 
       {#if confirmingArchive}
@@ -360,6 +380,16 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+
+  .works {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   .section-head {

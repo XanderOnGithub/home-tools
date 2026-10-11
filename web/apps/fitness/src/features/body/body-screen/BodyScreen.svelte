@@ -18,7 +18,8 @@
     MUSCLE_NAMES,
     MUSCLE_REGIONS,
     readyWhen,
-    regionStates,
+    RECOVERY_LEGEND,
+    recoveryShades,
     STATE_LABELS,
     workedWhen,
     type MuscleRecovery,
@@ -113,7 +114,7 @@
   {:else}
     <div class="layout">
       <div class="map">
-        <MuscleMap states={regionStates(recovery)} selected={selectedRegions} onpick={pick} />
+        <MuscleMap shades={recoveryShades(recovery)} legend={RECOVERY_LEGEND} selected={selectedRegions} onpick={pick} />
       </div>
 
       <div class="groups">
@@ -249,11 +250,11 @@
   }
 
   .dot.rest {
-    background: var(--color-muscle-rest);
+    background: var(--color-muscle-strong);
   }
 
   .dot.recovering {
-    background: var(--color-muscle-recovering);
+    background: var(--color-muscle-medium);
   }
 
   .dot.ready {
