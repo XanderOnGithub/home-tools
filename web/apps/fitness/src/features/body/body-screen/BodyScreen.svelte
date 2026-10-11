@@ -1,7 +1,8 @@
 <!--
   The Body page (/body, decision #49): the muscle map, big, and every
   muscle grouped by how ready it is: when it's ready again, when it was
-  last worked, this week's sets and which exercises did it. Tapping a
+  last worked, this week's sets, which exercises did it, and whether it's
+  getting stronger (#50). Tapping a
   muscle on the map jumps to its row (and outlines it); the list is the
   same information for keyboards and screen readers.
 -->
@@ -10,7 +11,10 @@
   import { LoadError } from '@home-tools/ui/components/load-error'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import {
+    changeLabel,
     getRecovery,
+    getStrength,
+    isStronger,
     MUSCLE_NAMES,
     MUSCLE_REGIONS,
     readyWhen,
@@ -18,6 +22,7 @@
     STATE_LABELS,
     workedWhen,
     type MuscleRecovery,
+    type MuscleStrength,
     type RecoveryState,
   } from '@/features/body'
   import { MuscleMap } from '@/features/body/muscle-map'
@@ -28,14 +33,16 @@
 
   let recovery = $state<MuscleRecovery[]>([])
   let names = $state(new Map<string, string>()) // exercise ID → name
+  let strength = $state(new Map<Muscle, MuscleStrength>())
   let status = $state<'loading' | 'ready' | 'error'>('loading')
   let selected = $state<Muscle | null>(null)
 
   async function load() {
     status = 'loading'
     try {
-      const [r, catalog] = await Promise.all([getRecovery(profile.id), getCatalog()])
+      const [r, s, catalog] = await Promise.all([getRecovery(profile.id), getStrength(profile.id), getCatalog()])
       recovery = r
+      strength = new Map(s.muscles.map((m) => [m.muscle, m]))
       names = new Map(catalog.map((e) => [e.id, e.name]))
       status = 'ready'
     } catch (err) {
@@ -119,6 +126,7 @@
             </h2>
             <ul class="list">
               {#each group.muscles as m (m.muscle)}
+                {@const trend = strength.get(m.muscle)}
                 <li id="muscle-{m.muscle}" class="row" class:selected={selected === m.muscle} tabindex="-1">
                   <div class="name-line">
                     <span class="name">{MUSCLE_NAMES[m.muscle]}</span>
@@ -131,6 +139,11 @@
                       Not worked this week
                     {/if}
                   </p>
+                  {#if trend}
+                    <p class="detail strength" class:up={isStronger(trend.change)}>
+                      Strength {changeLabel(trend.change, trend.basis).replace(/^Holding/, 'holding')}
+                    </p>
+                  {/if}
                   {#if m.exercises.length > 0}
                     <p class="muted detail">
                       From {m.exercises.map((id) => names.get(id) ?? id).join(', ')}
@@ -299,5 +312,13 @@
 
   .detail {
     font-size: var(--text-sm);
+  }
+
+  .strength {
+    font-weight: var(--weight-semibold);
+  }
+
+  .strength.up {
+    color: var(--color-accent-text);
   }
 </style>

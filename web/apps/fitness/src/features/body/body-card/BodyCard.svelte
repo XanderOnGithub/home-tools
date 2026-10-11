@@ -1,14 +1,23 @@
 <!--
   Home's "Your body" card (decision #49): the muscle map, then the same
-  thing in words (what needs rest, what's recovering), and a link to the
+  thing in words (what needs rest, what's recovering, what's getting
+  stronger, #50), and a link to the
   Body page for details. The words are what screen readers get; the map
   is decorative for them.
 -->
 <script lang="ts">
-  import { muscleList, regionStates, type MuscleRecovery } from '@/features/body'
+  import { isStronger, muscleList, regionStates, type MuscleRecovery, type MuscleStrength } from '@/features/body'
   import { MuscleMap } from '@/features/body/muscle-map'
 
-  let { recovery }: { recovery: MuscleRecovery[] } = $props()
+  let { recovery, strength }: { recovery: MuscleRecovery[]; strength: MuscleStrength[] } = $props()
+
+  // Most improved first.
+  let stronger = $derived(
+    strength
+      .filter((m) => isStronger(m.change))
+      .toSorted((a, b) => b.change - a.change)
+      .map((m) => m.muscle),
+  )
 
   let rest = $derived(recovery.filter((m) => m.state === 'rest').map((m) => m.muscle))
   let recovering = $derived(recovery.filter((m) => m.state === 'recovering').map((m) => m.muscle))
@@ -23,12 +32,16 @@
 
   <div class="map"><MuscleMap states={regionStates(recovery)} /></div>
 
-  {#if !trained}
+  {#if !trained && stronger.length === 0}
     <p class="muted">Log a workout and you'll see here which muscles it worked and when they're ready again.</p>
-  {:else if rest.length === 0 && recovering.length === 0}
-    <p>Everything's ready to train.</p>
   {:else}
+    {#if trained && rest.length === 0 && recovering.length === 0}
+      <p>Everything's ready to train.</p>
+    {/if}
     <dl class="summary">
+      {#if stronger.length > 0}
+        <div class="up"><dt>Getting stronger</dt><dd>{muscleList(stronger)}</dd></div>
+      {/if}
       {#if rest.length > 0}
         <div><dt>Needs rest</dt><dd>{muscleList(rest)}</dd></div>
       {/if}
@@ -108,5 +121,9 @@
   dd {
     margin: 0;
     color: var(--color-text-muted);
+  }
+
+  .up dt {
+    color: var(--color-accent-text);
   }
 </style>

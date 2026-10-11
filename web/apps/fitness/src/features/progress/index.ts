@@ -61,6 +61,18 @@ const day = (iso: string) =>
 
 const sum = (sets: SetEntry[], key: keyof SetEntry) => sets.reduce((n, s) => n + (s[key] ?? 0), 0)
 
+/**
+ * A set's estimated one-rep max in kg (Epley), or 0 if it can't give one:
+ * no weight, no reps, or more than 12 reps. Same as estimatedMax in
+ * tools/fitness/strength.go (decision #50).
+ */
+export function estimatedMax(s: SetEntry): number {
+  const reps = s.reps ?? 0
+  const kg = s.weight_kg ?? 0
+  if (kg <= 0 || reps <= 0 || reps > 12) return 0
+  return reps === 1 ? kg : kg * (1 + reps / 30)
+}
+
 /** Picks the best item by score (higher wins; the earliest wins ties). */
 function best<T>(items: T[], score: (x: T) => number): T | undefined {
   let top: T | undefined
@@ -72,7 +84,8 @@ function best<T>(items: T[], score: (x: T) => number): T | undefined {
  * What to chart and which records to show for an exercise, from its
  * history (newest first, as the API sends it). What counts as "better"
  * follows what the exercise tracks:
- *   weight (+ reps) → heaviest set; records: heaviest, most reps
+ *   weight (+ reps) → estimated max (heaviest set if no set has ≤ 12
+ *     reps); records: estimated max, heaviest, most reps
  *   reps only (or bodyweight never loaded) → most reps in a set
  *   distance cardio → distance per workout; records: longest, best pace
  *   time only (holds, stretches, cardio without distance) → longest
@@ -93,17 +106,25 @@ export function journey(ex: Exercise, history: ExerciseWorkout[], u: Units): Jou
   if (ex.metrics.includes('weight') && has('weight_kg')) {
     const unit = weightUnit(u)
     const format = (v: number) => `${round(v, 1)} ${unit}`
-    const pts = points((w) => Math.max(...w.sets.map((s) => toWeight(s.weight_kg ?? 0, u))))
+    // The estimated max counts reps too (8 × 100 beats 5 × 100), so it
+    // shows progress the heaviest weight alone misses.
+    const maxes = points((w) => toWeight(Math.max(...w.sets.map(estimatedMax)), u))
+    const heaviest = points((w) => Math.max(...w.sets.map((s) => toWeight(s.weight_kg ?? 0, u))))
+    const useMax = maxes.length > 0
     // Heaviest: by weight, then reps. Most reps: by reps, then weight.
     const heavy = best(sets, ({ s }) => (s.weight_kg ?? 0) * 1000 + (s.reps ?? 0))!
     const reps = best(sets, ({ s }) => (s.reps ?? 0) * 10000 + (s.weight_kg ?? 0))!
-    const highlights: Highlight[] = [
-      { label: 'Heaviest', value: format(toWeight(heavy.s.weight_kg!, u)), detail: `${heavy.s.reps ?? 0} reps · ${day(heavy.at)}` },
-    ]
+    const top = best(sets, ({ s }) => estimatedMax(s))!
+    const highlights: Highlight[] = []
+    if (useMax) {
+      highlights.push({ label: 'Estimated max', value: format(toWeight(estimatedMax(top.s), u)), detail: `from ${setLabel(top.s, u)} · ${day(top.at)}` })
+    }
+    highlights.push({ label: 'Heaviest', value: format(toWeight(heavy.s.weight_kg!, u)), detail: `${heavy.s.reps ?? 0} reps · ${day(heavy.at)}` })
     if (reps.s.reps) {
       highlights.push({ label: 'Most reps', value: `${reps.s.reps}`, detail: `at ${setLabel({ weight_kg: reps.s.weight_kg }, u) || 'bodyweight'} · ${day(reps.at)}` })
     }
-    return { measure: 'Heaviest set', points: pts, format, highlights: [...highlights, ...change(pts, format)] }
+    const pts = useMax ? maxes : heaviest
+    return { measure: useMax ? 'Estimated max' : 'Heaviest set', points: pts, format, highlights: [...highlights, ...change(pts, format)] }
   }
 
   if (has('distance_m')) {

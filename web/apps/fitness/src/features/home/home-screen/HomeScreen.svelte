@@ -6,7 +6,7 @@
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { isoDate, isoWeek, startOfWeek, weekDays } from '@home-tools/ui/dates'
-  import { getRecovery, type MuscleRecovery } from '@/features/body'
+  import { getRecovery, getStrength, type MuscleRecovery, type MuscleStrength } from '@/features/body'
   import { BodyCard } from '@/features/body/body-card'
   import { getWeights, type FitnessProfile, type WeightEntry } from '@/features/fitness-profile'
   import { ThisWeek } from '@/features/home/this-week'
@@ -31,18 +31,22 @@
   let plans = $state<Plan[]>([])
   let weights = $state<WeightEntry[]>([])
   let recovery = $state<MuscleRecovery[]>([])
+  let strength = $state<MuscleStrength[]>([])
   let status = $state<'loading' | 'ready' | 'error'>('loading')
 
   async function load() {
     status = 'loading'
     try {
       // Independent requests: fetch in parallel.
-      ;[sessions, plans, weights, recovery] = await Promise.all([
+      let s
+      ;[sessions, plans, weights, recovery, s] = await Promise.all([
         getRecentSessions(profile.id),
         getPlans(),
         getWeights(profile.id),
         getRecovery(profile.id),
+        getStrength(profile.id),
       ])
+      strength = s.muscles
       status = 'ready'
     } catch (err) {
       console.error('Loading home failed:', err)
@@ -89,7 +93,7 @@
       />
       <div class="side">
         <ThisWeek {profile} {fitness} sessions={thisWeek} {plans} />
-        <BodyCard {recovery} />
+        <BodyCard {recovery} {strength} />
       </div>
     </div>
   {/if}

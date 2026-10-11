@@ -39,6 +39,7 @@ func Register(mux *http.ServeMux, store *Store, log *slog.Logger) {
 	mux.HandleFunc("GET /api/users/{user}/exercise-log", h.getExerciseLog)
 	mux.HandleFunc("GET /api/users/{user}/exercise-log/{exercise}", h.getExerciseHistory)
 	mux.HandleFunc("GET /api/users/{user}/recovery", h.getRecovery)
+	mux.HandleFunc("GET /api/users/{user}/strength", h.getStrength)
 	mux.HandleFunc("GET /api/users/{user}/fitness", h.getProfile)
 	mux.HandleFunc("PUT /api/users/{user}/fitness", h.putProfile)
 	mux.HandleFunc("GET /api/users/{user}/weights", h.getWeights)

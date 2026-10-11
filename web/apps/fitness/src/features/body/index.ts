@@ -120,3 +120,37 @@ export function muscleList(muscles: Muscle[]): string {
   if (names.length === 3) return `${names[0]}, ${names[1]} and ${names[2]}`
   return `${names[0]}, ${names[1]} and ${names.length - 2} more`
 }
+
+// ---- Strength (decision #50) ----
+
+/** What a change compares with: the 4 weeks before, or the first time. */
+export type Basis = '4_weeks' | 'since_start'
+
+/** One exercise's numbers (Go: fitness.ExerciseStrength). */
+export type ExerciseStrength = {
+  exercise_id: string
+  measure: 'max_kg' | 'reps' // estimated one-rep max, or most reps (bodyweight)
+  best: number
+  recent: number // best in the last 4 weeks; 0 = not done then
+  change: number // 0.08 = 8% better; only with a basis
+  basis?: Basis
+}
+
+/** One muscle's trend; muscles without one are left out (Go: fitness.MuscleStrength). */
+export type MuscleStrength = { muscle: Muscle; change: number; basis: Basis; exercises: string[] }
+
+export type Strength = { muscles: MuscleStrength[]; exercises: ExerciseStrength[] }
+
+export const getStrength = (userId: string) => api.get<Strength>(`/api/users/${userId}/strength`)
+
+/** Below this, a change is noise: "holding steady". */
+const STEADY = 0.02
+
+export const isStronger = (change: number) => change >= STEADY
+
+/** "+8% in 4 weeks", "+12% since you started", "Holding steady", "−4% in 4 weeks". */
+export function changeLabel(change: number, basis: Basis): string {
+  if (Math.abs(change) < STEADY) return 'Holding steady'
+  const pct = `${change > 0 ? '+' : '−'}${Math.round(Math.abs(change) * 100)}%`
+  return `${pct} ${basis === '4_weeks' ? 'in 4 weeks' : 'since you started'}`
+}
