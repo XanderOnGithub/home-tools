@@ -1,11 +1,13 @@
 <!--
-  Top-right profile button (blob + caret) and its small menu.
+  Top-right profile button (blob + caret) and its small menu: switch
+  profile, or go to the tools home page (tools.<domain>, decision #46).
 
   Uses the native Popover API: the browser closes it on Esc or an outside
   click, puts it above everything (top layer), and the trigger button gets
   aria-expanded automatically. We only position it under the button.
 -->
 <script lang="ts">
+  import { HOME, toolUrl } from '../../tools'
   import { ProfileAvatar } from '../profile-avatar'
   import type { Profile } from '../types'
 
@@ -51,6 +53,12 @@
     </svg>
     Switch profile
   </button>
+  <a class="item" href={toolUrl(HOME.id, location)}>
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-5h4v5" />
+    </svg>
+    All tools
+  </a>
 </div>
 
 <style>
@@ -128,7 +136,10 @@
     border: none;
     border-radius: var(--radius-sm);
     background: none;
+    color: inherit;
+    font: inherit;
     text-align: left;
+    text-decoration: none;
     cursor: pointer;
   }
 
