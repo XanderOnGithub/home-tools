@@ -8,6 +8,8 @@
   import { saveFitnessProfile, type FitnessProfile, type Weekday } from '@/features/fitness-profile'
   import type { Plan } from '@/features/plans'
   import { weekChecks, weekLoad } from '@/features/training'
+  import { GOAL_KEYS, GOALS, goalSummary } from '@/features/training/guidance'
+  import type { Goal } from '@/features/fitness-profile'
   import { LoadSummary } from '@/features/training/load-summary'
 
   let { fitness = $bindable(), plans }: { fitness: FitnessProfile; plans: Plan[] } = $props()
@@ -38,6 +40,16 @@
   const choicesFor = (day: Weekday) =>
     plans.filter((r) => !r.archived || r.id === fitness.schedule?.[day])
 
+  async function changeGoal(goal: Goal) {
+    status = 'Saving…'
+    try {
+      fitness = await saveFitnessProfile({ ...fitness, goal })
+      status = 'Saved'
+    } catch (err) {
+      status = `Couldn't save. ${(err as Error).message}`
+    }
+  }
+
   async function change(day: Weekday, planId: string) {
     const schedule = { ...fitness.schedule }
     if (planId) schedule[day] = planId
@@ -56,6 +68,18 @@
   <div class="head">
     <h2 id="week-title">Your routine</h2>
     <p class="status" role="status">{status}</p>
+  </div>
+
+  <div class="goal">
+    <label for="goal">Your goal</label>
+    <select id="goal" value={fitness.goal ?? 'muscle'} onchange={(e) => changeGoal(e.currentTarget.value as Goal)} aria-describedby="goal-hint">
+      {#each GOAL_KEYS as key (key)}
+        <option value={key}>{GOALS[key].label}</option>
+      {/each}
+    </select>
+    <p id="goal-hint" class="goal-hint">
+      {goalSummary(fitness.goal)}. {GOALS[fitness.goal ?? 'muscle'].note} <a href="/guide#reps">More</a>
+    </p>
   </div>
 
   <ul class="days">
@@ -105,6 +129,37 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
+  }
+
+  .goal {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .goal label {
+    font-weight: var(--weight-semibold);
+  }
+
+  .goal select {
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font-weight: var(--weight-medium);
+  }
+
+  .goal-hint {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    line-height: var(--leading-normal);
+  }
+
+  .goal-hint a {
+    color: var(--color-accent-text);
+    font-weight: var(--weight-semibold);
   }
 
   .builder {

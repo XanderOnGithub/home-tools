@@ -1,11 +1,13 @@
 // Plans (Go: fitness.Plan). Shared by everyone; `created_by` = user ID.
 import { api } from '@home-tools/ui/api'
+import type { Goal } from '@/features/fitness-profile'
 
 export type Plan = {
   id: string
   name: string
   created_by: string
   exercises: { exercise_id: string; suggested_sets?: number; rest_sec?: number }[] // sets, rest: hints
+  goal?: Goal // rep ranges for this plan's workouts instead of each person's goal (#56)
   archived?: boolean
 }
 

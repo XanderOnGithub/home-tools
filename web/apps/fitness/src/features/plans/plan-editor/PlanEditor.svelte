@@ -4,6 +4,8 @@
   between sets (hints, never enforced; decisions #7, #35). Reorder with up/down buttons (keyboard and
   touch friendly; the moved row keeps focus). Archive instead of delete.
   Below the list, "What this plan works" (#51) updates as you edit.
+  A plan can have its own goal (#56): its rep ranges then apply to
+  whoever does it; each row shows its range.
 -->
 <script lang="ts">
   import { tick } from 'svelte'
@@ -15,10 +17,12 @@
   import { DEFAULT_REST_SEC, getPlans, savePlan, type Plan } from '@/features/plans'
   import { idFromName } from '@home-tools/ui/ids'
   import { planChecks, planLoad } from '@/features/training'
+  import { GOAL_KEYS, GOALS, goalSummary, repTarget } from '@/features/training/guidance'
+  import type { Goal } from '@/features/fitness-profile'
   import { LoadSummary } from '@/features/training/load-summary'
   import { router } from '@home-tools/ui/router'
 
-  let { profile, id }: { profile: Profile; id: string | null } = $props()
+  let { profile, id, goal }: { profile: Profile; id: string | null; goal?: Goal } = $props()
 
   // As typed ('' = no hint). Rest is in seconds: phone number pads have
   // no ":" key, so "1:30" couldn't be typed there.
@@ -29,6 +33,7 @@
   let logged = $state<string[]>([]) // your exercises, most recent first: the picker shows them first
   let original = $state<Plan | null>(null)
   let name = $state('')
+  let planGoal = $state<Goal | ''>('') // '' = each person's own goal
   let items = $state<Item[]>([])
   let status = $state<'loading' | 'ready' | 'missing' | 'error'>('loading')
   let picking = $state(false)
@@ -50,6 +55,7 @@
           return
         }
         name = original.name
+        planGoal = original.goal ?? ''
         items = original.exercises.map((e) => ({
           exercise_id: e.exercise_id,
           sets: e.suggested_sets ? String(e.suggested_sets) : '',
@@ -121,6 +127,7 @@
       id: original?.id ?? idFromName(name, taken),
       name: name.trim(),
       created_by: original?.created_by ?? profile.id,
+      ...(planGoal && { goal: planGoal }),
       // Empty hints are left out (the server omits zeros too).
       exercises: items.map((i) => ({
         exercise_id: i.exercise_id,
@@ -185,6 +192,19 @@
         {#if nameError}<p id="plan-name-error" class="error">{nameError}</p>{/if}
       </div>
 
+      <div class="field">
+        <label for="plan-goal">Goal for this plan</label>
+        <select id="plan-goal" bind:value={planGoal} aria-describedby="plan-goal-hint">
+          <option value="">Each person's own goal</option>
+          {#each GOAL_KEYS as key (key)}
+            <option value={key}>{GOALS[key].label}</option>
+          {/each}
+        </select>
+        <p id="plan-goal-hint" class="hint">
+          {#if planGoal}{goalSummary(planGoal)}, for anyone who does this plan.{:else}Reps follow whoever does it ({goalSummary(goal)} for you).{/if}
+        </p>
+      </div>
+
       <section class="exercises" aria-labelledby="exercises-title">
         <div class="section-head">
           <h2 id="exercises-title">Exercises</h2>
@@ -204,7 +224,12 @@
                 {/if}
                 <span class="text">
                   <span class="name">{ex?.name ?? item.exercise_id}</span>
-                  {#if ex}<span class="muscles">{primaryMuscles(ex).map(label).join(', ')}</span>{/if}
+                  {#if ex}
+                    {@const target = repTarget(ex, planGoal || goal)}
+                    <span class="muscles">
+                      {primaryMuscles(ex).map(label).join(', ')}{#if target}{` · ${target.min}–${target.max} reps`}{/if}
+                    </span>
+                  {/if}
                 </span>
                 <label class="sets">
                   <input type="text" inputmode="numeric" maxlength="2" placeholder="–" bind:value={item.sets} />
@@ -374,6 +399,15 @@
     border-radius: var(--radius-md);
     background: var(--color-surface);
     font-size: var(--text-lg);
+  }
+
+  .field select {
+    min-height: var(--touch-target);
+    padding: 0 var(--space-3);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    font-size: var(--text-md);
   }
 
   .field input[aria-invalid='true'] {

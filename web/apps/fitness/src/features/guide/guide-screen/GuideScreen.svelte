@@ -6,6 +6,8 @@
   behind recovery is docs/research/muscle-recovery.md.
 -->
 <script lang="ts">
+  import { GOAL_KEYS, GOALS } from '@/features/training/guidance'
+
   const SECTIONS = [
     { id: 'effort', title: 'How hard' },
     { id: 'reps', title: 'How many reps' },
@@ -49,14 +51,23 @@
 
   <section id="reps" aria-labelledby="reps-title">
     <h2 id="reps-title">How many reps</h2>
+    <p>It depends on what you're training for. Big lifts are the ones that move several muscles (squats, presses, rows).</p>
     <dl class="table">
-      <div><dt>Build muscle</dt><dd>8–12 reps a set</dd></div>
-      <div><dt>Get stronger</dt><dd>4–6 on big lifts (squat, bench, rows), 8–12 on small ones</dd></div>
-      <div><dt>Stay fit</dt><dd>10–15, stopping 2–3 short</dd></div>
+      {#each GOAL_KEYS as key (key)}
+        {@const g = GOALS[key]}
+        <div>
+          <dt>{g.label}</dt>
+          <dd>
+            {#if g.big[0] === g.small[0] && g.big[1] === g.small[1]}{g.big[0]}–{g.big[1]} reps{:else}{g.big[0]}–{g.big[1]} on big lifts, {g.small[0]}–{g.small[1]} on small ones{/if},
+            {g.effort}.
+            <span class="muted">{g.note}</span>
+          </dd>
+        </div>
+      {/each}
     </dl>
     <p class="muted">
-      Any of these build muscle if the sets are hard enough; the range mostly decides how heavy it feels. Your goal is set
-      when you build a routine (Plans → Build a routine for me).
+      Any of these build muscle if the sets are hard enough; the range mostly decides how heavy it feels. Pick your goal
+      under Plans → Your routine; a plan can also have its own.
     </p>
   </section>
 
@@ -202,6 +213,12 @@
 
   dd {
     margin: 0;
+  }
+
+  dd .muted {
+    display: block;
+    margin-top: var(--space-1);
+    font-size: var(--text-sm);
   }
 
   .steps {
