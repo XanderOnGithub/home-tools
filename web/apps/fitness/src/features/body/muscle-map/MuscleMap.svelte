@@ -1,23 +1,26 @@
 <!--
-  The body, front and back, with each muscle colored by how worked it is
-  (decision #49): needs rest = the person's accent, recovering = half of
-  it, ready = the plain figure. Decorative for screen readers: whoever
-  uses it always shows the same states as text next to it.
+  The body, front and back, with each muscle shaded by how worked it is:
+  0 = the plain figure up to 3 = the person's full accent (recovery #49,
+  a plan's load #51), with a legend saying what the shades mean.
+  Decorative for screen readers: whoever uses it always shows the same
+  thing as text next to it.
 
   `onpick` (optional) makes the muscles clickable with a pointer; the
   text list beside the map is the keyboard and screen-reader way to the
   same details.
 -->
 <script lang="ts">
-  import { STATE_LABELS, type RecoveryState } from '@/features/body'
+  import type { LegendItem, Shade } from '@/features/body'
   import { BACK, FRONT, type Region } from './body-model'
 
   let {
-    states,
+    shades,
+    legend,
     selected = [],
     onpick,
   }: {
-    states: Partial<Record<Region, RecoveryState>>
+    shades: Partial<Record<Region, Shade>>
+    legend: LegendItem[]
     selected?: Region[] // outlined, e.g. the muscle whose details are open
     onpick?: (region: Region) => void
   } = $props()
@@ -42,7 +45,7 @@
                  pointer shortcut only; the list next to the map is the accessible way -->
             <polygon
               {points}
-              class={muscle ? (states[shape.muscle] ?? 'ready') : 'figure'}
+              class={muscle ? `shade-${shades[shape.muscle] ?? 0}` : 'shade-0'}
               class:selected={selected.includes(shape.muscle)}
               class:pickable={muscle && !!onpick}
               onclick={muscle && onpick ? () => onpick(shape.muscle) : undefined}
@@ -55,8 +58,8 @@
   {/each}
 </div>
 <ul class="legend">
-  {#each ['rest', 'recovering', 'ready'] as const as state (state)}
-    <li><span class="swatch {state}"></span>{STATE_LABELS[state]}</li>
+  {#each legend as item (item.label)}
+    <li><span class="swatch shade-{item.shade}"></span>{item.label}</li>
   {/each}
 </ul>
 </div>
@@ -101,20 +104,24 @@
     transition: fill var(--duration-normal) var(--ease-out);
   }
 
-  .figure,
-  .ready {
+  .shade-0 {
     fill: var(--color-body);
     background: var(--color-body);
   }
 
-  .recovering {
-    fill: var(--color-muscle-recovering);
-    background: var(--color-muscle-recovering);
+  .shade-1 {
+    fill: var(--color-muscle-light);
+    background: var(--color-muscle-light);
   }
 
-  .rest {
-    fill: var(--color-muscle-rest);
-    background: var(--color-muscle-rest);
+  .shade-2 {
+    fill: var(--color-muscle-medium);
+    background: var(--color-muscle-medium);
+  }
+
+  .shade-3 {
+    fill: var(--color-muscle-strong);
+    background: var(--color-muscle-strong);
   }
 
   .legend {

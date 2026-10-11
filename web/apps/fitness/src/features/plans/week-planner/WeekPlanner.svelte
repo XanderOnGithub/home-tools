@@ -4,8 +4,11 @@
   a live region announces "Saved" so it's clear nothing else is needed.
 -->
 <script lang="ts">
+  import { getCatalog, type Exercise } from '@/features/exercises'
   import { saveFitnessProfile, type FitnessProfile, type Weekday } from '@/features/fitness-profile'
   import type { Plan } from '@/features/plans'
+  import { weekChecks, weekLoad } from '@/features/training'
+  import { LoadSummary } from '@/features/training/load-summary'
 
   let { fitness = $bindable(), plans }: { fitness: FitnessProfile; plans: Plan[] } = $props()
 
@@ -20,6 +23,14 @@
   ]
 
   let status = $state('')
+
+  // The week's muscles (#51): needs the catalog; until it's here (or if
+  // it fails) the planner simply works without the summary.
+  let catalog = $state<Exercise[] | null>(null)
+  getCatalog()
+    .then((c) => (catalog = c))
+    .catch((err) => console.error('Loading the catalog for the week summary failed:', err))
+  let week = $derived(catalog ? weekLoad(fitness.schedule, plans, new Map(catalog.map((e) => [e.id, e]))) : null)
 
   // Archived plans can't be newly picked, but stay listed on the days
   // that already use them, so the select doesn't silently show "Rest".
@@ -64,6 +75,13 @@
       </li>
     {/each}
   </ul>
+
+  {#if week && week.days.size > 0}
+    <section class="works" aria-labelledby="week-works-title">
+      <h3 id="week-works-title">What your week works</h3>
+      <LoadSummary load={week.total} checks={weekChecks(week)} mode="week" />
+    </section>
+  {/if}
 </section>
 
 <style>
@@ -71,6 +89,22 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
+  }
+
+  .works {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    margin-top: var(--space-4);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
+  }
+
+  h3 {
+    font-size: var(--text-lg);
+    font-weight: var(--weight-bold);
   }
 
   .head {
