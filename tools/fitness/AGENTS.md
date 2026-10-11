@@ -26,7 +26,8 @@ folders mirror these concepts: `exercises` (catalog, picker, photos),
 `workout` (workout mode, start dialog, rest timer, chime), `home`,
 `progress` (summary, weight + exercise charts, workout list), `body`
 (muscle map, Home card, `/body` page; #49), `training` (what a plan or
-week works + notes, `load-summary`; #51), `onboarding`, `fitness-profile`, `profiles` (shared picker,
+week works + notes, `load-summary`, `routine-builder`, `guidance` rep
+targets and tips; #51–#54), `guide` (/guide, "How training works"), `onboarding`, `fitness-profile`, `profiles` (shared picker,
 avatar blob), `shell` (layout, nav).
 
 ## Data on disk (`data/fitness/`)

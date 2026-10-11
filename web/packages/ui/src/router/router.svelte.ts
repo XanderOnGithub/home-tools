@@ -5,6 +5,8 @@
 //   plain links (real <a>: right-click, middle-click and screen readers
 //   all behave normally) and nothing special is needed per link.
 // - Back/forward buttons work via popstate.
+// - Anchors: a link to #section on the same page is left to the browser
+//   (it scrolls); /page#section keeps its hash, for the page to scroll to.
 //
 // The server must answer every app path with index.html (Vite does in dev;
 // the Go server will when it serves the built app).
@@ -17,10 +19,12 @@ class Router {
     document.addEventListener('click', (event) => this.#onClick(event))
   }
 
+  /** Goes to path, which may end in #section (path stays the pathname). */
   navigate(path: string) {
-    if (path === this.path) return
+    const pathname = path.split('#')[0]
+    if (pathname === this.path && !path.includes('#')) return
     history.pushState(null, '', path)
-    this.path = path
+    this.path = pathname
   }
 
   #onClick(event: MouseEvent) {
@@ -31,8 +35,9 @@ class Router {
     if (!a || a.target || a.hasAttribute('download')) return
     const url = new URL(a.href)
     if (url.origin !== location.origin) return
+    if (url.hash && url.pathname === location.pathname) return // same page: the browser scrolls
     event.preventDefault()
-    this.navigate(url.pathname)
+    this.navigate(url.pathname + url.hash)
   }
 }
 

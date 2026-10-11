@@ -96,6 +96,10 @@
         <BodyCard {recovery} {strength} />
       </div>
     </div>
+    <a class="guide-link" href="/guide">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z M4 21V5 M8 7h7 M8 11h5" /></svg>
+      <span><strong>How training works</strong><span class="guide-hint">How hard, how many reps, rest and getting stronger, in five minutes.</span></span>
+    </a>
   {/if}
 </div>
 
@@ -118,6 +122,47 @@
     .grid {
       grid-template-columns: 3fr 2fr;
       gap: var(--space-7);
+    }
+  }
+
+  .guide-link {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: var(--touch-target);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    color: var(--color-text);
+    text-decoration: none;
+    transition: background-color var(--duration-fast) var(--ease-out);
+  }
+
+  .guide-link svg {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    fill: none;
+    stroke: var(--color-accent-text);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .guide-link > span {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .guide-hint {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  @media (hover: hover) {
+    .guide-link:hover {
+      background: var(--color-surface);
     }
   }
 
