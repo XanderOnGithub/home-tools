@@ -3,7 +3,9 @@ package discord
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"image/png"
+	mrand "math/rand/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -14,10 +16,14 @@ import (
 func testPoll() PollFeature {
 	p := DefaultConfig().Features.Poll
 	p.Enabled, p.ChannelID = true, "123456789012345678"
-	p.Questions = []PollQuestion{
-		{Question: "Best pizza topping?", Answers: []string{"Pepperoni", "Pineapple"}},
-		{Question: "Morning or night?", Answers: []string{"Morning", "Night"}},
-		{Question: "Next game?", Answers: []string{"Valheim", "Minecraft", "Something new"}},
+	p.Packs = []PollPack{
+		{Name: "Food", Enabled: true, Questions: []PollQuestion{
+			{Question: "Best pizza topping?", Answers: []string{"Pepperoni", "Pineapple"}},
+			{Question: "Morning or night?", Answers: []string{"Morning", "Night"}},
+		}},
+		{Name: "Games", Enabled: true, Questions: []PollQuestion{
+			{Question: "Next game?", Answers: []string{"Valheim", "Minecraft", "Something new"}},
+		}},
 	}
 	return p
 }
@@ -30,18 +36,26 @@ func TestPollValidate(t *testing.T) {
 		wantErr bool
 	}{
 		{"valid", testPoll(), false},
-		{"off without channel or questions", with(func(p *PollFeature) { p.Enabled, p.ChannelID, p.Questions = false, "", nil }), false},
+		{"off without channel or packs", with(func(p *PollFeature) { p.Enabled, p.ChannelID, p.Packs = false, "", []PollPack{} }), false},
 		{"on without channel", with(func(p *PollFeature) { p.ChannelID = "" }), true},
-		{"on without questions", with(func(p *PollFeature) { p.Questions = nil }), true},
+		{"on without packs", with(func(p *PollFeature) { p.Packs = []PollPack{} }), true},
+		{"on with every pack off", with(func(p *PollFeature) { p.Packs[0].Enabled, p.Packs[1].Enabled = false, false }), true},
+		{"on with one pack off", with(func(p *PollFeature) { p.Packs[0].Enabled = false }), false},
+		{"pack without a name", with(func(p *PollFeature) { p.Packs[0].Name = " " }), true},
+		{"pack name twice", with(func(p *PollFeature) { p.Packs[1].Name = "food" }), true},
 		{"every 8 days", with(func(p *PollFeature) { p.EveryDays = 8 }), true},
 		{"bad time", with(func(p *PollFeature) { p.PostAt = "6pm" }), true},
 		{"24:00", with(func(p *PollFeature) { p.PostAt = "24:00" }), true},
 		{"open 0 h", with(func(p *PollFeature) { p.DurationHours = 0 }), true},
-		{"one answer", with(func(p *PollFeature) { p.Questions[0].Answers = []string{"Yes"} }), true},
-		{"answer too long", with(func(p *PollFeature) { p.Questions[0].Answers[0] = strings.Repeat("a", 56) }), true},
-		{"answer twice", with(func(p *PollFeature) { p.Questions[0].Answers = []string{"Yes", "yes"} }), true},
-		{"question twice", with(func(p *PollFeature) { p.Questions[1].Question = "best pizza topping?" }), true},
-		{"empty question", with(func(p *PollFeature) { p.Questions[0].Question = " " }), true},
+		{"one answer", with(func(p *PollFeature) { p.Packs[0].Questions[0].Answers = []string{"Yes"} }), true},
+		{"answer too long", with(func(p *PollFeature) { p.Packs[0].Questions[0].Answers[0] = strings.Repeat("a", 56) }), true},
+		{"answer twice", with(func(p *PollFeature) { p.Packs[0].Questions[0].Answers = []string{"Yes", "yes"} }), true},
+		{"same question, other answers", with(func(p *PollFeature) { p.Packs[0].Questions[1].Question = "Best pizza topping?" }), false},
+		{"same poll twice", with(func(p *PollFeature) {
+			p.Packs[0].Questions[1] = PollQuestion{Question: "best pizza topping?", Answers: []string{"pepperoni", "pineapple"}}
+		}), true},
+		{"same poll in two packs", with(func(p *PollFeature) { p.Packs[1].Questions = append(p.Packs[1].Questions, p.Packs[0].Questions[0]) }), true},
+		{"empty question", with(func(p *PollFeature) { p.Packs[0].Questions[0].Question = " " }), true},
 	}
 	for _, tt := range tests {
 		if err := tt.p.validate(); (err != nil) != tt.wantErr {
@@ -73,23 +87,58 @@ func TestNextPollSlot(t *testing.T) {
 		}
 	}
 
-	// Every question before any repeats, and never the same twice in a row.
-	p.EveryDays = 1
-	var prev string
-	seen := map[string]int{}
-	for i := range 30 {
-		day := time.Date(2026, 10, 10+i, 12, 0, 0, 0, loc)
-		q := questionFor(p, nextPollSlot(day, p, day.AddDate(0, 0, -1).Format(time.DateOnly))).Question
-		if q == prev {
-			t.Fatalf("day %d repeats %q", i, q)
+}
+
+func TestNextQuestion(t *testing.T) {
+	p := testPoll() // 3 questions on, in two packs
+	p.Packs = append(p.Packs, PollPack{Name: "Off", Questions: []PollQuestion{{Question: "Never?", Answers: []string{"A", "B"}}}})
+	rng := mrand.New(mrand.NewPCG(1, 2))
+
+	// Over many rounds: each question once per round, never the same twice
+	// in a row (not even across rounds), never one from a pack that's off.
+	asked, last := map[string]string(nil), ""
+	for round := range 50 {
+		got := map[string]bool{}
+		for i := range 3 {
+			q, next := nextQuestion(p, asked, last, fmt.Sprintf("r%d-%d", round, i), rng.IntN)
+			if q.Question == "Never?" {
+				t.Fatal("asked a question from a pack that's off")
+			}
+			if q.key() == last {
+				t.Fatalf("round %d: %q twice in a row", round, q.Question)
+			}
+			if got[q.key()] {
+				t.Fatalf("round %d: %q twice in one round", round, q.Question)
+			}
+			got[q.key()] = true
+			asked, last = next, q.key()
 		}
-		seen[q]++
-		prev = q
 	}
-	for _, q := range p.Questions {
-		if seen[q.Question] != 10 {
-			t.Errorf("%q asked %d times in 30 days, want 10", q.Question, seen[q.Question])
-		}
+
+	// The record keeps packs that are off, and drops questions that are gone.
+	off := p.Packs[2].Questions[0].key()
+	asked = map[string]string{off: "2026-01-01", "gone\x1fA\x1fB": "2026-01-01"}
+	_, next := nextQuestion(p, asked, "", "2026-10-11", rng.IntN)
+	if next[off] != "2026-01-01" || len(next) != 2 {
+		t.Errorf("record = %v", next)
+	}
+
+	// A single question repeats (there's nothing else).
+	one := PollFeature{Packs: []PollPack{{Name: "One", Enabled: true, Questions: p.Packs[1].Questions}}}
+	q, asked := nextQuestion(one, nil, "", "d1", rng.IntN)
+	if again, _ := nextQuestion(one, asked, q.key(), "d2", rng.IntN); again.key() != q.key() {
+		t.Errorf("single question: %q", again.Question)
+	}
+}
+
+func TestDefaultPollPacks(t *testing.T) {
+	p := DefaultConfig().Features.Poll
+	p.Enabled, p.ChannelID = true, "123456789012345678"
+	if err := p.validate(); err != nil {
+		t.Fatalf("default packs don't fit Discord's limits: %v", err)
+	}
+	if len(p.Packs) == 0 || len(p.questions()) < 20 {
+		t.Errorf("packs = %d, questions on = %d", len(p.Packs), len(p.questions()))
 	}
 }
 
@@ -184,7 +233,56 @@ func TestOldConfigGetsDefaults(t *testing.T) {
 		t.Fatal(err)
 	}
 	p := s.Config().Features.Poll
-	if p.Enabled || p.EveryDays != 2 || p.PostAt != "18:00" || p.DurationHours != 24 || p.Questions == nil {
+	if p.Enabled || p.EveryDays != 2 || p.PostAt != "18:00" || p.DurationHours != 24 || len(p.Packs) != len(DefaultPollPacks()) {
 		t.Errorf("defaults = %+v", p)
+	}
+
+	// A config from before packs: its questions become a pack of their own.
+	old = `{"revision": 4, "status_boards": [], "verified": [], "names": ["Jim"],
+		"features": {"poll": {"every_days": 3, "post_at": "20:00", "duration_hours": 24,
+			"questions": [{"question": "Tea or coffee?", "answers": ["Tea", "Coffee"]}]}}}`
+	if err := os.WriteFile(filepath.Join(dir, "config.json"), []byte(old), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if s, err = Open(dir); err != nil {
+		t.Fatal(err)
+	}
+	p = s.Config().Features.Poll
+	mine := p.Packs[len(p.Packs)-1]
+	if p.Questions != nil || mine.Name != "My questions" || !mine.Enabled || mine.Questions[0].Question != "Tea or coffee?" || p.EveryDays != 3 {
+		t.Errorf("migrated = %+v", p)
+	}
+	// Saving writes packs only, and an emptied pack list stays empty.
+	cfg := s.Config()
+	cfg.Features.Poll.Packs = []PollPack{}
+	if _, err := s.SaveConfig(cfg); err != nil {
+		t.Fatal(err)
+	}
+	if s, err = Open(dir); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(s.Config().Features.Poll.Packs); n != 0 {
+		t.Errorf("removed packs came back: %d", n)
+	}
+}
+
+func TestAskedPolls(t *testing.T) {
+	dir := t.TempDir()
+	s, err := Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := s.SetPollPosted("2026-10-11", "a", map[string]string{"a": "2026-10-11", "b": "2026-10-09"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.ForgetAsked([]string{"b", "nope"}); err != nil {
+		t.Fatal(err)
+	}
+	if s, err = Open(dir); err != nil { // it's on disk
+		t.Fatal(err)
+	}
+	asked, last := s.AskedPolls()
+	if last != "a" || len(asked) != 1 || asked["a"] != "2026-10-11" || s.LastPoll() != "2026-10-11" {
+		t.Errorf("asked = %v, last = %q, last poll = %q", asked, last, s.LastPoll())
 	}
 }

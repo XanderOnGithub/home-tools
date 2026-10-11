@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -33,6 +34,7 @@ func Register(mux *http.ServeMux, store *Store, bot *Bot, log *slog.Logger) {
 	mux.HandleFunc("GET /api/bot", h.getBot)
 	mux.HandleFunc("DELETE /api/requests/{user}", h.deleteRequest)
 	mux.HandleFunc("POST /api/poll", h.postPoll)
+	mux.HandleFunc("POST /api/poll/reset", h.resetPack)
 	mux.HandleFunc("GET /api/blob", h.getBlob)
 	mux.HandleFunc("GET /api/persona.gif", h.getPersonaImage)
 	mux.HandleFunc("GET /api/persona.png", h.getPersonaImage) // still: for reduced motion
@@ -48,6 +50,12 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 	var cfg Config
 	if err := httpx.DecodeJSON(w, r, &cfg); err != nil {
 		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	// A page from before packs (#47) sends the old question list and no
+	// packs; saving that would bring the default packs back.
+	if cfg.Features.Poll.Questions != nil {
+		httpx.WriteError(w, http.StatusBadRequest, "The poll packs are missing. Reload the page and try again.")
 		return
 	}
 	// JSON null for a list decodes to nil; store them as empty lists.
@@ -80,11 +88,12 @@ func (h *handlers) putConfig(w http.ResponseWriter, r *http.Request) {
 // botView is everything the settings page shows besides the config.
 type botView struct {
 	BotView
-	Requests     []AccessRequest `json:"requests"`
-	NextPoll     *time.Time      `json:"next_poll,omitempty"` // nil: the poll is off
-	Status       string          `json:"status,omitempty"`    // the bot's custom status right now
-	Servers      []serverOption  `json:"servers"`             // for picking a status board's server
-	ServersError string          `json:"servers_error,omitempty"`
+	Requests     []AccessRequest   `json:"requests"`
+	NextPoll     *time.Time        `json:"next_poll,omitempty"` // nil: the poll is off
+	PollAsked    map[string]string `json:"poll_asked"`          // this round: question key → date asked
+	Status       string            `json:"status,omitempty"`    // the bot's custom status right now
+	Servers      []serverOption    `json:"servers"`             // for picking a status board's server
+	ServersError string            `json:"servers_error,omitempty"`
 }
 
 type serverOption struct {
@@ -97,6 +106,9 @@ type serverOption struct {
 func (h *handlers) getBot(w http.ResponseWriter, r *http.Request) {
 	v := botView{BotView: h.bot.View(), Requests: h.store.Requests(), Servers: []serverOption{}}
 	v.Status = h.bot.Status()
+	if v.PollAsked, _ = h.store.AskedPolls(); v.PollAsked == nil {
+		v.PollAsked = map[string]string{}
+	}
 	if next := h.bot.NextPoll(); !next.IsZero() {
 		v.NextPoll = &next
 	}
@@ -119,6 +131,34 @@ func (h *handlers) postPoll(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, http.StatusConflict, "Couldn't post the poll: "+pollProblem(err))
 		return
 	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// resetPack forgets which of a pack's questions were asked this round,
+// so all of them can come up again: {"pack": "Overwatch"}.
+func (h *handlers) resetPack(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Pack string `json:"pack"`
+	}
+	if err := httpx.DecodeJSON(w, r, &body); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	packs := h.store.Config().Features.Poll.Packs
+	i := slices.IndexFunc(packs, func(p PollPack) bool { return p.Name == body.Pack })
+	if i < 0 {
+		httpx.WriteError(w, http.StatusNotFound, "There's no poll pack called "+strconv.Quote(body.Pack)+".")
+		return
+	}
+	var keys []string
+	for _, q := range packs[i].Questions {
+		keys = append(keys, q.key())
+	}
+	if err := h.store.ForgetAsked(keys); err != nil {
+		httpx.ServerError(w, r, h.log, err)
+		return
+	}
+	h.log.Info("discord poll pack reset", "pack", body.Pack)
 	w.WriteHeader(http.StatusNoContent)
 }
 

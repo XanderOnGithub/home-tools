@@ -1,14 +1,25 @@
 <!--
-  The poll's questions: a list, plus one form that adds a question or
-  edits the one picked. Answers are typed one per line (quicker than a
-  field per answer, and it works on phones). Limits are Discord's, checked
-  here as you type and again by the server. Removing asks first.
+  One poll pack's questions (decision #47): a list, plus one form that
+  adds a question or edits the one picked. Answers are typed one per line
+  (quicker than a field per answer, and it works on phones). Limits are
+  Discord's, checked here as you type and again by the server. Each
+  question shows when it was asked this round. Removing asks first.
 -->
 <script lang="ts">
   import { tick } from 'svelte'
-  import { POLL_LIMITS, type Config, type PollQuestion } from '@/features/bot'
+  import { POLL_LIMITS, pollKey, type Config, type PollQuestion } from '@/features/bot'
 
-  let { config, save }: { config: Config; save: (change: (c: Config) => void) => Promise<string> } = $props()
+  let {
+    config,
+    pack,
+    asked,
+    save,
+  }: {
+    config: Config
+    pack: number // index in config.features.poll.packs
+    asked: Record<string, string> // pollKey → date asked this round
+    save: (change: (c: Config) => void) => Promise<string>
+  } = $props()
 
   let editing = $state<number | null>(null) // index being edited; null = adding
   let question = $state('')
@@ -18,7 +29,7 @@
   let error = $state('')
   let confirming = $state<number | null>(null)
 
-  let questions = $derived(config.features.poll.questions)
+  let questions = $derived(config.features.poll.packs[pack].questions)
   let answers = $derived(
     answersText
       .split('\n')
@@ -32,8 +43,13 @@
     if (long) return `“${long.slice(0, 20)}…” is over ${POLL_LIMITS.answer} characters.`
     if (answers.length > POLL_LIMITS.answers) return `At most ${POLL_LIMITS.answers} answers.`
     if (new Set(answers.map((a) => a.toLowerCase())).size !== answers.length) return 'An answer is there twice.'
-    const dup = questions.findIndex((x, i) => i !== editing && x.question.toLowerCase() === q.toLowerCase())
-    if (q && dup >= 0) return 'That question is already on the list.'
+    // The same question with other answers is fine; the same poll twice
+    // isn't, in any pack (the server checks the same).
+    const key = pollKey({ question: q, answers }).toLowerCase()
+    for (const [p, other] of config.features.poll.packs.entries()) {
+      const i = other.questions.findIndex((x, i) => !(p === pack && i === editing) && pollKey(x).toLowerCase() === key)
+      if (q && i >= 0) return p === pack ? 'That poll is already in this pack.' : `That poll is already in “${other.name}”.`
+    }
     return ''
   })
   let ready = $derived(question.trim() !== '' && answers.length >= 2 && !problem)
@@ -45,7 +61,7 @@
     busy = true
     const at = editing
     error = await save((c) => {
-      const list = c.features.poll.questions
+      const list = c.features.poll.packs[pack].questions
       if (at === null) list.push(q)
       else list[at] = q
     })
@@ -60,7 +76,13 @@
     answersText = q.answers.join('\n')
     multi = q.multi ?? false
     await tick()
-    document.getElementById('poll-question')?.focus()
+    document.getElementById(`poll-question-${pack}`)?.focus()
+  }
+
+  /** "Oct 9", from "2026-10-09" (a calendar date: no time zone shift). */
+  function day(date: string) {
+    const [y, m, d] = date.split('-').map(Number)
+    return new Date(y, m - 1, d).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
   }
 
   function reset() {
@@ -72,18 +94,18 @@
   async function askRemove(i: number) {
     confirming = i
     await tick()
-    document.getElementById(`keep-question-${i}`)?.focus()
+    document.getElementById(`keep-question-${pack}-${i}`)?.focus()
   }
 
   async function keep(i: number) {
     confirming = null
     await tick()
-    document.getElementById(`remove-question-${i}`)?.focus()
+    document.getElementById(`remove-question-${pack}-${i}`)?.focus()
   }
 
   async function remove(i: number) {
     busy = true
-    error = await save((c) => c.features.poll.questions.splice(i, 1))
+    error = await save((c) => c.features.poll.packs[pack].questions.splice(i, 1))
     busy = false
     confirming = null
     if (editing === i) reset()
@@ -91,32 +113,29 @@
 </script>
 
 <div class="questions">
-  <div class="title">
-    <h3>Questions</h3>
-    <span class="muted count">{questions.length}</span>
-  </div>
-  <p class="muted">Shuffled, so each one gets asked before any repeats.</p>
-
   {#if questions.length === 0}
     <p class="muted">None yet. Add the first one below.</p>
   {:else}
     <ol class="list">
-      {#each questions as q, i (q.question)}
+      {#each questions as q, i (pollKey(q))}
         <li class="row">
           {#if confirming === i}
             <p class="question-text">Remove “{q.question}”?</p>
             <div class="actions">
-              <button type="button" id="keep-question-{i}" class="btn btn-secondary" onclick={() => keep(i)}>Keep it</button>
+              <button type="button" id="keep-question-{pack}-{i}" class="btn btn-secondary" onclick={() => keep(i)}>Keep it</button>
               <button type="button" class="btn btn-danger" disabled={busy} onclick={() => remove(i)}>Remove</button>
             </div>
           {:else}
             <div class="label">
               <span class="name">{q.question}</span>
               <span class="muted">{q.answers.join(' · ')}{q.multi ? ' · pick several' : ''}</span>
+              {#if asked[pollKey(q)]}
+                <span class="muted asked">Asked {day(asked[pollKey(q)])}</span>
+              {/if}
             </div>
             <div class="actions">
               <button type="button" class="btn btn-quiet" onclick={() => edit(i)} aria-label="Edit “{q.question}”">Edit</button>
-              <button type="button" id="remove-question-{i}" class="btn btn-icon" aria-label="Remove “{q.question}”" onclick={() => askRemove(i)}>
+              <button type="button" id="remove-question-{pack}-{i}" class="btn btn-icon" aria-label="Remove “{q.question}”" onclick={() => askRemove(i)}>
                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12 M18 6L6 18" /></svg>
               </button>
             </div>
@@ -129,24 +148,24 @@
   <form class="form" onsubmit={submit}>
     <h4>{editing === null ? 'Add a question' : 'Edit question'}</h4>
     <div class="field">
-      <label for="poll-question">Question</label>
-      <input id="poll-question" bind:value={question} autocomplete="off" placeholder="Best pizza topping?" />
+      <label for="poll-question-{pack}">Question</label>
+      <input id="poll-question-{pack}" bind:value={question} autocomplete="off" placeholder="Best pizza topping?" />
     </div>
     <div class="field">
-      <label for="poll-answers">Answers <span class="muted hint">one per line, 2–{POLL_LIMITS.answers}</span></label>
+      <label for="poll-answers-{pack}">Answers <span class="muted hint">one per line, 2–{POLL_LIMITS.answers}</span></label>
       <textarea
-        id="poll-answers"
+        id="poll-answers-{pack}"
         bind:value={answersText}
         rows="4"
         placeholder={'Pepperoni\nPineapple\nJust cheese'}
-        aria-describedby={problem ? 'poll-problem' : undefined}
+        aria-describedby={problem ? `poll-problem-${pack}` : undefined}
       ></textarea>
     </div>
     <label class="check">
       <input type="checkbox" bind:checked={multi} />
       People may pick more than one answer
     </label>
-    {#if problem}<p class="error" id="poll-problem">{problem}</p>{/if}
+    {#if problem}<p class="error" id="poll-problem-{pack}">{problem}</p>{/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
     <div class="actions">
       {#if editing !== null}
@@ -164,19 +183,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    padding-top: var(--space-4);
-    border-top: 1px solid var(--color-border);
-  }
-
-  .title {
-    display: flex;
-    align-items: baseline;
-    gap: var(--space-2);
-  }
-
-  h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
   }
 
   h4 {
@@ -191,10 +197,6 @@
 
   .muted {
     color: var(--color-text-muted);
-  }
-
-  .count {
-    font-weight: var(--weight-semibold);
   }
 
   .error {
@@ -241,6 +243,10 @@
   .label .muted {
     font-size: var(--text-sm);
     overflow-wrap: anywhere;
+  }
+
+  .asked {
+    font-variant-numeric: tabular-nums;
   }
 
   .question-text {

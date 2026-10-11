@@ -1,12 +1,12 @@
 <!--
   The poll feature (decision #44): its switch, where and when it posts,
-  and how long votes stay open. Every change saves at once, like the
-  rest of the page. "Post one now" takes the next poll's turn, so trying
-  it out never repeats a question.
+  and how long votes stay open, then the question packs. Every change
+  saves at once, like the rest of the page. "Post one now" takes the next
+  poll's slot, and its question counts as asked.
 -->
 <script lang="ts">
   import { postPollNow, type BotView, type Config, type PollFeature } from '@/features/bot'
-  import { PollQuestions } from '@/features/bot/poll-questions'
+  import { PollPacks } from '@/features/bot/poll-packs'
   import { ToggleSwitch } from '@/components/toggle-switch'
 
   let {
@@ -121,7 +121,7 @@
   {#if posted}<p class="muted" role="status">{posted}</p>{/if}
   {#if error}<p class="error" role="alert">{error}</p>{/if}
 
-  <PollQuestions {config} {save} />
+  <PollPacks {config} {bot} {save} onreset={onposted} />
 </section>
 
 <style>
