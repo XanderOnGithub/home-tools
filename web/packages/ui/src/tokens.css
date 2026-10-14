@@ -28,23 +28,40 @@
 /* ---- Neutrals and status (shared by every tool) ---- */
 :root {
   /* Surfaces, back to front */
-  --color-bg: light-dark(#fafaf9, #0c0a09); /* page */
-  --color-surface: light-dark(#ffffff, #1c1917); /* cards, panels */
-  --color-surface-raised: light-dark(#ffffff, #292524); /* menus, dialogs */
+  --color-bg: light-dark(#f7f7f8, #0b0b0d); /* page */
+  --color-surface: light-dark(#ffffff, #161618); /* cards, panels */
+  --color-surface-raised: light-dark(#ffffff, #202023); /* menus, dialogs */
+  --color-surface-sunken: light-dark(#efeff1, #1d1d20); /* skeletons, wells, hover on rows */
 
   /* Text */
-  --color-text: light-dark(#1c1917, #fafaf9);
-  --color-text-muted: light-dark(#57534e, #a8a29e); /* secondary info, never essential-only */
+  --color-text: light-dark(#18181b, #f4f4f5);
+  --color-text-muted: light-dark(#52525b, #a1a1aa); /* secondary info, never essential-only */
 
   /* Lines */
-  --color-border: light-dark(#e7e5e4, #292524); /* decorative dividers */
-  --color-border-strong: light-dark(#78716c, #78716c); /* input outlines: ≥ 3:1 */
+  --color-border: light-dark(#e4e4e7, #27272a); /* decorative dividers */
+  --color-border-strong: light-dark(#8a8a93, #71717a); /* input outlines: ≥ 3:1 */
 
   /* Danger: errors and destructive actions only, never decoration */
   --color-danger: light-dark(#b91c1c, #f87171);
   --color-on-danger: light-dark(#ffffff, #450a0a);
   --color-danger-text: light-dark(#b91c1c, #f87171);
   --color-danger-subtle: light-dark(#fef2f2, #2a1414);
+
+  /* Status (badges, server states): success = up/done, warning = needs a
+   * look. Text ≥ 4.5:1 on its subtle background in both themes. */
+  --color-success-text: light-dark(#15803d, #4ade80);
+  --color-success-subtle: light-dark(#ecfdf3, #0f2418);
+  --color-warning-text: light-dark(#a16207, #facc15);
+  --color-warning-subtle: light-dark(#fefce8, #2a2410);
+
+  /* Toasts: inverted surface (dark on a light page, light on a dark one). */
+  --color-toast: light-dark(#18181b, #f4f4f5);
+  --color-on-toast: light-dark(#fafafa, #18181b);
+  --color-on-toast-muted: light-dark(#a1a1aa, #52525b);
+  --color-toast-hover: light-dark(rgb(255 255 255 / 0.1), rgb(0 0 0 / 0.08));
+  --color-toast-success: light-dark(#4ade80, #15803d);
+  --color-toast-danger: light-dark(#f87171, #b91c1c);
+  --color-toast-action: light-dark(#93c5fd, #1d4ed8);
 
   /* Fixed in both themes: they sit on photos or over the page, not on a
    * themed surface. */
@@ -53,7 +70,7 @@
   --color-overlay: rgb(0 0 0 / 0.55); /* controls on top of a photo */
   --color-on-overlay: #ffffff;
   --color-on-overlay-muted: rgb(255 255 255 / 0.45);
-  --color-avatar-eye: #1c1917; /* the blob's eyes are character, not chrome */
+  --color-avatar-eye: #18181b; /* the blob's eyes are character, not chrome */
 }
 
 /* ---- Accents (one per profile color) ----
@@ -63,6 +80,7 @@
  * on-accent       text/icons on any of the three above
  * accent-text     accent-colored text and links on surfaces
  * accent-subtle   tinted backgrounds (selected rows, chips)
+ * tile            a tool's icon tile (white glyph on it), same in both themes
  * avatar          the profile blob; the light shade in both themes so the
  *                 dark eyes stay readable (≥ 6.6:1; the light-theme accent
  *                 gave 2.5:1 on blue/purple)
@@ -75,6 +93,7 @@
   --color-on-accent: light-dark(#ffffff, #052e16);
   --color-accent-text: light-dark(#15803d, #4ade80);
   --color-avatar: #4ade80; /* blob body, both themes: eyes ≥ 6.6:1 on it */
+  --color-tile: #16a34a; /* tool icon tiles, both themes; white glyph ≥ 3:1 */
   --color-accent-subtle: light-dark(#f0fdf4, #10241a);
 }
 [data-accent='blue'] {
@@ -84,6 +103,7 @@
   --color-on-accent: light-dark(#ffffff, #172554);
   --color-accent-text: light-dark(#1d4ed8, #60a5fa);
   --color-avatar: #60a5fa; /* blob body, both themes: eyes ≥ 6.6:1 on it */
+  --color-tile: #2563eb; /* tool icon tiles, both themes; white glyph ≥ 3:1 */
   --color-accent-subtle: light-dark(#eff6ff, #121c30);
 }
 [data-accent='orange'] {
@@ -93,6 +113,7 @@
   --color-on-accent: light-dark(#ffffff, #431407);
   --color-accent-text: light-dark(#c2410c, #fb923c);
   --color-avatar: #fb923c; /* blob body, both themes: eyes ≥ 6.6:1 on it */
+  --color-tile: #ea580c; /* tool icon tiles, both themes; white glyph ≥ 3:1 */
   --color-accent-subtle: light-dark(#fff7ed, #2a1a0e);
 }
 [data-accent='purple'] {
@@ -102,6 +123,7 @@
   --color-on-accent: light-dark(#ffffff, #3b0764);
   --color-accent-text: light-dark(#7e22ce, #c084fc);
   --color-avatar: #c084fc; /* blob body, both themes: eyes ≥ 6.6:1 on it */
+  --color-tile: #9333ea; /* tool icon tiles, both themes; white glyph ≥ 3:1 */
   --color-accent-subtle: light-dark(#faf5ff, #221430);
 }
 
@@ -111,7 +133,7 @@
  * medium; a plan: a lot / solid / light). Color is never the only
  * signal: the map always sits next to the same thing in words. */
 :root {
-  --color-body: light-dark(#d6d3d1, #44403c); /* the figure; muscles not worked */
+  --color-body: light-dark(#d4d4d8, #3f3f46); /* the figure; muscles not worked */
   --color-muscle-light: color-mix(in oklab, var(--color-accent) 22%, var(--color-body));
   --color-muscle-medium: color-mix(in oklab, var(--color-accent) 50%, var(--color-body));
   --color-muscle-strong: var(--color-accent);
@@ -119,8 +141,9 @@
 
 /* ---- Type ---- */
 :root {
-  /* System font as fallback while the font loads, or if it's missing. */
-  --font-sans: 'Figtree', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  /* Inter (variable, bundled): neutral and precise, built for UI. System
+   * font as fallback while it loads, or if it's missing. */
+  --font-sans: 'Inter Variable', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   /* Logs and console output: the system's monospace, nothing to bundle. */
   --font-mono: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
 
@@ -130,18 +153,20 @@
   --text-md: 1rem; /* 16px: body; also the minimum for inputs (iOS zooms below it) */
   --text-lg: 1.25rem; /* 20px */
   --text-xl: 1.5rem; /* 24px */
-  --text-2xl: 2rem; /* 32px: page titles */
+  --text-2xl: 1.75rem; /* 28px: page titles */
   --text-3xl: 2.5rem; /* 40px: hero numbers (the weight you're lifting) */
+  --text-title: clamp(var(--text-xl), 1.1rem + 1.5vw, var(--text-2xl)); /* page <h1>: 24px on phones → 28px */
 
   --leading-tight: 1.2; /* headings */
+  --tracking-tight: -0.02em; /* headings: Inter is drawn for text; large sizes look loose without it */
   --leading-normal: 1.5; /* body */
 
-  /* Only these five weights are bundled (app.css); others would be faked. */
+  /* Inter is variable (100–900), but the UI uses only these. */
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
   --weight-bold: 700;
-  --weight-extrabold: 800; /* page titles */
+  --weight-extrabold: 800; /* hero numbers only; titles use bold */
 }
 
 /* ---- Space and shape ---- */
@@ -156,10 +181,10 @@
   --space-7: 3rem; /* 48 */
   --space-8: 4rem; /* 64 */
 
-  --radius-sm: 0.25rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 1rem;
-  --radius-full: 9999px; /* pills, avatars */
+  --radius-sm: 0.25rem; /* 4: badges, small chips */
+  --radius-md: 0.5rem; /* 8: buttons, inputs, list rows */
+  --radius-lg: 0.75rem; /* 12: cards, dialogs, menus */
+  --radius-full: 9999px; /* tags, toggles, avatars only; never buttons */
 
   --touch-target: 2.75rem; /* 44px: minimum size of anything tappable */
 
@@ -167,9 +192,18 @@
    * edges line up. Gutter = side padding at every width. */
   --page-width: 72rem;
   --page-gutter: var(--space-4);
+  /* Content widths inside the page (PageHeader and pages use these, never
+   * their own max-width): reading text and forms stay a comfortable line
+   * length; dashboards use the full page. */
+  --content-narrow: 40rem; /* forms, articles, settings */
+  --content-medium: 52rem; /* editors with a side column */
+  --header-height: 3.5rem;
 
-  --shadow-sm: 0 1px 2px light-dark(rgb(0 0 0 / 0.06), rgb(0 0 0 / 0.4));
-  --shadow-md: 0 4px 12px light-dark(rgb(0 0 0 / 0.08), rgb(0 0 0 / 0.5));
+  --shadow-sm: 0 1px 2px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.4));
+  --shadow-md: 0 1px 2px light-dark(rgb(0 0 0 / 0.04), rgb(0 0 0 / 0.3)),
+    0 6px 16px -4px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.5)); /* menus, toasts */
+  --shadow-lg: 0 1px 3px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3)),
+    0 16px 40px -8px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.6)); /* dialogs */
 }
 
 /* ---- Focus and motion ---- */
@@ -179,6 +213,7 @@
 
   --duration-fast: 100ms; /* hover, press */
   --duration-normal: 200ms; /* open/close, enter/leave */
+  --duration-slow: 1400ms; /* skeleton shimmer cycle */
   --ease-out: cubic-bezier(0.2, 0, 0, 1); /* fast start, gentle stop: feels responsive */
 }
 
@@ -186,5 +221,6 @@
   :root {
     --duration-fast: 0ms;
     --duration-normal: 0ms;
+    --duration-slow: 0ms;
   }
 }

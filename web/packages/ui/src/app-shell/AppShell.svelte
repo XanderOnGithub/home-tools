@@ -1,11 +1,14 @@
 <!--
-  The frame around every signed-in screen: navigation + profile menu.
+  The frame around every signed-in screen: tool switcher, navigation,
+  profile menu, and the toasts.
 
-  Shared by every tool, so they all feel the same. One set of links (the
-  tool passes its own), two layouts: in the header on wide screens, a
-  bottom tab bar on phones (within thumb reach). With a single link there's
-  nothing to switch between, so phones get no tab bar. The current page's link gets
-  aria-current="page", which screen readers announce as "current page".
+  Shared by every tool, so they all read as one product (decision #57):
+  the same header with the same switcher in the same place. One set of
+  links (the tool passes its own), two layouts: in the header on wide
+  screens, a bottom tab bar on phones (within thumb reach). With a single
+  link there's nothing to switch between, so it isn't shown at all. A
+  link is current on its own page and the pages under it (/plans/push
+  → Plans); it gets aria-current="page", announced as "current page".
 
   On navigation, focus moves to the new page's <h1> (single-page apps don't
   reload, so without this screen readers wouldn't notice the page change).
@@ -15,14 +18,29 @@
   import { ProfileMenu } from '../profiles/profile-menu'
   import type { Profile } from '../profiles/types'
   import { router } from '../router'
+  import { Toaster } from '../toast'
+  import { toolById } from '../tools'
+  import ToolSwitcher from './ToolSwitcher.svelte'
   import type { NavLink } from './types'
 
   let {
+    tool: toolId,
     links,
     profile,
     onswitch,
     children,
-  }: { links: NavLink[]; profile: Profile; onswitch: () => void; children: Snippet } = $props()
+  }: {
+    tool: string // TOOLS id: whose name and icon the switcher shows
+    links: NavLink[]
+    profile: Profile
+    onswitch: () => void
+    children: Snippet
+  } = $props()
+
+  let tool = $derived(toolById(toolId)!)
+
+  const isCurrent = (href: string) =>
+    router.path === href || (href !== '/' && router.path.startsWith(`${href}/`))
 
   let main = $state<HTMLElement>()
   let first = true
@@ -41,7 +59,7 @@
   <ul class="links {variant}">
     {#each links as link (link.href)}
       <li>
-        <a href={link.href} aria-current={router.path === link.href ? 'page' : undefined}>
+        <a href={link.href} aria-current={isCurrent(link.href) ? 'page' : undefined}>
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d={link.icon} /></svg>
           <span>{link.label}</span>
         </a>
@@ -53,10 +71,15 @@
 <div class="shell">
   <header class="header">
     <div class="header-inner">
-      <nav class="header-nav" aria-label="Main">
-        {@render navLinks('inline')}
-      </nav>
-      <ProfileMenu {profile} {onswitch} />
+      <ToolSwitcher {tool} />
+      {#if links.length > 1}
+        <nav class="header-nav" aria-label="Main">
+          {@render navLinks('inline')}
+        </nav>
+      {/if}
+      <div class="header-end">
+        <ProfileMenu {profile} {onswitch} />
+      </div>
     </div>
   </header>
 
@@ -69,6 +92,8 @@
       {@render navLinks('tabs')}
     </nav>
   {/if}
+
+  <Toaster />
 </div>
 
 <style>
@@ -83,9 +108,9 @@
   .header {
     position: sticky;
     top: 0;
-    z-index: 1;
+    z-index: 2;
     border-bottom: 1px solid var(--color-border);
-    background: var(--color-bg);
+    background: var(--color-surface);
   }
 
   .header-inner,
@@ -99,15 +124,17 @@
   .header-inner {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: var(--space-4);
-    min-height: 3.5rem;
-    padding-block: var(--space-1);
+    gap: var(--space-5);
+    height: var(--header-height);
+  }
+
+  .header-end {
+    margin-left: auto;
   }
 
   .main {
     flex: 1;
-    padding-block: var(--space-5) var(--space-7);
+    padding-block: var(--space-5) var(--space-8);
   }
 
   /* Page headings receive focus on navigation; it's not an interactive
@@ -124,29 +151,29 @@
   }
 
   .links a {
+    position: relative;
     display: flex;
     align-items: center;
     color: var(--color-text-muted);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
     text-decoration: none;
-    transition:
-      color var(--duration-fast) var(--ease-out),
-      background var(--duration-fast) var(--ease-out);
+    transition: color var(--duration-fast) var(--ease-out);
   }
 
   .links svg {
     flex: none;
-    width: 1.375rem;
-    height: 1.375rem;
+    width: 1.25rem;
+    height: 1.25rem;
     fill: none;
     stroke: currentColor;
-    stroke-width: 2;
+    stroke-width: 1.75;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
 
   .links a[aria-current='page'] {
-    color: var(--color-accent-text);
+    color: var(--color-text);
   }
 
   @media (hover: hover) {
@@ -155,32 +182,37 @@
     }
   }
 
-  /* Inline links in the header (wide screens): icon + label pills. The
-   * first pill's padding is pulled back so its icon lines up with the
-   * page content's left edge. */
+  /* Header links (wide screens): text only, the current one underlined
+   * along the header's bottom edge, like tabs. */
   .links.inline {
-    gap: var(--space-1);
-    margin-left: calc(-1 * var(--space-4));
+    gap: var(--space-5);
+    height: var(--header-height);
   }
 
   .links.inline a {
-    gap: var(--space-2);
-    min-height: var(--touch-target);
-    padding: 0 var(--space-4);
-    border-radius: var(--radius-full);
+    height: 100%;
   }
 
-  .links.inline a[aria-current='page'] {
-    background: var(--color-accent-subtle);
+  .links.inline svg {
+    display: none;
+  }
+
+  .links.inline a[aria-current='page']::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 -1px;
+    height: 2px;
+    border-radius: 2px 2px 0 0;
+    background: var(--color-accent);
   }
 
   /* Bottom tabs (phones): icon above label, evenly spread. */
   .tab-bar {
     position: sticky;
     bottom: 0;
-    z-index: 1;
+    z-index: 2;
     border-top: 1px solid var(--color-border);
-    background: var(--color-bg);
+    background: var(--color-surface);
     padding-bottom: env(safe-area-inset-bottom); /* iPhone home bar */
   }
 
@@ -191,14 +223,23 @@
   .links.tabs a {
     flex-direction: column;
     justify-content: center;
-    gap: 2px;
-    min-height: 3.5rem;
+    gap: var(--space-1);
+    min-height: 3.25rem;
     font-size: var(--text-xs);
+  }
+
+  .links.tabs a[aria-current='page'] {
+    color: var(--color-accent-text);
+  }
+
+  .links.tabs a[aria-current='page'] svg {
+    stroke-width: 2.25;
   }
 
   /* Phones: tabs only. Wide screens: header links only. */
   .header-nav {
     display: none;
+    align-self: stretch;
   }
 
   @media (min-width: 40rem) {
@@ -208,17 +249,6 @@
 
     .tab-bar {
       display: none;
-    }
-
-    .header-inner {
-      padding-block: var(--space-2);
-    }
-  }
-
-  /* Phones: nothing on the header's left, so keep the menu on the right. */
-  @media (max-width: 39.99rem) {
-    .header-inner {
-      justify-content: flex-end;
     }
   }
 </style>

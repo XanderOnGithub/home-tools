@@ -1,8 +1,9 @@
 <!--
   An on/off switch: a button with role="switch", so screen readers say
   "Daily poll, switch, on". The track fills with the accent when on, and
-  the knob moves (with its own check mark, so color isn't the only
-  signal). `busy` blocks double taps while a save runs.
+  the knob slides to the other side (position, not only color, says
+  which). `busy` blocks double taps while a save runs. Shared by every
+  tool (moved from discord, decision #57).
 -->
 <script lang="ts">
   let {
@@ -24,9 +25,7 @@
   onclick={() => onchange(!checked)}
 >
   <span class="track" aria-hidden="true">
-    <span class="knob">
-      <svg viewBox="0 0 24 24"><path d="M6 12.5l4 4 8-9" /></svg>
-    </span>
+    <span class="knob"></span>
   </span>
 </button>
 
@@ -44,42 +43,32 @@
     cursor: pointer;
   }
 
+  /* Busy (saving): blocks taps without dimming, so a quick save doesn't
+   * flash. */
   .switch:disabled {
     cursor: progress;
-    opacity: 0.7;
   }
 
   .track {
     display: flex;
     align-items: center;
-    width: 3.25rem;
-    height: 2rem;
+    width: 2.75rem;
+    height: 1.625rem;
     padding: 0.1875rem;
     border-radius: var(--radius-full);
     background: var(--color-border-strong);
-    transition: background var(--duration-fast) var(--ease-out);
+    transition: background var(--duration-normal) var(--ease-out);
   }
 
   .knob {
-    display: grid;
-    place-items: center;
-    width: 1.625rem;
-    height: 1.625rem;
+    width: 1.25rem;
+    height: 1.25rem;
     border-radius: var(--radius-full);
-    background: var(--color-bg);
-    transition: translate var(--duration-fast) var(--ease-out);
-  }
-
-  .knob svg {
-    width: 1rem;
-    height: 1rem;
-    fill: none;
-    stroke: var(--color-accent);
-    stroke-width: 3;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    opacity: 0;
-    transition: opacity var(--duration-fast) var(--ease-out);
+    background: #fff; /* on the track in both themes */
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.25);
+    transition:
+      translate var(--duration-normal) var(--ease-out),
+      width var(--duration-fast) var(--ease-out);
   }
 
   [aria-checked='true'] .track {
@@ -87,11 +76,7 @@
   }
 
   [aria-checked='true'] .knob {
-    translate: 1.25rem 0;
-  }
-
-  [aria-checked='true'] .knob svg {
-    opacity: 1;
+    translate: 1.125rem 0;
   }
 
   @media (hover: hover) {
@@ -104,7 +89,12 @@
     }
   }
 
+  /* Pressed: the knob stretches toward where it's going, like iOS. */
   .switch:active:not(:disabled) .knob {
-    scale: 0.9;
+    width: 1.5rem;
+  }
+
+  [aria-checked='true']:active:not(:disabled) .knob {
+    translate: 0.875rem 0;
   }
 </style>
