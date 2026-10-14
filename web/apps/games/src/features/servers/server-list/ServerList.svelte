@@ -33,12 +33,9 @@
     <div class="grid">
       {#each { length: 3 } as _, i (i)}
         <div class="ghost">
-          <Skeleton width="2.75rem" height="2.75rem" radius="md" />
-          <div class="ghost-text">
-            <Skeleton width="60%" height="1.1rem" />
-            <Skeleton width="5rem" height="1.5rem" radius="sm" />
-            <Skeleton width="80%" height="0.8rem" />
-          </div>
+          <div class="ghost-cover"><Skeleton height="100%" radius="lg" /></div>
+          <Skeleton width="70%" height="1rem" />
+          <Skeleton width="50%" height="0.8rem" />
         </div>
       {/each}
     </div>
@@ -58,25 +55,27 @@
 {/if}
 
 <style>
+  /* Covers in rows, like a browse page: 2 across on phones, as many as
+   * fit (at least 11rem each) on wider screens. */
   .grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(18rem, 1fr));
-    gap: var(--space-3);
+    grid-template-columns: repeat(auto-fill, minmax(min(11rem, calc(50% - var(--space-2))), 1fr));
+    gap: var(--space-6) var(--space-4);
+  }
+
+  @media (min-width: 40rem) {
+    .grid {
+      grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
+    }
   }
 
   .ghost {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: var(--space-4);
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-  }
-
-  .ghost-text {
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
+  }
+
+  .ghost-cover {
+    aspect-ratio: 3 / 4;
   }
 </style>
