@@ -8,7 +8,7 @@
   import { blobPath } from '@home-tools/ui/profiles/blob'
   import type { ProfileColor } from '@home-tools/ui/profiles/types'
   import type { Config } from '@/features/bot'
-  import { ToggleSwitch } from '@/components/toggle-switch'
+  import { ToggleSwitch } from '@home-tools/ui/components/toggle-switch'
 
   let { config, save }: { config: Config; save: (change: (c: Config) => void) => Promise<string> } = $props()
 
@@ -109,11 +109,6 @@
     gap: var(--space-1);
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-  }
-
   p {
     margin: 0;
   }
@@ -178,13 +173,6 @@
     font-weight: var(--weight-semibold);
   }
 
-  input {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-  }
 
   /* Same swatches as "Add profile" (ProfileDialog). */
   .swatches {

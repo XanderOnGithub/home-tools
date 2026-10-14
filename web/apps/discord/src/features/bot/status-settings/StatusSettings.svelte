@@ -6,7 +6,7 @@
 -->
 <script lang="ts">
   import { STATUS_MAX, type BotView, type Config, type StatusFeature } from '@/features/bot'
-  import { ToggleSwitch } from '@/components/toggle-switch'
+  import { ToggleSwitch } from '@home-tools/ui/components/toggle-switch'
 
   let {
     config,
@@ -136,16 +136,6 @@
     gap: var(--space-1);
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-  }
-
-  h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
   p {
     margin: 0;
   }
@@ -249,13 +239,7 @@
     gap: var(--space-2);
   }
 
-  input:not([type='checkbox']) {
+  input:not([type='checkbox']){
     flex: 1;
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
   }
 </style>

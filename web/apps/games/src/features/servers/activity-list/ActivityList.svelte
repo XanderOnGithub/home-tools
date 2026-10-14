@@ -84,8 +84,7 @@
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
+    font-size: var(--text-md);
   }
 
   h3 {
@@ -101,6 +100,7 @@
 
   .muted {
     color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   ul {
@@ -115,7 +115,8 @@
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    min-height: var(--touch-target);
+    min-height: 2.5rem;
+    font-size: var(--text-sm);
     border-bottom: 1px solid var(--color-border);
   }
 
@@ -149,7 +150,7 @@
   }
 
   .name {
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-medium);
   }
 
   .leave .text {

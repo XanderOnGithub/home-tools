@@ -1,12 +1,13 @@
 <!--
-  A server's state in words: a dot plus text (color is never the only
-  signal). Running = filled accent dot, stopped = hollow dot,
-  unavailable = danger text with the reason; an action in flight
-  ("Stopping…", from this page or anyone else's, e.g. the Discord bot)
-  replaces it all. Uptime and players go on the line below
-  (see `details`), so this one never wraps mid-phrase.
+  A server's state as a badge: the word says it, the dot backs it up
+  (color is never the only signal). Running = green with a slow pulse
+  (it's live), stopped = gray, unavailable = red with the reason on the
+  line below; an action in flight ("Stopping…", from this page or anyone
+  else's, e.g. the Discord bot) replaces it all. Uptime and players go on
+  their own line (see `details`).
 -->
 <script lang="ts">
+  import { Badge } from '@home-tools/ui/components/badge'
   import type { Action, Server } from '@/features/servers'
 
   let { server, pending = null }: { server: Server; pending?: Action | null } = $props()
@@ -16,48 +17,28 @@
   let doing = $derived(pending ?? server.busy ?? null)
 </script>
 
-<p class="status" class:on={running && !doing} class:unknown={!server.state && !doing}>
-  <span class="dot" aria-hidden="true"></span>
+<span class="status">
   {#if doing}
-    {DOING[doing]}
+    <Badge tone="warning" dot pulse>{DOING[doing]}</Badge>
   {:else if !server.state}
-    Unavailable: {server.error ?? 'unknown error'}
+    <Badge tone="danger" dot>Unavailable</Badge>
   {:else if running}
-    Running
+    <Badge tone="success" dot pulse>Running</Badge>
   {:else}
-    Stopped
+    <Badge dot>Stopped</Badge>
   {/if}
-</p>
+</span>
+{#if !doing && !server.state}
+  <span class="reason">{server.error ?? 'Unknown error'}</span>
+{/if}
 
 <style>
   .status {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--space-2);
-    margin: 0;
-    font-weight: var(--weight-semibold);
   }
 
-  .dot {
-    flex: none;
-    width: 0.7rem;
-    height: 0.7rem;
-    border: 2px solid var(--color-border-strong);
-    border-radius: var(--radius-full);
-  }
-
-  .on .dot {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
-  }
-
-  .unknown {
+  .reason {
     color: var(--color-danger-text);
-    font-weight: var(--weight-medium);
-  }
-
-  .unknown .dot {
-    border-color: var(--color-danger-text);
+    font-size: var(--text-sm);
   }
 </style>

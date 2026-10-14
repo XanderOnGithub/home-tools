@@ -52,7 +52,7 @@
 </script>
 
 <section class="console" aria-labelledby="console-title">
-  <h2 id="console-title">Console</h2>
+  <h2 id="console-title" class="visually-hidden">Console</h2>
 
   {#if entries.length > 0}
     <ol class="entries" bind:this={box} aria-live="polite">
@@ -64,13 +64,12 @@
       {/each}
     </ol>
   {:else}
-    <p class="muted">
-      Run any server command, e.g. <code>say Dinner's ready</code> or <code>whitelist add Steve</code>.
-    </p>
+    <p class="muted">Run any server command, like <code>say Dinner's ready</code> or <code>whitelist add Steve</code>.</p>
   {/if}
 
   <form onsubmit={send}>
     <label class="visually-hidden" for="console-command">Command</label>
+    <span class="prompt" aria-hidden="true">&gt;</span>
     <input
       id="console-command"
       type="text"
@@ -94,11 +93,8 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-  }
-
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
+    padding: var(--space-3) var(--space-4) var(--space-4);
+    border-top: 1px solid var(--color-border);
   }
 
   p {
@@ -107,10 +103,13 @@
 
   .muted {
     color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   code,
-  .entries {
+  .entries,
+  .prompt,
+  input{
     font-family: var(--font-mono);
   }
 
@@ -122,14 +121,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    max-height: min(20rem, 40dvh);
+    max-height: min(16rem, 35dvh);
     margin: 0;
-    padding: var(--space-4);
+    padding: 0;
     overflow-y: auto;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
-    font-size: var(--text-sm);
+    font-size: 0.8125rem;
     list-style: none;
   }
 
@@ -155,18 +151,22 @@
   }
 
   form {
+    position: relative;
     display: flex;
     gap: var(--space-2);
   }
 
-  input {
+  .prompt {
+    position: absolute;
+    top: 50%;
+    left: var(--space-3);
+    translate: 0 -50%;
+    color: var(--color-text-muted);
+    pointer-events: none;
+  }
+
+  input{
     flex: 1;
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    font-family: var(--font-mono);
+    padding-left: var(--space-6);
   }
 </style>

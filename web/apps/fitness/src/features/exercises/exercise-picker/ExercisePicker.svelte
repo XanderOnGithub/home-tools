@@ -200,11 +200,6 @@
     gap: var(--space-3);
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-  }
-
   .search {
     display: flex;
     align-items: center;
@@ -248,13 +243,8 @@
     gap: var(--space-2);
   }
 
-  select {
+  select{
     width: 100%;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
     cursor: pointer;
   }
 

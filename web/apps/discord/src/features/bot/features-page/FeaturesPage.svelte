@@ -4,6 +4,8 @@
 -->
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { SettingsSkeleton } from '@/components/settings-skeleton'
   import { BlobMaker } from '@/features/bot/blob-maker'
   import { PollSettings } from '@/features/bot/poll-settings'
   import { settings } from '@/features/bot/settings'
@@ -13,10 +15,7 @@
 </script>
 
 <div class="page">
-  <div class="intro">
-    <h1 tabindex="-1">Features</h1>
-    <p class="muted">Extras for the bot. Turning one off removes its commands from Discord right away.</p>
-  </div>
+  <PageHeader title="Features" description="Turning one off removes its commands from Discord right away." />
 
   {#if s.status === 'error'}
     <LoadError what="the bot's settings" onretry={s.load} />
@@ -24,6 +23,8 @@
     <PollSettings config={s.config} bot={s.bot} save={s.save} onposted={s.refreshBot} />
     <StatusSettings config={s.config} bot={s.bot} save={s.save} />
     <BlobMaker config={s.config} save={s.save} />
+  {:else}
+    <SettingsSkeleton sections={0} />
   {/if}
 </div>
 
@@ -31,25 +32,12 @@
   .page {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
+    max-width: var(--content-medium);
   }
 
-  .intro {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
-  p {
-    margin: 0;
-  }
-
-  .muted {
-    color: var(--color-text-muted);
+  /* The header's own bottom margin is the gap. */
+  .page > :global(.page-header) {
+    margin-bottom: var(--space-2);
   }
 </style>

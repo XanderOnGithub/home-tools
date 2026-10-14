@@ -6,6 +6,7 @@
   behind recovery is docs/research/muscle-recovery.md.
 -->
 <script lang="ts">
+  import { PageHeader } from '@home-tools/ui/components/page-header'
   import { GOAL_KEYS, GOALS } from '@/features/training/guidance'
 
   const SECTIONS = [
@@ -26,10 +27,7 @@
 </script>
 
 <div class="guide">
-  <header>
-    <h1 tabindex="-1">How training works</h1>
-    <p class="muted">The short version of why the app suggests what it does. Five minutes, then you know the basics.</p>
-  </header>
+  <PageHeader title="How training works" description="Why the app suggests what it does, in five minutes." />
 
   <nav aria-label="On this page">
     <ul class="toc">
@@ -125,22 +123,6 @@
     flex-direction: column;
     gap: var(--space-6);
     max-width: 42rem;
-  }
-
-  header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
   }
 
   section {

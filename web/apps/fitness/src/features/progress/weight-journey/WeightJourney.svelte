@@ -64,11 +64,6 @@
     background: var(--color-surface);
   }
 
-  h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
   .muted {
     margin: 0;
     color: var(--color-text-muted);

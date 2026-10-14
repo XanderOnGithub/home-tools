@@ -43,7 +43,7 @@
     <ProfilePicker onselect={(p) => (profile = p)} title="Who's playing?" />
   </main>
 {:else}
-  <AppShell links={LINKS} {profile} onswitch={switchProfile}>
+  <AppShell tool="games" links={LINKS} {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <ServerList />
     {:else if serverId}

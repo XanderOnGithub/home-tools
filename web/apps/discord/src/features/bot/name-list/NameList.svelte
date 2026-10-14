@@ -99,11 +99,6 @@
     gap: var(--space-2);
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-  }
-
   p {
     margin: 0;
   }
@@ -187,13 +182,7 @@
     gap: var(--space-2);
   }
 
-  input {
+  input{
     flex: 1;
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
   }
 </style>

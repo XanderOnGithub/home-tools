@@ -785,8 +785,8 @@
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-title);
+    font-weight: var(--weight-bold);
     line-height: var(--leading-tight);
   }
 

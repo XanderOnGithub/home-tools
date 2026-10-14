@@ -1,5 +1,5 @@
 <!--
-  Home: a greeting with the person's blob, today's date under it, then the
+  Home: today's date and "Summary" (no greeting: decision #57), then the
   weekly weight check-in (only when due), today's plan, this week, and
   the body's muscle map (#49).
 -->
@@ -12,7 +12,9 @@
   import { ThisWeek } from '@/features/home/this-week'
   import { UpNext } from '@/features/home/up-next'
   import { WeightCheckIn } from '@/features/home/weight-check-in'
-  import { ProfileAvatar } from '@home-tools/ui/profiles/profile-avatar'
+  import { Card } from '@home-tools/ui/components/card'
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { Skeleton, SkeletonGroup } from '@home-tools/ui/components/skeleton'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { getPlans, type Plan } from '@/features/plans'
   import { getRecentSessions, inProgress, type Session } from '@/features/sessions'
@@ -21,11 +23,6 @@
 
   const now = new Date()
   const date = now.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })
-
-  // 5–11 morning, 12–16 afternoon, otherwise evening ("Good morning" at
-  // 3 a.m. reads oddly, so late night counts as evening).
-  const hour = now.getHours()
-  const greeting = hour >= 5 && hour < 12 ? 'Good morning' : hour >= 12 && hour < 17 ? 'Good afternoon' : 'Good evening'
 
   let sessions = $state<Session[]>([])
   let plans = $state<Plan[]>([])
@@ -73,17 +70,23 @@
 </script>
 
 <div class="home">
-  <div class="greeting">
-    <span class="avatar"><ProfileAvatar name={profile.name} /></span>
-    <div>
-      <h1 tabindex="-1">{greeting}, {profile.name}</h1>
-      <p class="date"><time datetime={isoDate(now)}>{date}</time></p>
-    </div>
-  </div>
+  <PageHeader title="Summary">
+    {#snippet eyebrow()}<time datetime={isoDate(now)}>{date}</time>{/snippet}
+  </PageHeader>
 
   {#if status === 'error'}
     <LoadError what="your week" onretry={load} />
-  {:else if status === 'ready'}
+  {:else if status === 'loading'}
+    <SkeletonGroup label="your week">
+      <div class="grid">
+        <Skeleton height="22rem" radius="lg" />
+        <div class="side">
+          <Skeleton height="8rem" radius="lg" />
+          <Skeleton height="18rem" radius="lg" />
+        </div>
+      </div>
+    </SkeletonGroup>
+  {:else}
     {#if checkInDue}
       <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
     {/if}
@@ -92,14 +95,20 @@
         ondiscarded={(id) => (sessions = sessions.filter((s) => s.id !== id))}
       />
       <div class="side">
-        <ThisWeek {profile} {fitness} sessions={thisWeek} {plans} />
-        <BodyCard {recovery} {strength} />
+        <Card padding="lg"><ThisWeek {profile} {fitness} sessions={thisWeek} {plans} /></Card>
+        <Card padding="lg"><BodyCard {recovery} {strength} /></Card>
+        <Card as="a" href="/guide" padding="md">
+          <span class="guide">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z M4 21V5 M8 7h7 M8 11h5" /></svg>
+            <span class="guide-text">
+              <strong>How training works</strong>
+              <span class="guide-hint">Effort, reps, rest and progress, in five minutes</span>
+            </span>
+            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
+          </span>
+        </Card>
       </div>
     </div>
-    <a class="guide-link" href="/guide">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z M4 21V5 M8 7h7 M8 11h5" /></svg>
-      <span><strong>How training works</strong><span class="guide-hint">How hard, how many reps, rest and getting stronger, in five minutes.</span></span>
-    </a>
   {/if}
 </div>
 
@@ -107,104 +116,65 @@
   .home {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-4);
   }
 
-  /* Phones: one column. Wide screens: Today (the hero) wider, the week
-   * beside it. */
+  .home > :global(.page-header) {
+    margin-bottom: var(--space-2);
+  }
+
+  /* Phones: one column. Wide screens: Today (the main thing) wider, the
+   * week and body beside it. */
   .grid {
     display: grid;
-    gap: var(--space-6);
+    gap: var(--space-4);
     align-items: start;
   }
 
   @media (min-width: 56rem) {
     .grid {
       grid-template-columns: 3fr 2fr;
-      gap: var(--space-7);
-    }
-  }
-
-  .guide-link {
-    display: flex;
-    align-items: center;
-    gap: var(--space-3);
-    min-height: var(--touch-target);
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    color: var(--color-text);
-    text-decoration: none;
-    transition: background-color var(--duration-fast) var(--ease-out);
-  }
-
-  .guide-link svg {
-    flex: none;
-    width: 1.5rem;
-    height: 1.5rem;
-    fill: none;
-    stroke: var(--color-accent-text);
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .guide-link > span {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  .guide-hint {
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-  }
-
-  @media (hover: hover) {
-    .guide-link:hover {
-      background: var(--color-surface);
+      gap: var(--space-5);
     }
   }
 
   .side {
     display: flex;
     flex-direction: column;
-    gap: var(--space-7);
+    gap: var(--space-4);
   }
 
-  .greeting {
+  .guide {
     display: flex;
     align-items: center;
-    gap: var(--space-4);
-    margin-bottom: var(--space-3);
+    gap: var(--space-3);
   }
 
-  .avatar {
+  .guide svg {
     flex: none;
-    width: 4rem;
-    height: 4rem;
+    width: 1.25rem;
+    height: 1.25rem;
+    fill: none;
+    stroke: var(--color-text-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
   }
 
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+  .guide-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.125rem;
+    color: var(--color-text);
+    font-size: var(--text-sm);
   }
 
-  .date {
-    margin: var(--space-1) 0 0;
+  .guide-text strong {
+    font-weight: var(--weight-semibold);
+  }
+
+  .guide-hint {
     color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
   }
-
-  @media (min-width: 40rem) {
-    .avatar {
-      width: 5rem;
-      height: 5rem;
-    }
-
-    h1 {
-      font-size: var(--text-3xl);
-    }
-  }
-
 </style>

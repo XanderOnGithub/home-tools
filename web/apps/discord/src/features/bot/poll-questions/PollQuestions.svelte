@@ -281,15 +281,11 @@
   }
 
   input:not([type='checkbox']),
-  textarea {
-    min-height: var(--touch-target);
+  textarea{
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
   }
 
-  textarea {
+  textarea{
     resize: vertical;
     line-height: var(--leading-normal);
   }

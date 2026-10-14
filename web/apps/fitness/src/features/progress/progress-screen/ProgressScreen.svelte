@@ -4,6 +4,8 @@
   Replaces the old History page; its list lives on at the bottom.
 -->
 <script lang="ts">
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { PageSkeleton } from '@home-tools/ui/components/skeleton'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { getCatalog, type Exercise } from '@/features/exercises'
@@ -61,7 +63,7 @@
 </script>
 
 <div class="progress">
-  <h1 tabindex="-1">Progress</h1>
+  <PageHeader title="Progress" />
 
   {#if status === 'error'}
     <LoadError what="your progress" onretry={load} />
@@ -137,6 +139,8 @@
         {/if}
       {/if}
     </section>
+  {:else}
+    <PageSkeleton label="your progress" rows={5} />
   {/if}
 </div>
 
@@ -147,15 +151,8 @@
     gap: var(--space-6);
   }
 
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
   h2 {
     margin-bottom: var(--space-3);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
   }
 
   p {

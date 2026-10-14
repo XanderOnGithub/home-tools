@@ -130,14 +130,9 @@
   }
 
   h1 {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-extrabold);
-    line-height: var(--leading-tight);
-  }
-
-  h2 {
-    font-size: var(--text-lg);
+    font-size: var(--text-title);
     font-weight: var(--weight-bold);
+    line-height: var(--leading-tight);
   }
 
   p {
