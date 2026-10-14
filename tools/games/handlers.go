@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"os"
 	"slices"
 	"strings"
 	"sync"
@@ -39,6 +40,7 @@ func Register(mux *http.ServeMux, store *Store, docker *Docker, log *slog.Logger
 	mux.HandleFunc("POST /api/servers/{id}/{action}", h.postAction)
 	mux.HandleFunc("GET /api/servers/{id}/logs", h.getLogs)
 	mux.HandleFunc("GET /api/servers/{id}/heads/{name}", h.getHead)
+	mux.HandleFunc("GET /api/servers/{id}/art/{kind}", h.getArt)
 	// Minecraft over RCON (console.go); more specific than {action} above.
 	mux.HandleFunc("POST /api/servers/{id}/console", h.postConsole)
 	mux.HandleFunc("GET /api/servers/{id}/whitelist", h.getWhitelist)
@@ -51,25 +53,26 @@ func Register(mux *http.ServeMux, store *Store, docker *Docker, log *slog.Logger
 // right now, and who's online. Error explains a missing State (Docker
 // unreachable, no such container); PlayersError a missing Players.
 type serverView struct {
-	ID           string   `json:"id"`
-	Name         string   `json:"name"`
-	Game         Game     `json:"game"`
-	Container    string   `json:"container"`
-	Archived     bool     `json:"archived,omitempty"`
-	State        *State   `json:"state,omitempty"`
-	Error        string   `json:"error,omitempty"`
-	Players      *Players `json:"players,omitempty"`
-	PlayersError string   `json:"players_error,omitempty"`
-	Activity     []Event  `json:"activity,omitempty"`  // joins and leaves, newest first
-	Console      bool     `json:"console,omitempty"`   // Minecraft with RCON set up: commands work
-	Whitelist    bool     `json:"whitelist,omitempty"` // the whitelist routes work (RCON, or Valheim's permitted list)
-	Busy         Action   `json:"busy,omitempty"`      // a start/stop/restart is running right now
+	ID           string    `json:"id"`
+	Name         string    `json:"name"`
+	Game         Game      `json:"game"`
+	Container    string    `json:"container"`
+	Archived     bool      `json:"archived,omitempty"`
+	State        *State    `json:"state,omitempty"`
+	Error        string    `json:"error,omitempty"`
+	Players      *Players  `json:"players,omitempty"`
+	PlayersError string    `json:"players_error,omitempty"`
+	Activity     []Event   `json:"activity,omitempty"`  // joins and leaves, newest first
+	Console      bool      `json:"console,omitempty"`   // Minecraft with RCON set up: commands work
+	Whitelist    bool      `json:"whitelist,omitempty"` // the whitelist routes work (RCON, or Valheim's permitted list)
+	Busy         Action    `json:"busy,omitempty"`      // a start/stop/restart is running right now
+	Art          []ArtKind `json:"art,omitempty"`       // pictures in data/games/art (#58): "cover", "icon"
 }
 
-func viewOf(srv Server) serverView {
+func (h *handlers) viewOf(srv Server) serverView {
 	console := srv.Game == GameMinecraft && srv.Query != ""
 	return serverView{ID: srv.ID, Name: srv.Name, Game: srv.Game, Container: srv.Container, Archived: srv.Archived,
-		Console: console, Whitelist: console || srv.PermittedList != ""}
+		Console: console, Whitelist: console || srv.PermittedList != "", Art: h.store.artOf(srv)}
 }
 
 // fill asks Docker for srv's state and, if it's running, who's online:
@@ -140,7 +143,7 @@ func (h *handlers) lookAll() []serverView {
 	out := make([]serverView, len(servers))
 	var wg sync.WaitGroup
 	for i, srv := range servers {
-		out[i] = viewOf(srv)
+		out[i] = h.viewOf(srv)
 		out[i].Busy = h.busy.action(srv.ID)
 		if srv.Archived {
 			continue
@@ -190,7 +193,7 @@ func (h *handlers) putServer(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.snap.reset()
-	httpx.WriteJSON(w, http.StatusOK, viewOf(srv))
+	httpx.WriteJSON(w, http.StatusOK, h.viewOf(srv))
 }
 
 // postAction starts, stops or restarts a server's container and answers
@@ -231,7 +234,7 @@ func (h *handlers) postAction(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.log.Info("server action", "server", srv.ID, "action", a)
-	v := viewOf(srv)
+	v := h.viewOf(srv)
 	h.fill(r.Context(), &v, srv)
 	h.snap.put(v) // the list shows the new state at once
 	httpx.WriteJSON(w, http.StatusOK, v)
@@ -310,6 +313,40 @@ func (h *handlers) getHead(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Cache-Control", "public, max-age=86400") // a day, like the server's own cache
 	w.Write(face)
+}
+
+// getArt answers a server's cover or icon from data/games/art (#58), or
+// 404 when there's none. ServeContent handles If-Modified-Since, so a
+// browser revalidates cheaply and a replaced file shows on the next look.
+func (h *handlers) getArt(w http.ResponseWriter, r *http.Request) {
+	srv, ok := h.server(w, r)
+	if !ok {
+		return
+	}
+	kind := ArtKind(r.PathValue("kind"))
+	if !slices.Contains(allArtKinds, kind) {
+		httpx.WriteError(w, http.StatusNotFound, "no such picture: "+string(kind))
+		return
+	}
+	path, mime := h.store.ArtPath(srv, kind)
+	if path == "" {
+		httpx.WriteError(w, http.StatusNotFound, "no "+string(kind)+" for "+srv.ID)
+		return
+	}
+	f, err := os.Open(path)
+	if err != nil {
+		httpx.WriteError(w, http.StatusNotFound, "no "+string(kind)+" for "+srv.ID)
+		return
+	}
+	defer f.Close()
+	info, err := f.Stat()
+	if err != nil {
+		httpx.ServerError(w, r, h.log, fmt.Errorf("art %s: %w", path, err))
+		return
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "no-cache") // always revalidate: a 304 is cheap, a stale cover isn't
+	http.ServeContent(w, r, "", info.ModTime(), f)
 }
 
 // busy records which servers have an action running. The zero value is
