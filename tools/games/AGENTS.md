@@ -15,6 +15,7 @@ root `AGENTS.md` first; this file is what's specific to games.
 | `activity.go` | Joins/leaves and Valheim's online players, parsed from the Docker log on demand (#40). |
 | `console.go` | Minecraft console + whitelist over RCON (#41): the routes the Discord bot uses. |
 | `permitted.go` | Valheim's whitelist: edits `permittedlist.txt` in place (atomic replace, comments and file mode kept) (#42). |
+| `art.go` | Server art (#58): covers and icons dropped into `data/games/art/`, looked up per server then per game. |
 | `heads.go` | Minecraft faces: Mojang profile → skin → 8×8 face + hat, cached. |
 | `rcon.go` | Minecraft RCON client (Source RCON protocol over TCP). |
 | `a2s.go` | Steam A2S query client (UDP), as Valheim answers it. |
@@ -25,8 +26,9 @@ root `AGENTS.md` first; this file is what's specific to games.
 
 UI: `web/apps/games` (Svelte, on `@home-tools/ui` incl. the shared
 `AppShell`): `features/servers/` has the API module, `server-list` (home:
-cards), `server-card` (icon, name, status, players; the whole card links
-to the server page), `server-menu` (⋯ popover: Start or Stop, Restart;
+a grid of covers), `server-card` (tall cover with state and players over
+it, name and details under it; the whole card links to the server page),
+`game-cover` (the dropped-in cover, or a drawn scene per game), `server-menu` (⋯ popover: Start or Stop, Restart;
 confirm dialog), `server-page` (header + players + log), `player-list`,
 `server-status`, `game-icon`, `activity-list` (joins/leaves by day), `console-view` (Minecraft commands), `log-view` (SSE client), `live-servers` (one
 shared list for every page, polled every 5 s while visible, so moving
@@ -52,6 +54,17 @@ path must be absolute and end in `permittedlist.txt`, so the API can never
 rewrite any other file. The password and address never leave the server
 (`serverView`). The server reads these files at startup; there's no
 editor in the UI yet (`PUT /api/servers/{id}` works).
+
+## Art (covers and icons)
+Drop pictures into `data/games/art/` (create it; no restart needed):
+
+    minecraft.jpg          cover for every Minecraft server (tall, 3:4 looks best)
+    valheim.jpg            cover for every Valheim server
+    summercraft.png        this server's own cover; beats the game's
+    minecraft-icon.png     square icon (server page header); <id>-icon.* works too
+
+`.webp`, `.jpg`, `.jpeg` or `.png`. Servers without one show a drawn
+scene. Official game art is for your own server; it's not in the repo.
 
 ## Docker access
 - The server talks to Docker only through the socket proxy
