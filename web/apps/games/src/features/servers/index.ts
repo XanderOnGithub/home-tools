@@ -29,7 +29,11 @@ export type Server = {
   whitelist?: boolean // whitelist routes work (Minecraft RCON, or Valheim's permitted list)
   busy?: Action // a start/stop/restart is running (from any page or the Discord bot)
   activity?: ActivityEvent[] // newest first, ≤ 50; since Home Tools started reading
+  art?: ArtKind[] // pictures dropped into data/games/art (decision #58)
 }
+
+/** A cover (tall, for cards) or an icon (square), from data/games/art. */
+export type ArtKind = 'cover' | 'icon'
 
 export type Action = 'start' | 'stop' | 'restart'
 
@@ -49,6 +53,10 @@ export const runCommand = (id: string, command: string) =>
 /** A Minecraft player's face, 8×8 PNG (scale it up pixelated); 404 when there's none. */
 export const headUrl = (id: string, player: string) =>
   `/api/servers/${encodeURIComponent(id)}/heads/${encodeURIComponent(player)}`
+
+/** The server's own cover or icon if it has one (see `art`), else null. */
+export const artUrl = (s: Server, kind: ArtKind) =>
+  s.art?.includes(kind) ? `/api/servers/${encodeURIComponent(s.id)}/art/${kind}` : null
 
 /** Server-Sent Events: the last 200 lines, then live (see LogView). */
 export const logsUrl = (id: string) => `/api/servers/${encodeURIComponent(id)}/logs`

@@ -748,8 +748,9 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    background: var(--color-accent-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   .aim p {
@@ -846,13 +847,11 @@
   }
 
   /* Narrow enough that reps + weight stay on one line on a phone, wide
-   * enough for "185.5" at this size. */
+   * enough for "187.5" at this size (so less side padding than other
+   * inputs). */
   .field input {
-    width: 3.75rem;
-    min-height: var(--touch-target);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
+    width: 4.25rem;
+    padding: 0 var(--space-1);
     color: var(--color-text);
     font-size: var(--text-lg);
     font-weight: var(--weight-bold);

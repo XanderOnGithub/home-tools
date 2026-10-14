@@ -325,6 +325,17 @@
     margin-top: auto;
   }
 
+  /* Phones: the main button fills the row, in thumb reach. */
+  @media (max-width: 39.99rem) {
+    .actions .btn-primary {
+      flex: 1;
+    }
+
+    .actions .spacer {
+      display: none;
+    }
+  }
+
   .spacer {
     flex: 1;
   }

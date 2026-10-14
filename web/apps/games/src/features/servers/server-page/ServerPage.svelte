@@ -11,7 +11,7 @@
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { PageHeader } from '@home-tools/ui/components/page-header'
   import { Skeleton, SkeletonGroup } from '@home-tools/ui/components/skeleton'
-  import { GAMES, details, type Action, type Server } from '@/features/servers'
+  import { GAMES, artUrl, details, type Action, type Server } from '@/features/servers'
   import { ActivityList } from '@/features/servers/activity-list'
   import { ConsoleView } from '@/features/servers/console-view'
   import { GameIcon } from '@/features/servers/game-icon'
@@ -66,7 +66,7 @@
   </EmptyState>
 {:else}
   <PageHeader title={server.name} description={subtitle} back={BACK}>
-    {#snippet leading()}<GameIcon game={server!.game} />{/snippet}
+    {#snippet leading()}<GameIcon game={server!.game} src={artUrl(server!, 'icon')} />{/snippet}
     {#snippet meta()}<ServerStatus server={server!} {pending} />{/snippet}
     {#snippet actions()}<ServerMenu server={server!} bind:pending onchange={changed} />{/snippet}
   </PageHeader>
