@@ -155,8 +155,9 @@
     flex-direction: column-reverse;
     gap: var(--space-1);
     padding: var(--space-4);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    background: var(--color-accent-subtle);
+    background: var(--color-surface);
   }
 
   dt {
@@ -167,7 +168,8 @@
   dd {
     margin: 0;
     font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+    font-weight: var(--weight-bold);
+    font-variant-numeric: tabular-nums;
   }
 
   .records,
