@@ -21,11 +21,17 @@ every app imports `@home-tools/ui/app.css` once in `main.ts`.
   a selected item also gets a check or weight change.
 
 ## 3. Type and space
-- Font: Figtree (friendly geometric; bundled, so it works offline).
-  Weights only from `--weight-*`: only the five bundled weights (400–800)
-  render for real; anything else is faked by the browser. Page titles use
-  `--weight-extrabold`.
-- Sizes from the `--text-*` scale only; body is `--text-md`.
+- Font: Inter (variable, bundled via `@fontsource-variable/inter`, so it
+  works offline). Neutral and precise: the product should feel like a
+  tool, not a toy (decision #57). Weights from `--weight-*`: page titles
+  `--weight-bold`, section titles and buttons `--weight-semibold`, labels
+  `--weight-medium`. `--weight-extrabold` only for hero numbers (the weight
+  you're lifting), never for titles.
+- Sizes from the `--text-*` scale only; body is `--text-md`. Page `<h1>` =
+  `--text-title` (24px on phones → 28px), `<h2>` = `--text-lg`, `<h3>` =
+  `--text-md`: set once in `app.css`, so components don't restyle headings
+  (a card's own title may drop to `--text-md`). Headings get
+  `--tracking-tight`.
 - Inputs are at least `--text-md` (iOS zooms the page on smaller inputs).
 - Numbers that update (reps, kg, timers) use tabular figures (set in `app.css`).
 - Spacing from the 4px `--space-*` scale. Related things sit closer together
@@ -68,22 +74,75 @@ An interactive element isn't done until each state is designed:
 And each **view** answers: empty (first use), loading, error, and full/long
 content (long names, 50 items).
 
-## 7. Shared building blocks (use these, don't restyle)
+## 7. Shape and surfaces (decision #57)
+- Corners: `--radius-md` (8px) for buttons, inputs and rows;
+  `--radius-lg` (12px) for cards, dialogs and menus; `--radius-full` only
+  for tags, toggles and avatars. **Buttons are never pills.**
+- Surfaces: the page is `--color-bg`; cards, the header and inputs are
+  `--color-surface` with a 1px `--color-border`; `--color-surface-sunken`
+  for wells (the log), skeletons and row hover. No tinted "hero" cards:
+  the accent marks actions and selection, not areas.
+- Shadows only on things that float (menus, dialogs, toasts) and on a
+  hovered link-card. Cards at rest are flat.
+- Blobs are **avatars only** (a person's profile, the Discord persona).
+  Tools have glyph icons on colored tiles (`ToolIcon`); days, states and
+  decoration use plain shapes.
+- Say less: a page or section gets at most one line of description, and
+  only when the title doesn't say it. No greetings, no exclamation marks.
+
+## 8. Shared building blocks (use these, don't restyle)
+Every page in every tool is built from the same pieces, so the four apps
+read as one product.
+
+- **Shell:** `<AppShell tool="fitness" …>`: the tool switcher (top left:
+  every tool's icon and name, plus "All tools"), the page links (tabs
+  underlined in the header on wide screens, a bottom tab bar on phones),
+  the profile menu, and the toasts.
+- **Page header:** `<PageHeader title description back actions meta
+  leading eyebrow>` (`components/page-header`) starts every page: the
+  `<h1>`, an optional back link ("‹ Plans"), one line of description,
+  actions on the right. Never a hand-rolled `<h1>` or `.back`.
+- **Sections:** `<Section title description count actions>` for a titled
+  part of a page; `<Card padding as href>` for a bordered group (a list,
+  controls, a chart). Rows inside `<Card padding="none">` go in
+  `<ul class="card-list">` (dividers come free).
+- **Widths:** pages use `--content-narrow` (forms, articles) or
+  `--content-medium` (settings, editors), or the full `--page-width`
+  (dashboards). No other `max-width` on a page.
+- **Forms:** `<Field label hint error optional>` wires the label, hint and
+  error to the control (`aria-describedby`, `aria-invalid`). Inputs and
+  selects are styled in `app.css`; components only set width.
+- **Loading:** a skeleton in the shape of the content, never a blank page
+  or "Loading…": `<PageSkeleton variant="list|grid|form">`, or
+  `<SkeletonGroup label>` around `<Skeleton>`s for a custom shape. It waits
+  150 ms before showing, so fast loads don't flash.
+- **Empty:** `<EmptyState icon title description action>`.
+- **Saved / failed in the background:** `toast('Plan saved')`,
+  `toast.error(…)`, or with `{ action: { label: 'Undo', run } }`
+  (`@home-tools/ui/toast`). Errors a person must fix in a form stay next
+  to the field; failed page loads are `LoadError`.
+- **Status:** `<Badge tone dot pulse>`: success = up/done, warning =
+  in progress or needs a look, danger = failed, neutral = off.
+- **Switches:** `<ToggleSwitch checked label busy onchange>`.
+- **Menus:** `popover="auto"` + `class="menu"`, items `.menu-item`
+  (`.menu-item-danger` for destructive), positioned with `placeUnder`
+  (`@home-tools/ui/menu`).
 - **Buttons:** `.btn` + one of `.btn-primary`, `.btn-secondary`,
   `.btn-quiet`, `.btn-danger`, `.btn-text-danger`, `.btn-icon` (icon only;
-  needs `aria-label`). Same classes on an `<a>` that looks like a button.
-  All states (hover, pressed, disabled) are in `@home-tools/ui/app.css`;
-  pressed = a slight shrink (`scale: 0.97`) plus a color change.
-- **Dialogs:** `<dialog class="dialog">` + `showModal()`. Shared look and
-  backdrop in `@home-tools/ui/app.css`; the component sets only its size
-  and padding.
-- **Failed loads:** `<LoadError what="your week" onretry={load} />`
-  (`@home-tools/ui/components/load-error`).
-- **Destructive actions:** an inline confirm in place of the buttons
-  ("Keep it" / red "Discard"), with focus moved to the safe choice.
+  needs `aria-label`); `.btn-sm` for dense rows. Same classes on an `<a>`
+  that looks like a button. All states are in `app.css`; pressed = a
+  slight shrink plus a color change; disabled filled buttons go gray.
+- **Dialogs:** `<ConfirmDialog title message confirmLabel danger
+  onconfirm>` + `.open()` for "are you sure?" (safe choice focused first).
+  Other dialogs: `<dialog class="dialog">` + `showModal()`.
+- **Failed loads:** `<LoadError what="your week" onretry={load} />`.
+- **Destructive actions:** `ConfirmDialog` for actions that affect other
+  people (stopping a server); an inline confirm in place of the buttons
+  for a row's own delete ("Keep it" / red "Discard"), focus on the safe
+  choice; or do it and offer Undo in a toast (archiving a plan).
 - **Screen-reader-only text:** `.visually-hidden`.
 
-## 8. Before calling a view done
+## 9. Before calling a view done
 1. `pnpm --dir web check` passes, with no a11y warnings from svelte-check.
 2. Checked in light and dark, on a phone-sized window.
 3. Used it with only the keyboard.

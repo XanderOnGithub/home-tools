@@ -45,11 +45,15 @@ avatar blob, remembered profile), `api`, `router`, `dates`, `units`, `ids`.
 - [ ] Profile picker + accent from `@home-tools/ui`: the chosen profile is
       already remembered across subdomains (cookie on `.<domain>`).
 - [ ] Shortcut + icon: add the tool to `TOOLS` in `@home-tools/ui/tools`
-      (id = subdomain, name, one-line description, blob seed, color); the
-      tools home page links to it from there. Then run the favicon
-      generator (`pnpm --filter @home-tools/fitness favicon`), which draws
-      every tool's tab and iPhone icon from that list, and set the title
-      in `index.html`.
+      (id = subdomain, name, one-line description, glyph `icon` path in a
+      24×24 box, color); the tools home page and every app's tool switcher
+      list it from there. Then run the favicon generator
+      (`pnpm --filter @home-tools/fitness favicon`), which draws every
+      tool's tab and iPhone icon from that list, and set the title in
+      `index.html`.
+- [ ] Wrap signed-in pages in `<AppShell tool="<id>" …>` and build them
+      from the shared pieces (`web/DESIGN.md` §8): `PageHeader` first,
+      skeletons while loading, toasts for saves.
 - [ ] Dev: a `dev:<name>` script in `web/package.json` and a Makefile
       target.
 
