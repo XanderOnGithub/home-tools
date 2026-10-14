@@ -8,6 +8,9 @@
   whoever does it; each row shows its range.
 -->
 <script lang="ts">
+  import { toast } from '@home-tools/ui/toast'
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { PageSkeleton } from '@home-tools/ui/components/skeleton'
   import { tick } from 'svelte'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { getCatalog, label, preferredIds, primaryMuscles, type Exercise } from '@/features/exercises'
@@ -142,6 +145,7 @@
     saving = true
     try {
       await savePlan(plan)
+      toast(`${plan.name} saved`)
       router.navigate('/plans')
     } catch (err) {
       formError = `Couldn't save. ${(err as Error).message}`
@@ -154,7 +158,17 @@
     if (!original) return
     saving = true
     try {
-      await savePlan({ ...original, archived: true })
+      const plan = original
+      await savePlan({ ...plan, archived: true })
+      toast(`${plan.name} archived`, {
+        action: {
+          label: 'Undo',
+          run: () =>
+            savePlan({ ...plan, archived: false })
+              .then(() => toast(`${plan.name} restored`))
+              .catch((err) => toast.error(`Couldn't restore ${plan.name}. ${(err as Error).message}`)),
+        },
+      })
       router.navigate('/plans')
     } catch (err) {
       formError = `Couldn't archive. ${(err as Error).message}`
@@ -164,12 +178,7 @@
 </script>
 
 <div class="page">
-  <a class="back" href="/plans">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-    Plans
-  </a>
-
-  <h1 tabindex="-1">{id ? 'Edit plan' : 'New plan'}</h1>
+  <PageHeader title={id ? 'Edit plan' : 'New plan'} back={{ href: '/plans', label: 'Plans' }} />
 
   {#if status === 'missing'}
     <p>That plan doesn't exist. <a href="/plans">Back to plans</a></p>
@@ -327,6 +336,8 @@
     </form>
 
     <ExercisePicker bind:open={picking} {catalog} {selected} preferred={preferredIds(logged, plans)} ontoggle={toggle} />
+  {:else}
+    <PageSkeleton label="the plan" variant="form" rows={3} />
   {/if}
 </div>
 
@@ -338,24 +349,6 @@
     max-width: 44rem;
   }
 
-  .back {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-1);
-    align-self: flex-start;
-    min-height: var(--touch-target);
-    color: var(--color-text-muted);
-    font-weight: var(--weight-semibold);
-    text-decoration: none;
-  }
-
-  @media (hover: hover) {
-    .back:hover {
-      color: var(--color-text);
-    }
-  }
-
-  .back svg,
   .add svg {
     width: 1.25rem;
     height: 1.25rem;
@@ -364,16 +357,6 @@
     stroke-width: 2;
     stroke-linecap: round;
     stroke-linejoin: round;
-  }
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
-  h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
   }
 
   .form {

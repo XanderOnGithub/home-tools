@@ -19,7 +19,7 @@
 </script>
 
 <section class="players" aria-labelledby="players-title">
-  <div class="head">
+  <div class="title">
     <h2 id="players-title">Players</h2>
     {#if players}<span class="count">{players.online}{players.max ? ` / ${players.max}` : ''}</span>{/if}
   </div>
@@ -64,20 +64,21 @@
     gap: var(--space-3);
   }
 
-  .head {
+  .title {
     display: flex;
     align-items: baseline;
+    justify-content: space-between;
     gap: var(--space-3);
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
+    font-size: var(--text-md);
   }
 
   .count {
     color: var(--color-text-muted);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    font-variant-numeric: tabular-nums;
   }
 
   p {
@@ -86,12 +87,13 @@
 
   .muted {
     color: var(--color-text-muted);
+    font-size: var(--text-sm);
   }
 
   ul {
     display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-2);
+    flex-direction: column;
+    gap: var(--space-1);
     margin: 0;
     padding: 0;
     list-style: none;
@@ -100,11 +102,10 @@
   li {
     display: flex;
     align-items: center;
-    gap: var(--space-2);
-    padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3);
-    border-radius: var(--radius-full);
-    background: var(--color-accent-subtle);
-    font-weight: var(--weight-semibold);
+    gap: var(--space-3);
+    min-height: 2.25rem;
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
   }
 
   /* Minecraft faces are 8×8 pixels: scaled up, kept blocky. */
@@ -120,7 +121,7 @@
     width: 1.1rem;
     height: 1.1rem;
     fill: none;
-    stroke: var(--color-accent-text);
+    stroke: var(--color-text-muted);
     stroke-width: 2;
     stroke-linecap: round;
   }

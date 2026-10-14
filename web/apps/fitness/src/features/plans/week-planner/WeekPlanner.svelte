@@ -1,9 +1,10 @@
 <!--
   "Your routine": one row per weekday, each with a plan picker (or Rest).
   Saves on change into this person's fitness profile (decision #27, #30);
-  a live region announces "Saved" so it's clear nothing else is needed.
+  a "Saved" toast confirms it, so it's clear nothing else is needed.
 -->
 <script lang="ts">
+  import { toast } from '@home-tools/ui/toast'
   import { getCatalog, type Exercise } from '@/features/exercises'
   import { saveFitnessProfile, type FitnessProfile, type Weekday } from '@/features/fitness-profile'
   import type { Plan } from '@/features/plans'
@@ -24,7 +25,6 @@
     { key: 'sunday', label: 'Sunday' },
   ]
 
-  let status = $state('')
   let hasRoutine = $derived(Object.keys(fitness.schedule ?? {}).length > 0)
 
   // The week's muscles (#51): needs the catalog; until it's here (or if
@@ -41,12 +41,11 @@
     plans.filter((r) => !r.archived || r.id === fitness.schedule?.[day])
 
   async function changeGoal(goal: Goal) {
-    status = 'Saving…'
     try {
       fitness = await saveFitnessProfile({ ...fitness, goal })
-      status = 'Saved'
+      toast('Goal saved')
     } catch (err) {
-      status = `Couldn't save. ${(err as Error).message}`
+      toast.error(`Couldn't save your goal. ${(err as Error).message}`)
     }
   }
 
@@ -54,12 +53,11 @@
     const schedule = { ...fitness.schedule }
     if (planId) schedule[day] = planId
     else delete schedule[day] // missing = rest day
-    status = 'Saving…'
     try {
       fitness = await saveFitnessProfile({ ...fitness, schedule })
-      status = 'Saved'
+      toast('Routine saved')
     } catch (err) {
-      status = `Couldn't save. ${(err as Error).message}`
+      toast.error(`Couldn't save your routine. ${(err as Error).message}`)
     }
   }
 </script>
@@ -67,7 +65,6 @@
 <section class="week" aria-labelledby="week-title">
   <div class="head">
     <h2 id="week-title">Your routine</h2>
-    <p class="status" role="status">{status}</p>
   </div>
 
   <div class="goal">
@@ -166,27 +163,11 @@
     align-self: flex-start;
   }
 
-  h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
   .head {
     display: flex;
     align-items: baseline;
     justify-content: space-between;
     gap: var(--space-3);
-  }
-
-  h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
-  .status {
-    margin: 0;
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
   }
 
   .days {
@@ -216,15 +197,8 @@
     font-weight: var(--weight-semibold);
   }
 
-  select {
-    min-width: 0;
+  select{
     max-width: 60%;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-    font-weight: var(--weight-medium);
     cursor: pointer;
   }
 

@@ -7,6 +7,9 @@
   routine. Replacing an existing routine asks first; their plans stay.
 -->
 <script lang="ts">
+  import { toast } from '@home-tools/ui/toast'
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { PageSkeleton } from '@home-tools/ui/components/skeleton'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { router } from '@home-tools/ui/router'
@@ -74,6 +77,7 @@
         else if (current.archived) await savePlan({ ...current, archived: false })
       }
       fitness = await saveFitnessProfile({ ...fitness, schedule: routine.schedule, goal })
+      toast('Routine set')
       router.navigate('/plans')
     } catch (err) {
       error = `Couldn't save the routine. ${(err as Error).message}`
@@ -83,15 +87,11 @@
 </script>
 
 <div class="page">
-  <a class="back" href="/plans">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-    Plans
-  </a>
-
-  <div class="intro">
-    <h1 tabindex="-1">Build a routine</h1>
-    <p class="muted">Three questions, and you get a week of workouts to start with. They're normal plans: change anything later.</p>
-  </div>
+  <PageHeader
+    title="Build a routine"
+    description="Three questions, and you get a week of workouts to start with. They're normal plans: change anything later."
+    back={{ href: '/plans', label: 'Plans' }}
+  />
 
   {#if status === 'error'}
     <LoadError what="the exercises" onretry={load} />
@@ -178,6 +178,8 @@
       </div>
     {/if}
     {#if error}<p class="error" role="alert">{error}</p>{/if}
+  {:else}
+    <PageSkeleton label="the exercises" variant="form" rows={3} />
   {/if}
 </div>
 
@@ -189,49 +191,8 @@
     max-width: 48rem;
   }
 
-  .back {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    gap: var(--space-1);
-    min-height: var(--touch-target);
-    color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
-    text-decoration: none;
-  }
-
-  .back svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .intro {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-2);
-  }
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
-  h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
   p {
     margin: 0;
-  }
-
-  .muted {
-    color: var(--color-text-muted);
   }
 
   .questions {

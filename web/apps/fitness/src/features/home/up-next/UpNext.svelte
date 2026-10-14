@@ -204,9 +204,10 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-2);
-    padding: var(--space-6);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
-    background: var(--color-accent-subtle);
+    background: var(--color-surface);
   }
 
   p {
@@ -214,46 +215,70 @@
   }
 
   .label {
-    color: var(--color-accent-text);
-    font-weight: var(--weight-bold);
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
   }
 
   .title {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
     line-height: var(--leading-tight);
   }
 
   .meta {
     color: var(--color-text-muted);
-    font-size: var(--text-lg);
   }
 
   .done {
-    color: var(--color-accent-text);
+    color: var(--color-success-text);
     font-weight: var(--weight-semibold);
   }
 
+  /* The plan's exercises, numbered in order, divided like a list. */
   .exercises {
     display: flex;
     flex-direction: column;
-    gap: var(--space-2);
     margin: var(--space-3) 0 0;
     padding: 0;
     list-style: none;
+    counter-reset: exercise;
   }
 
   .exercises li {
-    padding-left: var(--space-4);
-    border-left: 3px solid var(--color-accent);
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    min-height: 2.75rem;
+    border-top: 1px solid var(--color-border);
     font-weight: var(--weight-medium);
+    counter-increment: exercise;
+  }
+
+  .exercises li::before {
+    content: counter(exercise);
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: var(--radius-full);
+    background: var(--color-surface-sunken);
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
   }
 
   .exercises .more {
-    border-left-color: transparent;
     color: var(--color-text-muted);
+    font-weight: var(--weight-normal);
   }
 
+  .exercises .more::before {
+    content: '';
+    background: none;
+  }
 
   .actions {
     display: flex;
@@ -264,8 +289,7 @@
   }
 
   .start {
-    padding-inline: var(--space-6);
-    font-size: var(--text-lg);
+    padding-inline: var(--space-5);
   }
 
   .confirm {

@@ -4,6 +4,8 @@
   see `journey`), records, then every workout's sets, newest first.
 -->
 <script lang="ts">
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { PageSkeleton } from '@home-tools/ui/components/skeleton'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import { LineChart } from '@/components/line-chart'
@@ -44,13 +46,8 @@
 </script>
 
 <div class="journey">
-  <a class="back" href="/progress">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-    Progress
-  </a>
-
   {#if status === 'error'}
-    <h1 tabindex="-1">Exercise</h1>
+    <PageHeader title="Exercise" back={{ href: '/progress', label: 'Progress' }} />
     <LoadError what="this exercise" onretry={load} />
   {:else if status === 'ready' && exercise}
     <header>
@@ -110,6 +107,8 @@
         </ol>
       </section>
     {/if}
+  {:else}
+    <PageSkeleton label="this exercise" variant="grid" rows={3} />
   {/if}
 </div>
 
@@ -120,36 +119,6 @@
     gap: var(--space-6);
   }
 
-  .back {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    gap: var(--space-1);
-    min-height: var(--touch-target);
-    margin: calc(-1 * var(--space-3)) 0 calc(-1 * var(--space-4)) calc(-1 * var(--space-2));
-    padding: 0 var(--space-2);
-    border-radius: var(--radius-md);
-    color: var(--color-accent-text);
-    font-weight: var(--weight-semibold);
-    text-decoration: none;
-  }
-
-  .back svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  @media (hover: hover) {
-    .back:hover {
-      background: var(--color-accent-subtle);
-    }
-  }
-
   header {
     display: flex;
     flex-direction: column;
@@ -157,16 +126,14 @@
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-title);
+    font-weight: var(--weight-bold);
     line-height: var(--leading-tight);
     overflow-wrap: anywhere;
   }
 
   h2 {
     margin-bottom: var(--space-3);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
   }
 
   p {

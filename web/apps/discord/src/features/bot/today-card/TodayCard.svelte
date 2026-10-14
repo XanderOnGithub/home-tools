@@ -79,8 +79,8 @@
   }
 
   h2 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-xl);
+    font-weight: var(--weight-bold);
     overflow-wrap: anywhere;
   }
 

@@ -5,6 +5,8 @@
 -->
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { SettingsSkeleton } from '@/components/settings-skeleton'
   import { CommandsHelp } from '@/features/bot/commands-help'
   import { NameList } from '@/features/bot/name-list'
   import { settings } from '@/features/bot/settings'
@@ -15,7 +17,7 @@
 </script>
 
 <div class="page">
-  <h1 tabindex="-1">Bot</h1>
+  <PageHeader title="Bot" />
 
   {#if s.status === 'error'}
     <LoadError what="the bot's settings" onretry={s.load} />
@@ -26,24 +28,20 @@
       <NameList config={s.config} save={s.save} />
       <CommandsHelp features={s.config.features} />
     </div>
+  {:else}
+    <SettingsSkeleton sections={3} />
   {/if}
 </div>
 
 <style>
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+    max-width: var(--content-medium);
   }
 
   .sections {
     display: flex;
     flex-direction: column;
     gap: var(--space-7);
+    margin-top: var(--space-7);
   }
 </style>

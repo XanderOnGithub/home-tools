@@ -7,6 +7,8 @@
   same information for keyboards and screen readers.
 -->
 <script lang="ts">
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { PageSkeleton } from '@home-tools/ui/components/skeleton'
   import { tick } from 'svelte'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import type { Profile } from '@home-tools/ui/profiles/types'
@@ -99,18 +101,16 @@
 </script>
 
 <div class="body-page">
-  <div class="intro">
-    <h1 tabindex="-1">Your body</h1>
-    <p class="muted">
-      An estimate from your last week of workouts: every set tires the muscles it works, and they recover over two to three
-      days. A guide, not a rule: how you feel counts too. <a href="/guide#rest">Why rest matters</a>
-    </p>
-  </div>
+  <PageHeader
+    title="Your body"
+    description="Estimated from your last week of workouts. A guide, not a rule: how you feel counts too."
+    back={{ href: '/', label: 'Summary' }}
+  />
 
   {#if status === 'error'}
     <LoadError what="your muscles" onretry={load} />
   {:else if status === 'loading'}
-    <p class="muted" role="status">Loading…</p>
+    <PageSkeleton label="your muscles" variant="grid" rows={2} />
   {:else}
     <div class="layout">
       <div class="map">
@@ -182,11 +182,6 @@
     flex-direction: column;
     gap: var(--space-2);
     max-width: 40rem;
-  }
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
   }
 
   p {

@@ -230,8 +230,8 @@
   }
 
   h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-title);
+    font-weight: var(--weight-bold);
     text-align: center;
   }
 
@@ -348,7 +348,7 @@
     }
 
     h1 {
-      font-size: var(--text-3xl);
+      font-size: var(--text-title);
     }
   }
 </style>

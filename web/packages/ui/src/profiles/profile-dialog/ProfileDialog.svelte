@@ -236,8 +236,6 @@
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
     text-align: center;
   }
 
@@ -269,16 +267,11 @@
   }
 
   input[type='text'],
-  input[type='date'] {
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-surface);
+  input[type='date']{
     font-size: var(--text-md);
   }
 
-  input[aria-invalid='true'] {
+  input[aria-invalid='true']{
     border-color: var(--color-danger);
   }
 

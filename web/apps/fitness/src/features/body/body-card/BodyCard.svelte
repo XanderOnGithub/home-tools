@@ -66,17 +66,16 @@
     gap: var(--space-3);
   }
 
-  h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
+  /* A full touch target that doesn't push the card's top down. */
   .head a {
     display: inline-flex;
     align-items: center;
     min-height: var(--touch-target);
+    margin-block: calc(-1 * var(--space-3));
     color: var(--color-accent-text);
-    font-weight: var(--weight-semibold);
+    font-size: var(--text-sm);
+    font-weight: var(--weight-medium);
+    text-decoration: none;
   }
 
   .map {

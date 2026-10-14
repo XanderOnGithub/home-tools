@@ -5,6 +5,8 @@
   by ID is there for everyone else. Removing someone asks first.
 -->
 <script lang="ts">
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { SettingsSkeleton } from '@/components/settings-skeleton'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { tick } from 'svelte'
   import { ago, dismissRequest, isSnowflake, type AccessRequest, type VerifiedUser } from '@/features/bot'
@@ -77,7 +79,7 @@
 </script>
 
 <div class="page">
-  <h1 tabindex="-1">People</h1>
+  <PageHeader title="People" description="Verified people can restart game servers and edit whitelists from Discord." />
 
   {#if s.status === 'error'}
     <LoadError what="the bot's settings" onretry={s.load} />
@@ -106,7 +108,6 @@
 
     <section class="section" aria-labelledby="verified-title">
       <h2 id="verified-title">Verified</h2>
-      <p class="muted">They can restart game servers and edit whitelists from Discord.</p>
       {#if s.config.verified.length === 0}
         <p class="muted">
           Nobody yet. When someone tries <code>/restart</code> or <code>/whitelist</code>, they show up here to verify
@@ -175,6 +176,8 @@
         {#if idProblem}<p class="error" id="person-id-problem">{idProblem}</p>{/if}
       </details>
     </section>
+  {:else}
+    <SettingsSkeleton sections={1} />
   {/if}
 </div>
 
@@ -183,16 +186,11 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
+    max-width: var(--content-medium);
   }
 
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
+  .page > :global(.page-header) {
+    margin-bottom: 0;
   }
 
   .section {
@@ -307,12 +305,4 @@
     font-weight: var(--weight-semibold);
   }
 
-  input {
-    min-width: 0;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
-  }
 </style>

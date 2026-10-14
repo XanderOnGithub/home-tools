@@ -6,6 +6,7 @@
 // back into view: new access requests and connection changes show up
 // without a reload. The config only changes when someone saves.
 import { ApiError } from '@home-tools/ui/api'
+import { toast } from '@home-tools/ui/toast'
 import { onMount } from 'svelte'
 import { getBot, getConfig, saveConfig, type BotView, type Config } from '@/features/bot'
 
@@ -40,16 +41,18 @@ async function refreshBot() {
 
 /**
  * Applies change to a copy of the config and saves it. Resolves to an
- * error message for people, or '' when saved. If someone else saved in
- * between (409), the page reloads their version, so trying again works.
+ * error message for people, or '' when saved (and a "Saved" toast says
+ * so: decision #57). If someone else saved in between (409), the page
+ * reloads their version, so trying again works.
  */
-async function save(change: (c: Config) => void): Promise<string> {
+async function save(change: (c: Config) => void, done = 'Saved'): Promise<string> {
   if (!live.config) return 'The settings haven’t loaded yet.'
   const next = $state.snapshot(live.config) as Config
   change(next)
   try {
     live.config = await saveConfig(next)
     refreshBot() // the persona may change with the names; requests drop when verified
+    toast(done)
     return ''
   } catch (err) {
     if (err instanceof ApiError && err.status === 409) {

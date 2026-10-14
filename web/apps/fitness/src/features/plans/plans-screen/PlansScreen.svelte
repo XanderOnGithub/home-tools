@@ -4,6 +4,8 @@
   or edit a plan; each person's routine decides which plan falls on which day.
 -->
 <script lang="ts">
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { PageSkeleton } from '@home-tools/ui/components/skeleton'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { api } from '@home-tools/ui/api'
   import type { FitnessProfile } from '@/features/fitness-profile'
@@ -39,10 +41,9 @@
 </script>
 
 <div class="page">
-  <div class="title-row">
-    <h1 tabindex="-1">Plans</h1>
-    <a class="btn btn-primary" href="/plans/new">New plan</a>
-  </div>
+  <PageHeader title="Plans">
+    {#snippet actions()}<a class="btn btn-primary" href="/plans/new">New plan</a>{/snippet}
+  </PageHeader>
 
   {#if status === 'error'}
     <LoadError what="plans" onretry={load} />
@@ -75,6 +76,8 @@
 
       <WeekPlanner bind:fitness {plans} />
     </div>
+  {:else}
+    <PageSkeleton label="plans" rows={3} />
   {/if}
 </div>
 
@@ -85,24 +88,8 @@
     gap: var(--space-5);
   }
 
-  .title-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--space-3);
-  }
-
-
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
   h2 {
     margin-bottom: var(--space-3);
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
   }
 
   .grid {

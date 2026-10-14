@@ -1,10 +1,16 @@
 <!--
-  One server: header (icon, name, status, ⋯ menu), who's online, who
-  joined and left, the console (Minecraft with RCON), and the live log. After an action the log reconnects, since a stop or restart
+  One server, laid out like a dashboard: the header (icon, name, status,
+  ⋯ menu), then the live log and console as the main column, with who's
+  online and who joined and left beside it (stacked on phones, players
+  first). After an action the log reconnects, since a stop or restart
   ends the stream.
 -->
 <script lang="ts">
+  import { Card } from '@home-tools/ui/components/card'
+  import { EmptyState } from '@home-tools/ui/components/empty-state'
   import { LoadError } from '@home-tools/ui/components/load-error'
+  import { PageHeader } from '@home-tools/ui/components/page-header'
+  import { Skeleton, SkeletonGroup } from '@home-tools/ui/components/skeleton'
   import { GAMES, details, type Action, type Server } from '@/features/servers'
   import { ActivityList } from '@/features/servers/activity-list'
   import { ConsoleView } from '@/features/servers/console-view'
@@ -20,123 +26,94 @@
   const live = liveServers()
   let server = $derived(live.servers.find((s) => s.id === id))
   let pending = $state<Action | null>(null)
-  let error = $state('')
   let logKey = $state(0)
 
+  let subtitle = $derived.by(() => {
+    if (!server) return undefined
+    const parts: string[] = []
+    if (GAMES[server.game] !== server.name) parts.push(GAMES[server.game])
+    if (!pending && details(server)) parts.push(details(server))
+    return parts.join(' · ') || undefined
+  })
+
   function changed(s: Server) {
-    error = ''
     live.update(s)
     logKey++ // a fresh stream for the new run
   }
+
+  const BACK = { href: '/', label: 'Servers' }
 </script>
 
-<div class="page">
-  <a class="back" href="/">
-    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6" /></svg>
-    Servers
-  </a>
+{#if live.status === 'error'}
+  <PageHeader title="Server" back={BACK} />
+  <LoadError what="the server" onretry={live.load} />
+{:else if live.status === 'loading'}
+  <SkeletonGroup label="the server">
+    <div class="ghost-head">
+      <Skeleton width="4rem" height="0.9rem" />
+      <Skeleton width="14rem" height="1.75rem" />
+      <Skeleton width="10rem" height="0.9rem" />
+    </div>
+    <div class="layout">
+      <div class="side"><Skeleton height="10rem" radius="lg" /></div>
+      <div class="main"><Skeleton height="24rem" radius="lg" /></div>
+    </div>
+  </SkeletonGroup>
+{:else if !server}
+  <PageHeader title="Server not found" back={BACK} />
+  <EmptyState title="No server called “{id}”" description="It may have been renamed or removed from the data folder.">
+    {#snippet action()}<a class="btn btn-secondary" href="/">All servers</a>{/snippet}
+  </EmptyState>
+{:else}
+  <PageHeader title={server.name} description={subtitle} back={BACK}>
+    {#snippet leading()}<GameIcon game={server!.game} />{/snippet}
+    {#snippet meta()}<ServerStatus server={server!} {pending} />{/snippet}
+    {#snippet actions()}<ServerMenu server={server!} bind:pending onchange={changed} />{/snippet}
+  </PageHeader>
 
-  {#if live.status === 'error'}
-    <LoadError what="the server" onretry={live.load} />
-  {:else if live.status === 'ready' && !server}
-    <h1 tabindex="-1">Not found</h1>
-    <p>There's no server called “{id}”. <a href="/">All servers</a></p>
-  {:else if server}
-    <header class="head">
-      <GameIcon game={server.game} />
-      <div class="title">
-        <h1 tabindex="-1">{server.name}</h1>
-        {#if GAMES[server.game] !== server.name}<p class="muted">{GAMES[server.game]}</p>{/if}
-        <ServerStatus {server} {pending} />
-        {#if !pending && details(server)}<p class="muted">{details(server)}</p>{/if}
-      </div>
-      <ServerMenu {server} bind:pending onchange={changed} onerror={(m) => (error = m)} />
-    </header>
-    {#if error}<p class="error" role="alert">{error}</p>{/if}
-
-    <div class="sections">
-      <PlayerList {server} />
-      {#if server.state}<ActivityList {server} />{/if}
-      {#if server.console && server.state?.running}<ConsoleView {id} />{/if}
+  <div class="layout">
+    <div class="side">
+      <Card><PlayerList {server} /></Card>
+      {#if server.state}<Card><ActivityList {server} /></Card>{/if}
+    </div>
+    <div class="main">
       {#if server.state}
-        {#key logKey}
-          <LogView {id} />
-        {/key}
+        <Card padding="none">
+          {#key logKey}
+            <LogView {id} />
+          {/key}
+          {#if server.console && server.state.running}<ConsoleView {id} />{/if}
+        </Card>
       {/if}
     </div>
-  {/if}
-</div>
+  </div>
+{/if}
 
 <style>
-  .page {
+  .ghost-head {
     display: flex;
     flex-direction: column;
-    gap: var(--space-5);
+    gap: var(--space-3);
+    margin-bottom: var(--space-6);
   }
 
-  .back {
-    display: inline-flex;
-    align-items: center;
-    align-self: flex-start;
-    gap: var(--space-1);
-    min-height: var(--touch-target);
-    margin-left: calc(-1 * var(--space-1));
-    color: var(--color-text-muted);
-    font-weight: var(--weight-semibold);
-    text-decoration: none;
-  }
-
-  @media (hover: hover) {
-    .back:hover {
-      color: var(--color-text);
-    }
-  }
-
-  .back svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-  }
-
-  .head {
+  .layout {
     display: grid;
-    grid-template-columns: auto 1fr auto;
-    align-items: start;
     gap: var(--space-4);
+    align-items: start;
   }
 
-  .title {
+  .side,
+  .main {
     display: flex;
     flex-direction: column;
-    gap: var(--space-1);
+    gap: var(--space-4);
     min-width: 0;
   }
 
-  h1 {
-    font-size: var(--text-2xl);
-    font-weight: var(--weight-extrabold);
-  }
-
-  p {
-    margin: 0;
-  }
-
-  .muted {
-    color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
-  }
-
-  .error {
-    color: var(--color-danger-text);
-  }
-
-  .sections {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-7);
+  @media (min-width: 56rem) {
+    .layout {
+      grid-template-columns: 20rem 1fr;
+    }
   }
 </style>

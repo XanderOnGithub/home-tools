@@ -209,15 +209,15 @@
   }
 
   h1 {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-title);
+    font-weight: var(--weight-bold);
   }
 
   .profile-list {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
-    gap: var(--space-6);
+    gap: var(--space-5);
     list-style: none;
     padding: 0;
     margin: 0;
@@ -240,8 +240,8 @@
     position: relative;
     display: grid;
     place-items: center;
-    width: 8rem;
-    height: 8rem;
+    width: 6.5rem;
+    height: 6.5rem;
     color: var(--color-on-accent);
     font-size: var(--text-3xl);
     font-weight: var(--weight-semibold);
@@ -261,7 +261,6 @@
   /* Names are quiet until you point at them, so the colors lead. */
   .profile-name {
     color: var(--color-text-muted);
-    font-size: var(--text-lg);
     font-weight: var(--weight-medium);
     transition: color var(--duration-fast) var(--ease-out);
   }

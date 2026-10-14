@@ -1,5 +1,5 @@
 <!--
-  "This week", drawn with tiny copies of the person's blob: filled = worked
+  "This week" as seven circles: filled with a check = worked
   out, outlined = planned, dashed = missed (a past planned day with no
   workout), small dot = rest. Each day's state is also spelled out in
   hidden text, so it never relies on shape or color alone.
@@ -7,7 +7,6 @@
 <script lang="ts">
   import { isoDate, weekDays, weekdayKey } from '@home-tools/ui/dates'
   import type { FitnessProfile } from '@/features/fitness-profile'
-  import { blobPath } from '@home-tools/ui/profiles/blob'
   import type { Profile } from '@home-tools/ui/profiles/types'
   import type { Plan } from '@/features/plans'
   import type { Session } from '@/features/sessions'
@@ -22,7 +21,6 @@
   const today = new Date()
   const todayISO = isoDate(today)
 
-  let blob = $derived(blobPath(profile.name))
 
   let days = $derived(
     weekDays(today).map((d) => {
@@ -59,9 +57,10 @@
       <li class="day {day.state}" class:today={day.isToday}>
         <svg viewBox="0 0 100 100" aria-hidden="true">
           {#if day.state === 'rest'}
-            <circle cx="50" cy="50" r="9" />
+            <circle class="rest-dot" cx="50" cy="50" r="8" />
           {:else}
-            <path d={blob} />
+            <circle class="ring" cx="50" cy="50" r="42" />
+            {#if day.state === 'done'}<path class="check" d="M32 51l12 12 24-26" />{/if}
           {/if}
         </svg>
         <span class="short" aria-hidden="true">{day.short}</span>
@@ -91,15 +90,10 @@
     gap: var(--space-3);
   }
 
-  h2 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
   .count {
     margin: 0;
     color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-sm);
   }
 
   .days {
@@ -120,37 +114,48 @@
 
   svg {
     width: 100%;
-    max-width: 2.75rem;
+    max-width: 2.25rem;
     aspect-ratio: 1;
     overflow: visible;
   }
 
-  /* vector-effect keeps outlines 2px however big the blob is drawn. */
+  /* vector-effect keeps outlines 2px however big the circle is drawn.
+   * Done = filled with a check, planned = accent ring, missed = dashed
+   * gray ring, rest = a dot: the shape says it, not only the color. */
   path,
   circle {
     vector-effect: non-scaling-stroke;
     stroke-width: 2px;
   }
 
-  .done path {
+  .done .ring {
     fill: var(--color-accent);
     stroke: var(--color-accent);
   }
 
-  .planned path {
+  .check {
+    fill: none;
+    stroke: var(--color-on-accent);
+    stroke-width: 2.5px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .planned .ring {
     fill: none;
     stroke: var(--color-accent);
   }
 
-  .missed path {
+  .missed .ring {
     fill: none;
     stroke: var(--color-border-strong);
-    stroke-dasharray: 4 4;
+    stroke-dasharray: 3 4;
   }
 
-  .rest circle {
-    fill: var(--color-border);
+  .rest-dot {
+    fill: var(--color-border-strong);
     stroke: none;
+    opacity: 0.5;
   }
 
   .short {
@@ -162,9 +167,9 @@
   /* Today: bold label in a pill, so it's findable without color. */
   .today .short {
     padding: 0 var(--space-2);
-    border-radius: var(--radius-full);
+    border-radius: var(--radius-sm);
     background: var(--color-text);
-    color: var(--color-bg);
-    font-weight: var(--weight-bold);
+    color: var(--color-surface);
+    font-weight: var(--weight-semibold);
   }
 </style>

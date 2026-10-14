@@ -32,15 +32,15 @@
     display: grid;
     flex: none;
     place-items: center;
-    width: 3.5rem;
-    height: 3.5rem;
+    width: 2.75rem;
+    height: 2.75rem;
     border-radius: var(--radius-md);
-    background: var(--color-accent-subtle);
+    background: var(--color-surface-sunken);
   }
 
   svg {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 1.75rem;
+    height: 1.75rem;
   }
 
   /* One color (the person's accent), shaded with opacity like the rest

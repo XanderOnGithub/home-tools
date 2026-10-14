@@ -50,7 +50,7 @@
     <ProfilePicker onselect={(p) => (profile = p)} title="Who's this?" />
   </main>
 {:else}
-  <AppShell links={LINKS} {profile} onswitch={switchProfile}>
+  <AppShell tool="discord" links={LINKS} {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <OverviewPage />
     {:else if router.path === '/features'}

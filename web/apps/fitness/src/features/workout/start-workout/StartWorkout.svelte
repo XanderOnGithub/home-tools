@@ -108,11 +108,6 @@
     padding: var(--space-3) var(--space-2) var(--space-2) var(--space-5);
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-  }
-
   .choices {
     flex: 1;
     overflow-y: auto;

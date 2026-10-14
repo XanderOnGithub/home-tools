@@ -4,28 +4,51 @@
   here is per person. The page's own accent is purple (index.html).
 -->
 <script lang="ts">
+  import { ToolIcon } from '@home-tools/ui/tool-icon'
+  import { HOME } from '@home-tools/ui/tools'
   import { ToolList } from '@/features/shortcuts/tool-list'
 </script>
 
 <main class="home">
-  <h1>Home Tools</h1>
+  <header>
+    <ToolIcon tool={HOME} size="lg" />
+    <h1>Home Tools</h1>
+    <p>Everything for the house, in one place.</p>
+  </header>
   <ToolList />
 </main>
 
 <style>
-  /* Centered in the viewport, like the profile picker. */
   .home {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     gap: var(--space-6);
+    width: 100%;
+    max-width: 30rem;
     min-height: 100dvh;
-    padding: var(--space-5) var(--space-4);
+    margin: 0 auto;
+    padding: clamp(var(--space-6), 12vh, var(--space-8)) var(--page-gutter) var(--space-7);
+  }
+
+  header {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    text-align: center;
+  }
+
+  header :global(.tile) {
+    margin-bottom: var(--space-2);
   }
 
   h1 {
-    font-size: var(--text-3xl);
-    font-weight: var(--weight-extrabold);
+    font-size: var(--text-2xl);
+    font-weight: var(--weight-bold);
+  }
+
+  p {
+    margin: 0;
+    color: var(--color-text-muted);
   }
 </style>

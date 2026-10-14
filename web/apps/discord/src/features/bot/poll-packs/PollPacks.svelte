@@ -9,7 +9,7 @@
   import { tick } from 'svelte'
   import { POLL_LIMITS, pollKey, resetPollPack, type BotView, type Config } from '@/features/bot'
   import { PollQuestions } from '@/features/bot/poll-questions'
-  import { ToggleSwitch } from '@/components/toggle-switch'
+  import { ToggleSwitch } from '@home-tools/ui/components/toggle-switch'
 
   let {
     config,
@@ -218,11 +218,6 @@
     gap: var(--space-2);
   }
 
-  h3 {
-    font-size: var(--text-lg);
-    font-weight: var(--weight-bold);
-  }
-
   p {
     margin: 0;
   }
@@ -329,13 +324,8 @@
     font-weight: var(--weight-semibold);
   }
 
-  input {
+  input{
     flex: 1;
-    min-width: 0;
-    min-height: var(--touch-target);
     padding: var(--space-2) var(--space-3);
-    border: 1px solid var(--color-border-strong);
-    border-radius: var(--radius-md);
-    background: var(--color-bg);
   }
 </style>

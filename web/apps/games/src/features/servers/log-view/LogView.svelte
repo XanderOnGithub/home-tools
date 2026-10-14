@@ -80,6 +80,14 @@
     if (!box) return
     following = box.scrollHeight - box.scrollTop - box.clientHeight < 24
   }
+
+  /** Warnings and errors stand out (the word is in the line, so color
+   * isn't the only signal). */
+  function level(line: string): string {
+    if (/\b(ERROR|SEVERE|FATAL|Exception)\b/.test(line)) return 'error'
+    if (/\bWARN(ING)?\b/.test(line)) return 'warn'
+    return ''
+  }
 </script>
 
 <section class="log" aria-labelledby="log-title">
@@ -104,46 +112,44 @@
        (WCAG 2.1.1); Safari doesn't make scrollers focusable by itself.
        aria-live off: a busy server would otherwise read out every line. -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <pre aria-label="Server log" bind:this={box} class="lines" tabindex="0" aria-live="off" onscroll={onScroll}>{lines.length
-      ? lines.join('\n')
-      : status === 'live'
-        ? 'Nothing logged yet.'
-        : ''}</pre>
+  <pre aria-label="Server log" bind:this={box} class="lines" tabindex="0" aria-live="off" onscroll={onScroll}>{#if lines.length}{#each lines as line, i (i)}<span class="line {level(line)}">{line}</span>{'\n'}{/each}{:else if status === 'live'}<span class="empty">Nothing logged yet.</span>{/if}</pre>
 </section>
 
 <style>
   .log {
     display: flex;
     flex-direction: column;
-    gap: var(--space-3);
   }
 
   .head {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: var(--space-2) var(--space-4);
+    gap: var(--space-2) var(--space-3);
+    min-height: 3.25rem;
+    padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+    border-bottom: 1px solid var(--color-border);
   }
 
   h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
+    font-size: var(--text-md);
   }
 
   .status {
     display: flex;
+    flex: 1;
     align-items: center;
     gap: var(--space-2);
     margin: 0;
     color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
+    font-size: var(--text-sm);
   }
 
   .dot {
-    width: 0.6rem;
-    height: 0.6rem;
+    width: 0.4375rem;
+    height: 0.4375rem;
     border-radius: var(--radius-full);
-    background: var(--color-accent);
+    background: var(--color-success-text);
   }
 
   @media (prefers-reduced-motion: no-preference) {
@@ -160,17 +166,31 @@
 
   /* Long lines wrap (no sideways scrolling on a phone); the box scrolls. */
   .lines {
-    height: min(32rem, 60dvh);
+    height: min(30rem, 55dvh);
     margin: 0;
-    padding: var(--space-4);
+    padding: var(--space-3) var(--space-4);
     overflow-y: auto;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
+    background: var(--color-surface-sunken);
     font-family: var(--font-mono);
-    font-size: var(--text-sm);
-    line-height: var(--leading-normal);
+    font-size: 0.8125rem;
+    line-height: 1.6;
     white-space: pre-wrap;
     overflow-wrap: anywhere;
+  }
+
+  .lines:focus-visible {
+    outline-offset: -2px;
+  }
+
+  .warn {
+    color: var(--color-warning-text);
+  }
+
+  .error {
+    color: var(--color-danger-text);
+  }
+
+  .empty {
+    color: var(--color-text-muted);
   }
 </style>

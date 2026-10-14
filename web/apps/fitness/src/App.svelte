@@ -109,7 +109,7 @@
     <WorkoutMode {profile} sessionId={decodeURIComponent(workoutId)} goal={fitness.goal} />
   {/key}
 {:else if status === 'ready' && fitness}
-  <AppShell links={LINKS} {profile} onswitch={switchProfile}>
+  <AppShell tool="fitness" links={LINKS} {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <HomeScreen {profile} bind:fitness />
     {:else if router.path === '/plans'}

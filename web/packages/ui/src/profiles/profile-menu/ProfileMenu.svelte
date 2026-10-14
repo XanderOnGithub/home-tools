@@ -1,13 +1,13 @@
 <!--
-  Top-right profile button (blob + caret) and its small menu: switch
-  profile, or go to the tools home page (tools.<domain>, decision #46).
+  Top-right profile button (avatar) and its menu: who's signed in, switch
+  profile. Going to another tool lives in the tool switcher (app-shell).
 
-  Uses the native Popover API: the browser closes it on Esc or an outside
-  click, puts it above everything (top layer), and the trigger button gets
-  aria-expanded automatically. We only position it under the button.
+  Native Popover API: the browser closes it on Esc or an outside click,
+  puts it above everything and sets aria-expanded on the trigger.
+  Looks: .menu in app.css.
 -->
 <script lang="ts">
-  import { HOME, toolUrl } from '../../tools'
+  import { placeUnder } from '../../menu'
   import { ProfileAvatar } from '../profile-avatar'
   import type { Profile } from '../types'
 
@@ -15,16 +15,6 @@
 
   let trigger = $state<HTMLButtonElement>()
   let menu = $state<HTMLDivElement>()
-  let open = $state(false)
-
-  // Place the menu right under the button, right edges aligned.
-  function onBeforeToggle(event: ToggleEvent) {
-    open = event.newState === 'open'
-    if (!open || !trigger || !menu) return
-    const r = trigger.getBoundingClientRect()
-    menu.style.top = `${r.bottom + 8}px`
-    menu.style.right = `${document.documentElement.clientWidth - r.right}px`
-  }
 
   function switchProfile() {
     menu?.hidePopover()
@@ -40,122 +30,68 @@
   aria-label="Profile menu, {profile.name}"
 >
   <span class="avatar"><ProfileAvatar name={profile.name} /></span>
-  <svg class="caret" class:open viewBox="0 0 24 24" aria-hidden="true">
-    <path d="M6 9l6 6 6-6" />
-  </svg>
 </button>
 
-<div bind:this={menu} id="profile-menu" class="menu" popover="auto" onbeforetoggle={onBeforeToggle}>
-  <p class="who">{profile.name}</p>
-  <button type="button" class="item" onclick={switchProfile}>
+<div
+  bind:this={menu}
+  id="profile-menu"
+  class="menu"
+  popover="auto"
+  onbeforetoggle={(e) => placeUnder(e, trigger, menu, 'end')}
+>
+  <div class="who">
+    <span class="who-avatar"><ProfileAvatar name={profile.name} /></span>
+    <span class="who-name">{profile.name}</span>
+  </div>
+  <hr class="menu-separator" />
+  <button type="button" class="menu-item" onclick={switchProfile}>
     <svg viewBox="0 0 24 24" aria-hidden="true">
       <path d="M16 3l4 4-4 4 M20 7H8 M8 21l-4-4 4-4 M4 17h12" />
     </svg>
     Switch profile
   </button>
-  <a class="item" href={toolUrl(HOME.id, location)}>
-    <svg viewBox="0 0 24 24" aria-hidden="true">
-      <path d="M4 11l8-7 8 7 M6 9.5V20h12V9.5 M10 20v-5h4v5" />
-    </svg>
-    All tools
-  </a>
 </div>
 
 <style>
   .trigger {
-    display: flex;
-    align-items: center;
-    gap: var(--space-1);
-    min-height: var(--touch-target);
-    padding: var(--space-1) var(--space-2);
+    display: grid;
+    place-items: center;
+    width: var(--touch-target);
+    height: var(--touch-target);
+    margin-right: calc(-1 * var(--space-1));
+    padding: 0;
     border: none;
     border-radius: var(--radius-full);
     background: none;
-    color: var(--color-text-muted);
     cursor: pointer;
     transition: background var(--duration-fast) var(--ease-out);
   }
 
   @media (hover: hover) {
     .trigger:hover {
-      background: var(--color-surface);
-      color: var(--color-text);
+      background: var(--color-surface-sunken);
     }
   }
 
   .avatar {
-    width: 2.25rem;
-    height: 2.25rem;
-  }
-
-  .caret {
-    width: 1.1rem;
-    height: 1.1rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2.5;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    transition: rotate var(--duration-fast) var(--ease-out);
-  }
-
-  .caret.open {
-    rotate: 180deg;
-  }
-
-  /* Popovers default to centered on screen; pin it under the trigger
-   * (top/right are set in onBeforeToggle). */
-  .menu {
-    position: fixed;
-    inset: auto;
-    min-width: 12rem;
-    margin: 0;
-    padding: var(--space-2);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-    background: var(--color-surface-raised);
-    color: var(--color-text);
-    box-shadow: var(--shadow-md);
+    width: 2rem;
+    height: 2rem;
   }
 
   .who {
-    margin: 0;
-    padding: var(--space-2) var(--space-3);
-    color: var(--color-text-muted);
-    font-size: var(--text-sm);
-    font-weight: var(--weight-semibold);
-  }
-
-  .item {
     display: flex;
     align-items: center;
     gap: var(--space-3);
-    width: 100%;
-    min-height: var(--touch-target);
-    padding: 0 var(--space-3);
-    border: none;
-    border-radius: var(--radius-sm);
-    background: none;
-    color: inherit;
-    font: inherit;
-    text-align: left;
-    text-decoration: none;
-    cursor: pointer;
+    padding: var(--space-2) var(--space-3);
   }
 
-  @media (hover: hover) {
-    .item:hover {
-      background: var(--color-accent-subtle);
-    }
+  .who-avatar {
+    flex: none;
+    width: 2rem;
+    height: 2rem;
   }
 
-  .item svg {
-    width: 1.25rem;
-    height: 1.25rem;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+  .who-name {
+    font-weight: var(--weight-semibold);
   }
 </style>

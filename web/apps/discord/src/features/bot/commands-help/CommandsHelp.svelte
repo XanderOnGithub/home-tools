@@ -42,11 +42,6 @@
     gap: var(--space-3);
   }
 
-  h2 {
-    font-size: var(--text-xl);
-    font-weight: var(--weight-bold);
-  }
-
   .list {
     display: flex;
     flex-direction: column;

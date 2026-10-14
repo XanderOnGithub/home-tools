@@ -4,6 +4,7 @@
   invented data point) and just hides it until next week.
 -->
 <script lang="ts">
+  import { toast } from '@home-tools/ui/toast'
   import { untrack } from 'svelte'
   import { isoWeek, today } from '@home-tools/ui/dates'
   import {
@@ -50,6 +51,7 @@
     try {
       // 0.01 kg precision, so a weight in lb reads back exactly as typed.
       onsaved(await saveWeight(profile.id, { date: today(), weight_kg: Math.round(kg * 100) / 100 }))
+      toast('Weight saved')
     } catch (err) {
       error = `Couldn't save. ${(err as Error).message}`
     } finally {
