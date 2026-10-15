@@ -19,7 +19,9 @@ to the bot.
   profile colors) every local midnight, as a per-server nickname + avatar.
   The avatar is the household blob (decision #22) for that name, animated.
 - Unverified people who try a verified-only command become **access
-  requests** on the People page (Verify / Dismiss).
+  requests** on the People page (Verify / Dismiss). Or search the bot's
+  servers by name there and verify with one tap (#61); typing a user ID
+  is the fallback.
 - **Send (#59):** the Send page posts a message and/or a poll as the bot
   in a channel picked there (game night votes, announcements). Nothing
   stored; no slash command, so only the dashboard can make the bot speak.
@@ -69,6 +71,7 @@ to the bot.
 | `raster.go` | Scanline polygon fill with anti-aliasing (edge table + active list). |
 | `avatar.go` | The animation script (rest → blink ×2 → look left → right → back) → GIF, plus a still PNG. |
 | `announce.go` | Posts from the Send page (#59): `Post` + `Validate` (Discord's limits), the message it becomes (`message`, mentions off except @everyone), `Bot.Send` → link to the message. |
+| `members.go` | People search (#61): `SearchMembers` (Search Guild Members per server, no privileged intent; bots left out; `mergeMembers` is pure) and `faces`, the avatar cache (Discord's CDN only, a day / an hour on failure, ≤ 500). |
 | `handlers.go` | Settings API. |
 
 UI: `web/apps/discord` (Svelte, shared `AppShell`), pages (#60):
@@ -82,7 +85,9 @@ UI: `web/apps/discord` (Svelte, shared `AppShell`), pages (#60):
   `polls` → `poll-settings` (→ `poll-packs` → `poll-questions`), `status`
   → `status-settings`, `blob` → `blob-maker`. A new feature = an entry in
   `feature-list` + a branch in `features-page`.
-- **People** `/people` (`people-page`).
+- **People** `/people` (`people-page`): requests, search to add (#61),
+  the verified list; `member-avatar` draws anyone's picture (initial
+  until it loads).
 `settings` is the shared state (polls the bot every 15 s while visible;
 saves with the revision, reloads on 409).
 
@@ -112,6 +117,8 @@ saves with the revision, reloads on 409).
 | `POST /api/poll` | Post the next poll now (takes the next slot). 409 = off, no questions, offline, or Discord refused. |
 | `POST /api/poll/reset` | `{"pack": "Overwatch"}`: forget which of its questions were asked this round ("Start over"). 404 = no such pack. |
 | `POST /api/send` | `{channel_id, message?, everyone?, poll?: {question, answers, multi?, duration_hours}}`: post it now (#59). 201 `{url}` (the message in Discord); 400 = a rule broke; 409 = offline, unknown channel, or Discord refused. |
+| `GET /api/members?q=jo` | People in the bot's servers whose username or nickname starts with `q` (1–32 chars): `[{user_id, name, username}]`, ≤ 10, no bots (#61). 409 = offline or Discord refused. |
+| `GET /api/members/{user}/avatar` | Their Discord picture (64 px), fetched and cached here. 404 = none to be had (the page shows their initial). |
 | `GET /api/blob?name=&color=[&animated=1]` | The blob `/blob` would send (immutable cache). |
 | `GET /api/persona.gif` / `.png` | Today's avatar, animated / still (ETag per persona). |
 

@@ -34,6 +34,7 @@ type Bot struct {
 	servers   serverCache
 	cooldowns cooldowns
 	avatars   avatarCache
+	faces     faces              // people's Discord avatars, for the People page (#61)
 	applied   map[string]Persona // guild ID → persona last set there (under mu)
 
 	boardsWake  chan struct{} // refresh the status boards now
@@ -65,6 +66,7 @@ func NewBot(token string, store *Store, games Games, log *slog.Logger) *Bot {
 		pollWake:    make(chan struct{}, 1),
 		statusWake:  make(chan struct{}, 1),
 	}
+	b.faces = faces{urlF: b.avatarURL, get: download, now: func() time.Time { return b.now() }}
 	if token == "" {
 		b.conn.err = "No bot token: set DISCORD_TOKEN for Home Tools (see deploy/README.md)."
 	}

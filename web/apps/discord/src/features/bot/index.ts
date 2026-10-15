@@ -102,6 +102,15 @@ export const MESSAGE_MAX = 2000
 export const sendPost = (p: Post) => api.post<{ url: string }>('/api/send', p)
 /** Forgets which of a pack's questions were asked, so all can come up again. */
 export const resetPollPack = (pack: string) => api.post<void>('/api/poll/reset', { pack })
+/** Someone in the bot's Discord servers (decision #61). */
+export type Member = { user_id: string; name: string; username: string }
+
+/** People whose username or nickname starts with q, in every server the bot is in (≤ 10). */
+export const searchMembers = (q: string) => api.get<Member[]>(`/api/members?${new URLSearchParams({ q })}`)
+
+/** Their Discord picture, through our server (404 when there's none). */
+export const memberAvatar = (userId: string) => `/api/members/${encodeURIComponent(userId)}/avatar`
+
 export const dismissRequest = (userId: string) => api.del(`/api/requests/${encodeURIComponent(userId)}`)
 
 /** Today's avatar, exactly as Discord gets it. */
