@@ -36,6 +36,8 @@ func Register(mux *http.ServeMux, store *Store, bot *Bot, log *slog.Logger) {
 	mux.HandleFunc("POST /api/poll", h.postPoll)
 	mux.HandleFunc("POST /api/poll/reset", h.resetPack)
 	mux.HandleFunc("POST /api/send", h.postSend)
+	mux.HandleFunc("GET /api/members", h.getMembers)
+	mux.HandleFunc("GET /api/members/{user}/avatar", h.getAvatar)
 	mux.HandleFunc("GET /api/blob", h.getBlob)
 	mux.HandleFunc("GET /api/persona.gif", h.getPersonaImage)
 	mux.HandleFunc("GET /api/persona.png", h.getPersonaImage) // still: for reduced motion
@@ -182,6 +184,52 @@ func (h *handlers) postSend(w http.ResponseWriter, r *http.Request) {
 	default:
 		httpx.WriteJSON(w, http.StatusCreated, map[string]string{"url": url})
 	}
+}
+
+// getMembers searches the bot's servers for people by name (#61):
+// ?q=jo → [{user_id, name, username}]. 400 = no or too long a query;
+// 409 = the bot is offline or Discord refused.
+func (h *handlers) getMembers(w http.ResponseWriter, r *http.Request) {
+	list, err := h.bot.SearchMembers(r.URL.Query().Get("q"))
+	switch {
+	case errors.Is(err, ErrInvalid):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	case err != nil:
+		h.log.Warn("discord member search", "err", err)
+		msg := err.Error()
+		if rest := (*discordgo.RESTError)(nil); errors.As(err, &rest) {
+			msg = "Discord refused the search; try again in a moment."
+		}
+		httpx.WriteError(w, http.StatusConflict, "Couldn't search: "+msg)
+	default:
+		if list == nil {
+			list = []Member{}
+		}
+		httpx.WriteJSON(w, http.StatusOK, list)
+	}
+}
+
+// getAvatar answers a person's Discord avatar (64 px), fetched and cached
+// here so the browser never calls Discord (#61). 404 when there's none to
+// be had (unknown user, bot offline, Discord down); the page shows a
+// placeholder then.
+func (h *handlers) getAvatar(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("user")
+	if !snowflake.MatchString(id) {
+		httpx.WriteError(w, http.StatusBadRequest, "not a Discord user ID")
+		return
+	}
+	img, mime, err := h.bot.faces.avatar(r.Context(), id)
+	if err != nil {
+		if !errors.Is(err, errOffline) {
+			h.log.Debug("discord avatar", "user", id, "err", err)
+		}
+		httpx.WriteError(w, http.StatusNotFound, "no avatar for "+id)
+		return
+	}
+	w.Header().Set("Content-Type", mime)
+	w.Header().Set("Cache-Control", "private, max-age=3600") // an hour: people change pictures
+	w.Write(img)
 }
 
 // sendProblem words a send error for people, like pollProblem.
