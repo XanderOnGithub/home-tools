@@ -55,10 +55,10 @@
 <section class="feature" aria-labelledby="status-title">
   <div class="head">
     <div>
-      <h2 id="status-title">Status</h2>
+      <h2 id="status-title">Bot status</h2>
       <p class="muted">The line under the bot's name in Discord. A new one every hour, on the hour.</p>
     </div>
-    <ToggleSwitch checked={status.enabled} label="Status" {busy} onchange={(on) => change((s) => (s.enabled = on))} />
+    <ToggleSwitch checked={status.enabled} label="Bot status" {busy} onchange={(on) => change((s) => (s.enabled = on))} />
   </div>
 
   {#if status.enabled && bot.status}
@@ -117,10 +117,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
   }
 
   .head {
