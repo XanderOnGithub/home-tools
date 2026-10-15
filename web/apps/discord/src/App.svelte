@@ -13,10 +13,13 @@
   import { FeaturesPage } from '@/features/bot/features-page'
   import { OverviewPage } from '@/features/bot/overview-page'
   import { PeoplePage } from '@/features/bot/people-page'
+  import { SendPage } from '@/features/bot/send-page'
 
   const LINKS = [
     // A chat bubble with a smile: the bot.
     { href: '/', label: 'Bot', icon: 'M4 5h16v11H9l-5 4z M9 10.5h.01 M15 10.5h.01' },
+    // A paper plane: post something as the bot (#59).
+    { href: '/send', label: 'Send', icon: 'M21 3L10 14 M21 3l-7 18-4-7-7-4z' },
     // A sparkle: the optional extras.
     { href: '/features', label: 'Features', icon: 'M12 3l2 6 6 2-6 2-2 6-2-6-6-2 6-2z M19 3v4 M21 5h-4' },
     // Two people.
@@ -35,7 +38,11 @@
   })
 
   $effect(() => {
-    const titles: Record<string, string> = { '/people': 'People · Discord', '/features': 'Features · Discord' }
+    const titles: Record<string, string> = {
+      '/send': 'Send · Discord',
+      '/people': 'People · Discord',
+      '/features': 'Features · Discord',
+    }
     document.title = titles[router.path] ?? 'Discord · Home Tools'
   })
 
@@ -53,6 +60,8 @@
   <AppShell tool="discord" links={LINKS} {profile} onswitch={switchProfile}>
     {#if router.path === '/'}
       <OverviewPage />
+    {:else if router.path === '/send'}
+      <SendPage />
     {:else if router.path === '/features'}
       <FeaturesPage />
     {:else if router.path === '/people'}

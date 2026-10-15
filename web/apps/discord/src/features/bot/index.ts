@@ -86,6 +86,20 @@ export const getConfig = () => api.get<Config>('/api/config')
 export const saveConfig = (c: Config) => api.put<Config>('/api/config', c)
 export const getBot = () => api.get<BotView>('/api/bot')
 export const postPollNow = () => api.post<void>('/api/poll', undefined)
+
+/** A message and/or poll to post from the Send page (decision #59). */
+export type Post = {
+  channel_id: string
+  message?: string
+  everyone?: boolean // ping @everyone
+  poll?: PollQuestion & { duration_hours: number }
+}
+
+/** Discord's message limit. */
+export const MESSAGE_MAX = 2000
+
+/** Posts it now; answers with a link to the message in Discord. */
+export const sendPost = (p: Post) => api.post<{ url: string }>('/api/send', p)
 /** Forgets which of a pack's questions were asked, so all can come up again. */
 export const resetPollPack = (pack: string) => api.post<void>('/api/poll/reset', { pack })
 export const dismissRequest = (userId: string) => api.del(`/api/requests/${encodeURIComponent(userId)}`)

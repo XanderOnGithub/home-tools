@@ -35,6 +35,7 @@ func Register(mux *http.ServeMux, store *Store, bot *Bot, log *slog.Logger) {
 	mux.HandleFunc("DELETE /api/requests/{user}", h.deleteRequest)
 	mux.HandleFunc("POST /api/poll", h.postPoll)
 	mux.HandleFunc("POST /api/poll/reset", h.resetPack)
+	mux.HandleFunc("POST /api/send", h.postSend)
 	mux.HandleFunc("GET /api/blob", h.getBlob)
 	mux.HandleFunc("GET /api/persona.gif", h.getPersonaImage)
 	mux.HandleFunc("GET /api/persona.png", h.getPersonaImage) // still: for reduced motion
@@ -160,6 +161,36 @@ func (h *handlers) resetPack(w http.ResponseWriter, r *http.Request) {
 	}
 	h.log.Info("discord poll pack reset", "pack", body.Pack)
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// postSend posts a message and/or poll from the Send page (#59) and
+// answers with a link to it: 201 {"url"}. 400 = a rule broke, 409 = the
+// bot can't post it (offline, unknown channel, Discord refused).
+func (h *handlers) postSend(w http.ResponseWriter, r *http.Request) {
+	var p Post
+	if err := httpx.DecodeJSON(w, r, &p); err != nil {
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	url, err := h.bot.Send(p)
+	switch {
+	case errors.Is(err, ErrInvalid):
+		httpx.WriteError(w, http.StatusBadRequest, err.Error())
+	case err != nil:
+		h.log.Warn("discord send", "channel", p.ChannelID, "err", err)
+		httpx.WriteError(w, http.StatusConflict, "Couldn't post it: "+sendProblem(err))
+	default:
+		httpx.WriteJSON(w, http.StatusCreated, map[string]string{"url": url})
+	}
+}
+
+// sendProblem words a send error for people, like pollProblem.
+func sendProblem(err error) string {
+	var rest *discordgo.RESTError
+	if errors.As(err, &rest) {
+		return "Discord refused it. Check that the bot may send messages (and polls) in that channel."
+	}
+	return err.Error()
 }
 
 // pollProblem words a poll error for people: ours as they are, Discord's

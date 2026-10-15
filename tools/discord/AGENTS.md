@@ -20,6 +20,10 @@ to the bot.
   The avatar is the household blob (decision #22) for that name, animated.
 - Unverified people who try a verified-only command become **access
   requests** on the People page (Verify / Dismiss).
+- **Send (#59):** the Send page posts a message and/or a poll as the bot
+  in a channel picked there (game night votes, announcements). Nothing
+  stored; no slash command, so only the dashboard can make the bot speak.
+  Pings nobody unless "Ping @everyone" is ticked.
 
 ### Features (#44): each with an on/off switch
 - **Poll:** a native Discord poll every `every_days` (1–7, default 2) at
@@ -64,12 +68,14 @@ to the bot.
 | `blob.go` | Go port of the frontend blob (shape + face); tested against the TypeScript's numbers. |
 | `raster.go` | Scanline polygon fill with anti-aliasing (edge table + active list). |
 | `avatar.go` | The animation script (rest → blink ×2 → look left → right → back) → GIF, plus a still PNG. |
+| `announce.go` | Posts from the Send page (#59): `Post` + `Validate` (Discord's limits), the message it becomes (`message`, mentions off except @everyone), `Bot.Send` → link to the message. |
 | `handlers.go` | Settings API. |
 
 UI: `web/apps/discord` (Svelte, shared `AppShell`): `features/bot/`:
 `settings` (shared state, polls the bot every 15 s while visible; saves
 with the revision, reloads on 409), `today-card`, `status-boards`,
-`name-list`, `commands-help`, `overview-page` (`/`), `features-page`
+`name-list`, `commands-help`, `overview-page` (`/`), `send-page`
+(`/send`: the composer) + `send-preview` (Discord-style preview), `features-page`
 (`/features`: `poll-settings` → `poll-packs` → `poll-questions`, `status-settings`,
 `blob-maker`),
 `people-page` (`/people`); `components/toggle-switch`.
@@ -99,6 +105,7 @@ with the revision, reloads on 409), `today-card`, `status-boards`,
 | `DELETE /api/requests/{user}` | Dismiss an access request. |
 | `POST /api/poll` | Post the next poll now (takes the next slot). 409 = off, no questions, offline, or Discord refused. |
 | `POST /api/poll/reset` | `{"pack": "Overwatch"}`: forget which of its questions were asked this round ("Start over"). 404 = no such pack. |
+| `POST /api/send` | `{channel_id, message?, everyone?, poll?: {question, answers, multi?, duration_hours}}`: post it now (#59). 201 `{url}` (the message in Discord); 400 = a rule broke; 409 = offline, unknown channel, or Discord refused. |
 | `GET /api/blob?name=&color=[&animated=1]` | The blob `/blob` would send (immutable cache). |
 | `GET /api/persona.gif` / `.png` | Today's avatar, animated / still (ETag per persona). |
 
