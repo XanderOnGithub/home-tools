@@ -2,7 +2,7 @@
   <img src="banner.jpg" alt="home-tools" width="100%">
 </p>
 
-<h1 align="center">home-tools</h1>
+<h1 align="center">Home Tools</h1>
 
 <p align="center">
   Small self-hosted tools for one household. Tools, not a product.
