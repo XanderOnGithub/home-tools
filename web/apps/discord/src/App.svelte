@@ -2,7 +2,8 @@
   Discord: pick a profile (shared with every tool, ADR 0007; the choice is
   remembered across subdomains), then the shared app shell (same header,
   nav and spacing as fitness and games) around the bot page ("/"), the
-  features page ("/features") or the people page ("/people"). The profile gives the accent color.
+  send page ("/send"), the features page ("/features", one feature per
+  "/features/<id>") or the people page ("/people"). The profile gives the accent color.
 -->
 <script lang="ts">
   import { AppShell } from '@home-tools/ui/app-shell'
@@ -32,6 +33,9 @@
 
   let profile = $state<Profile | null>(null)
 
+  // /features/<id> → that feature's settings (#60).
+  let featureId = $derived(router.path.match(/^\/features\/([^/]+)$/)?.[1] ?? null)
+
   $effect(() => {
     if (profile) document.documentElement.dataset.accent = profile.color
     else delete document.documentElement.dataset.accent
@@ -41,8 +45,8 @@
     const titles: Record<string, string> = {
       '/send': 'Send · Discord',
       '/people': 'People · Discord',
-      '/features': 'Features · Discord',
     }
+    if (router.path.startsWith('/features')) return // the Features page names its tab
     document.title = titles[router.path] ?? 'Discord · Home Tools'
   })
 
@@ -62,8 +66,8 @@
       <OverviewPage />
     {:else if router.path === '/send'}
       <SendPage />
-    {:else if router.path === '/features'}
-      <FeaturesPage />
+    {:else if router.path === '/features' || featureId}
+      <FeaturesPage id={featureId} />
     {:else if router.path === '/people'}
       <PeoplePage />
     {:else}

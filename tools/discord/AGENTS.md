@@ -48,8 +48,8 @@ to the bot.
   off, defaults in `fillDefaults`, rules in `Validate`); its commands in
   `commands(f)` behind its switch (and a check in `handle`, since Discord
   may lag a moment); its job as a loop in `Run` that re-reads the config
-  and wakes on `Changed`; a card on the Features page with
-  `ToggleSwitch`.
+  and wakes on `Changed`; its settings component (with a `ToggleSwitch`)
+  as an entry in `feature-list` + a branch in `features-page`.
 
 ## Where things are
 | File | What |
@@ -71,14 +71,20 @@ to the bot.
 | `announce.go` | Posts from the Send page (#59): `Post` + `Validate` (Discord's limits), the message it becomes (`message`, mentions off except @everyone), `Bot.Send` → link to the message. |
 | `handlers.go` | Settings API. |
 
-UI: `web/apps/discord` (Svelte, shared `AppShell`): `features/bot/`:
-`settings` (shared state, polls the bot every 15 s while visible; saves
-with the revision, reloads on 409), `today-card`, `status-boards`,
-`name-list`, `commands-help`, `overview-page` (`/`), `send-page`
-(`/send`: the composer) + `send-preview` (Discord-style preview), `features-page`
-(`/features`: `poll-settings` → `poll-packs` → `poll-questions`, `status-settings`,
-`blob-maker`),
-`people-page` (`/people`); `components/toggle-switch`.
+UI: `web/apps/discord` (Svelte, shared `AppShell`), pages (#60):
+- **Bot** `/` (`overview-page`): `today-card` (persona, online, servers,
+  status line, invite), an access-request callout, a card per feature
+  (summary + On/Off, links to its settings), `commands-help`.
+- **Send** `/send` (`send-page` + `send-preview`, #59).
+- **Features** `/features/<id>` (`features-page`): one feature at a time
+  from `feature-list` (the registry: id, label, icon, on/off, one-line
+  summary): `game-statuses` → `status-boards`, `names` → `name-list`,
+  `polls` → `poll-settings` (→ `poll-packs` → `poll-questions`), `status`
+  → `status-settings`, `blob` → `blob-maker`. A new feature = an entry in
+  `feature-list` + a branch in `features-page`.
+- **People** `/people` (`people-page`).
+`settings` is the shared state (polls the bot every 15 s while visible;
+saves with the revision, reloads on 409).
 
 ## Configuration
 - **Token:** `DISCORD_TOKEN` env var only (never in files, flags or the

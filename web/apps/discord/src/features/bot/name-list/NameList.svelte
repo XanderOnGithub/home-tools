@@ -50,7 +50,7 @@
 
 <section class="section" aria-labelledby="names-title">
   <div class="head">
-    <h2 id="names-title">Names</h2>
+    <h2 id="names-title">Daily name</h2>
     <span class="muted count">{config.names.length}</span>
   </div>
   <p class="muted">One a day, shuffled, so everyone gets a turn. The color cycles through green, blue, orange and purple.</p>

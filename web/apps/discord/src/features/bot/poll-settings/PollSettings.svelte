@@ -60,10 +60,10 @@
 <section class="feature" aria-labelledby="poll-title">
   <div class="head">
     <div>
-      <h2 id="poll-title">Poll</h2>
+      <h2 id="poll-title">Scheduled polls</h2>
       <p class="muted">A question with answers to vote on, every few days, as a Discord poll.</p>
     </div>
-    <ToggleSwitch checked={poll.enabled} label="Poll" {busy} onchange={(on) => change((p) => (p.enabled = on))} />
+    <ToggleSwitch checked={poll.enabled} label="Scheduled polls" {busy} onchange={(on) => change((p) => (p.enabled = on))} />
   </div>
 
   <div class="settings">
@@ -129,10 +129,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-4);
-    padding: var(--space-4);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
-    background: var(--color-surface);
   }
 
   .head {
