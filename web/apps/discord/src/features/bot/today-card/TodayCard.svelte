@@ -1,10 +1,10 @@
 <!--
-  Who the bot is today (decision #42): its avatar, exactly as Discord
-  gets it (the animated GIF; the still image with reduced motion), its
-  name, and whether it's connected. The invite link adds it to a Discord
-  server with only the permissions it needs.
+  The bot at a glance (top of the overview): today's avatar and name,
+  whether it's connected, how many Discord servers it's in, its status
+  line right now, and the invite link.
 -->
 <script lang="ts">
+  import { Badge } from '@home-tools/ui/components/badge'
   import { PERSONA_GIF, PERSONA_PNG, type BotView } from '@/features/bot'
 
   let { bot }: { bot: BotView } = $props()
@@ -17,47 +17,75 @@
 <section class="today" aria-labelledby="today-name">
   <picture>
     <source srcset="{PERSONA_PNG}?v={version}" media="(prefers-reduced-motion: reduce)" />
-    <img class="avatar" src="{PERSONA_GIF}?v={version}" alt="" width="96" height="96" />
+    <img class="avatar" src="{PERSONA_GIF}?v={version}" alt="" width="80" height="80" />
   </picture>
-  <div class="body">
+
+  <div class="who">
     <p class="eyebrow">Today the bot is</p>
     <h2 id="today-name">{bot.persona.name}</h2>
-    <p class="muted">A new name and color every day at midnight.</p>
-    <p class="status" class:on={bot.connected}>
-      <span class="dot" aria-hidden="true"></span>
+    <div class="state">
       {#if bot.connected}
-        Connected as {bot.user} · in {guilds} {guilds === 1 ? 'server' : 'servers'}
+        <Badge tone="success" dot pulse>Online</Badge>
+        {#if bot.user}<span class="user">{bot.user}</span>{/if}
       {:else}
-        Not connected: {bot.error ?? 'unknown reason'}
+        <Badge tone="danger" dot>Offline</Badge>
+        <span class="user">{bot.error ?? 'Not connected'}</span>
       {/if}
-    </p>
-    {#if bot.invite_url}
-      <a class="btn btn-secondary invite" href={bot.invite_url} target="_blank" rel="noreferrer">
-        Add to a Discord server
-      </a>
-    {/if}
+    </div>
   </div>
+
+  <dl class="facts">
+    <div>
+      <dt>Servers</dt>
+      <dd>{guilds}</dd>
+    </div>
+    <div>
+      <dt>Status</dt>
+      <dd class="status">{bot.status || 'None'}</dd>
+    </div>
+  </dl>
+
+  {#if bot.invite_url}
+    <a class="btn btn-secondary invite" href={bot.invite_url} target="_blank" rel="noreferrer">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14 M5 12h14" /></svg>
+      Add to a server
+    </a>
+  {/if}
 </section>
 
 <style>
   .today {
     display: grid;
     grid-template-columns: auto 1fr;
-    align-items: start;
-    gap: var(--space-4);
-    padding: var(--space-4);
+    grid-template-areas: 'avatar who' 'facts facts' 'invite invite';
+    align-items: center;
+    gap: var(--space-4) var(--space-4);
+    padding: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
     background: var(--color-surface);
   }
 
-  .avatar {
-    display: block;
-    width: 6rem;
-    height: 6rem;
+  @media (min-width: 44rem) {
+    .today {
+      grid-template-columns: auto minmax(0, 1fr) auto auto;
+      grid-template-areas: 'avatar who facts invite';
+      gap: var(--space-6);
+    }
   }
 
-  .body {
+  picture {
+    grid-area: avatar;
+  }
+
+  .avatar {
+    display: block;
+    width: 5rem;
+    height: 5rem;
+  }
+
+  .who {
+    grid-area: who;
     display: flex;
     flex-direction: column;
     gap: var(--space-1);
@@ -68,13 +96,8 @@
     margin: 0;
   }
 
-  .eyebrow,
-  .muted {
-    color: var(--color-text-muted);
-    font-weight: var(--weight-medium);
-  }
-
   .eyebrow {
+    color: var(--color-text-muted);
     font-size: var(--text-sm);
   }
 
@@ -84,35 +107,70 @@
     overflow-wrap: anywhere;
   }
 
-  .status {
+  .state {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--space-2);
-    margin-top: var(--space-2);
+    margin-top: var(--space-1);
+  }
+
+  .user {
+    color: var(--color-text-muted);
+    font-size: var(--text-sm);
+  }
+
+  .facts {
+    grid-area: facts;
+    display: flex;
+    gap: var(--space-6);
+    margin: 0;
+  }
+
+  @media (max-width: 43.99rem) {
+    .facts {
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--color-border);
+    }
+  }
+
+  .facts div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+    min-width: 0;
+  }
+
+  dt {
+    color: var(--color-text-muted);
+    font-size: var(--text-xs);
+  }
+
+  dd {
+    margin: 0;
     font-weight: var(--weight-semibold);
+    font-variant-numeric: tabular-nums;
   }
 
-  .status:not(.on) {
-    color: var(--color-danger-text);
-  }
-
-  /* Same dot as the games tool: filled when connected, hollow when not
-   * (the text says it too). */
-  .dot {
-    flex: none;
-    width: 0.7rem;
-    height: 0.7rem;
-    border: 2px solid currentColor;
-    border-radius: var(--radius-full);
-  }
-
-  .on .dot {
-    border-color: var(--color-accent);
-    background: var(--color-accent);
+  .status {
+    max-width: 14rem;
+    overflow: hidden;
+    font-weight: var(--weight-medium);
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .invite {
-    align-self: flex-start;
-    margin-top: var(--space-3);
+    grid-area: invite;
+    justify-self: start;
+  }
+
+  .invite svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: round;
   }
 </style>
