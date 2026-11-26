@@ -5,7 +5,7 @@ The icons ZimaOS shows for the three apps (the `icon:` line in each
 
 | File | App | Mascot |
 |---|---|---|
-| `zimaos-home-tools.png` | Home Tools | purple blob with a roof (the Home Tools mascot, decision #62) |
+| `zimaos-home-tools.png` | Home Tools | purple blob with a roof (the Home Tools mascot, decision #63) |
 | `zimaos-https.png` | Home Tools HTTPS (Caddy) | green blob holding a padlock |
 | `zimaos-proxy.png` | Home Tools Docker access (socket proxy) | blue blob holding a shield |
 

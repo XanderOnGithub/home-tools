@@ -14,7 +14,11 @@
   import { GameCover } from '@/features/servers/game-cover'
   import { ServerMenu } from '@/features/servers/server-menu'
 
-  let { server, onchange }: { server: Server; onchange: (updated: Server) => void } = $props()
+  let {
+    server,
+    onchange,
+    showError = true, // false when the page already says why (a banner)
+  }: { server: Server; onchange: (updated: Server) => void; showError?: boolean } = $props()
 
   let pending = $state<Action | null>(null)
 
@@ -36,7 +40,7 @@
     if (game !== server.name) parts.push(game)
     if (phase === 'running' && server.state?.started_at) parts.push(`Up ${uptime(server.state.started_at)}`)
     if (phase === 'stopped' && parts.length === 0) parts.push('Not running')
-    if (phase === 'unknown') parts.push(server.error ?? 'Unknown error')
+    if (phase === 'unknown' && showError) parts.push(server.error ?? 'Unknown error')
     return parts.join(' · ')
   })
 </script>
@@ -60,7 +64,7 @@
   <div class="meta">
     <div class="text">
       <h2 id="name-{server.id}"><a class="name" href="/servers/{server.id}">{server.name}</a></h2>
-      <p class="line" class:error={phase === 'unknown'}>{line}</p>
+      <p class="line" class:error={phase === 'unknown' && showError}>{line}</p>
     </div>
     <div class="actions">
       <ServerMenu {server} bind:pending {onchange} />
