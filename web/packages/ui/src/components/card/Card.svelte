@@ -1,7 +1,9 @@
 <!--
   A bordered surface for a group of things: a list, a set of controls, a
-  chart. One look everywhere (border, 12px corners, no shadow), so cards
-  never compete. `padding="none"` for lists whose rows bring their own
+  chart. One look everywhere (border, 12px corners, a thin solid edge
+  underneath: decision #63), so cards never compete. A link card stands on
+  a thicker edge and sinks into it when pressed, like the tool cards on
+  the Home Tools page. `padding="none"` for lists whose rows bring their own
   padding (rows separated by dividers: use <ul class="card-list"> inside).
   `as` picks the element (an <a> card becomes one big link with a hover).
 -->
@@ -23,7 +25,7 @@
   } & HTMLAttributes<HTMLElement> = $props()
 </script>
 
-<svelte:element this={as} class="card pad-{padding}" class:link={as === 'a'} {href} {...rest}>
+<svelte:element this={as} class="card pad-{padding}" class:link={as === 'a'} class:pressable={as === 'a'} {href} {...rest}>
   {@render children()}
 </svelte:element>
 
@@ -35,6 +37,10 @@
     border-radius: var(--radius-lg);
     background: var(--color-surface);
     color: inherit;
+  }
+
+  .card:not(.link) {
+    box-shadow: var(--edge-card); /* link cards: .pressable in app.css */
   }
 
   .pad-none {
@@ -52,20 +58,6 @@
 
   .link {
     text-decoration: none;
-    transition:
-      border-color var(--duration-fast) var(--ease-out),
-      box-shadow var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) {
-    .link:hover {
-      border-color: var(--color-border-strong);
-      box-shadow: var(--shadow-sm);
-    }
-  }
-
-  .link:active {
-    background: var(--color-surface-sunken);
   }
 
   /* Rows inside a padding="none" card. */

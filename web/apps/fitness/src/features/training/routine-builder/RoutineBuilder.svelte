@@ -274,6 +274,7 @@
     padding: var(--space-5);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-lg);
+    box-shadow: var(--edge-card);
     background: var(--color-surface);
   }
 

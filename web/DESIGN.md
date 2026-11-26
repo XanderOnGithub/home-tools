@@ -82,13 +82,24 @@ content (long names, 50 items).
   `--color-surface` with a 1px `--color-border`; `--color-surface-sunken`
   for wells (the log), skeletons and row hover. No tinted "hero" cards:
   the accent marks actions and selection, not areas.
-- Shadows only on things that float (menus, dialogs, toasts) and on a
-  hovered link-card. Cards at rest are flat.
+- **Depth (decision #63):** soft shadows only on things that float
+  (menus, dialogs, toasts). Everything else stands on a **solid edge**
+  (no blur), like the Home Tools cards: cards you read get a thin one
+  (`box-shadow: var(--edge-card)`, built into `Card`); cards that are one
+  big link get `.pressable` (thick edge, sinks into it when pressed;
+  `Card as="a"` has it); filled and secondary buttons have theirs in
+  `app.css`.
+- **Grid:** the cover's faint graph-paper grid sits behind the top of
+  every page (`.page-grid` on the AppShell) and the profile picker.
+  Don't add it to cards; the Home Tools page's mascot stages are the
+  exception.
 - Blobs are **characters only**: a person's avatar, the Discord persona,
-  and a tool's **mascot** (`ToolMascot`: its blob holding one prop, on
-  the tools home page; decision #62, proposed). Elsewhere tools still
-  have glyph icons on colored tiles (`ToolIcon`); days, states and
-  decoration use plain shapes.
+  and a tool's **mascot** (`ToolMascot`: its blob holding one prop;
+  decisions #62, #63). The mascot is the tool's icon everywhere: the
+  header's tool switcher, favicons and home-screen icons, the profile
+  picker, and empty, loading and failed-load states (`EmptyState`,
+  `PageSkeleton`, `LoadError` pick it from `setAppTool` in each app's
+  `main.ts`). Days, states and decoration use plain shapes.
 - Say less: a page or section gets at most one line of description, and
   only when the title doesn't say it. No greetings, no exclamation marks.
 
@@ -118,7 +129,8 @@ read as one product.
   or "Loading…": `<PageSkeleton variant="list|grid|form">`, or
   `<SkeletonGroup label>` around `<Skeleton>`s for a custom shape. It waits
   150 ms before showing, so fast loads don't flash.
-- **Empty:** `<EmptyState icon title description action>`.
+- **Empty:** `<EmptyState title description action>` (the app's mascot
+  on top; `icon` is only a fallback outside an app).
 - **Saved / failed in the background:** `toast('Plan saved')`,
   `toast.error(…)`, or with `{ action: { label: 'Undo', run } }`
   (`@home-tools/ui/toast`). Errors a person must fix in a form stay next
@@ -132,8 +144,9 @@ read as one product.
 - **Buttons:** `.btn` + one of `.btn-primary`, `.btn-secondary`,
   `.btn-quiet`, `.btn-danger`, `.btn-text-danger`, `.btn-icon` (icon only;
   needs `aria-label`); `.btn-sm` for dense rows. Same classes on an `<a>`
-  that looks like a button. All states are in `app.css`; pressed = a
-  slight shrink plus a color change; disabled filled buttons go gray.
+  that looks like a button. All states are in `app.css`; pressed =
+  filled and secondary buttons sink into their edge, quiet and icon
+  buttons shrink slightly; disabled filled buttons go gray.
 - **Dialogs:** `<ConfirmDialog title message confirmLabel danger
   onconfirm>` + `.open()` for "are you sure?" (safe choice focused first).
   Other dialogs: `<dialog class="dialog">` + `showModal()`.

@@ -65,3 +65,16 @@ export function toolUrl(id: string, here: { protocol: string; hostname: string; 
   const port = here.port ? `:${here.port}` : ''
   return `${here.protocol}//${target}${port}/`
 }
+
+// The tool this app is. Each app's main.ts sets it once at start, so shared
+// pieces outside the shell (the profile picker, empty and loading states)
+// can show the right mascot without every caller passing it.
+let current: Tool | undefined
+
+/** Called once in an app's main.ts: setAppTool('fitness'). */
+export function setAppTool(id: string): void {
+  current = toolById(id)
+}
+
+/** The app's own tool, if it set one. */
+export const appTool = (): Tool | undefined => current

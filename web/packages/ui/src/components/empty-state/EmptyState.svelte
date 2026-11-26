@@ -1,11 +1,15 @@
 <!--
   What a list or page shows before there's anything in it: an icon, a
   short title, one line on what goes here, and the action that fills it.
+  In an app, the icon is the app's mascot (decision #62), so an empty
+  page still feels like that tool; `icon` is the fallback outside one.
   Centered in a dashed outline so it reads as "space for something", not
   as content.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte'
+  import { ToolMascot } from '../../tool-mascot'
+  import { appTool } from '../../tools'
 
   let {
     title,
@@ -20,10 +24,14 @@
     size?: 'sm' | 'md'
     action?: Snippet
   } = $props()
+
+  const tool = appTool()
 </script>
 
 <div class="empty {size}">
-  {#if icon}
+  {#if tool}
+    <span class="mascot"><ToolMascot {tool} bob /></span>
+  {:else if icon}
     <span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d={icon} /></svg></span>
   {/if}
   <p class="title">{title}</p>
@@ -45,6 +53,16 @@
 
   .sm {
     padding: var(--space-5) var(--space-4);
+  }
+
+  .mascot {
+    width: 4.5rem;
+    margin-bottom: var(--space-3);
+  }
+
+  .sm .mascot {
+    width: 3.25rem;
+    margin-bottom: var(--space-2);
   }
 
   .icon {

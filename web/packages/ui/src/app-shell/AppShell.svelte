@@ -68,7 +68,7 @@
   </ul>
 {/snippet}
 
-<div class="shell">
+<div class="shell page-grid">
   <header class="header">
     <div class="header-inner">
       <ToolSwitcher {tool} />

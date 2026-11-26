@@ -57,7 +57,7 @@
           <ul>
             {#each active as r (r.id)}
               <li>
-                <a class="plan" href="/plans/{r.id}">
+                <a class="plan pressable" href="/plans/{r.id}">
                   <span class="name">{r.name}</span>
                   <span class="meta">
                     {[`${r.exercises.length} ${r.exercises.length === 1 ? 'exercise' : 'exercises'}`, author(r) && `by ${author(r)}`]
@@ -136,13 +136,6 @@
     background: var(--color-surface);
     color: inherit;
     text-decoration: none;
-    transition: border-color var(--duration-fast) var(--ease-out);
-  }
-
-  @media (hover: hover) {
-    .plan:hover {
-      border-color: var(--color-border-strong);
-    }
   }
 
   .name {

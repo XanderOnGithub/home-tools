@@ -1,17 +1,23 @@
 <!--
   A generic loading layout for a page whose real shape is a list of rows
   ("list"), cards in a grid ("grid") or a form ("form"). Pages with a more
-  specific shape draw their own from <Skeleton>s.
+  specific shape draw their own from <Skeleton>s. In an app, its mascot
+  bobs above the shapes while it waits (decision #62).
 -->
 <script lang="ts">
+  import { ToolMascot } from '../../tool-mascot'
+  import { appTool } from '../../tools'
   import Skeleton from './Skeleton.svelte'
   import SkeletonGroup from './SkeletonGroup.svelte'
 
   let { label, variant = 'list', rows = 4 }: { label: string; variant?: 'list' | 'grid' | 'form'; rows?: number } =
     $props()
+
+  const tool = appTool()
 </script>
 
 <SkeletonGroup {label}>
+  {#if tool}<span class="mascot"><ToolMascot {tool} bob /></span>{/if}
   {#if variant === 'grid'}
     <div class="grid">
       {#each { length: rows } as _, i (i)}<Skeleton height="7rem" radius="lg" />{/each}
@@ -37,6 +43,13 @@
 </SkeletonGroup>
 
 <style>
+  .mascot {
+    display: block;
+    width: 3rem;
+    margin: 0 auto var(--space-5);
+    opacity: 0.9;
+  }
+
   .grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(16rem, 1fr));
