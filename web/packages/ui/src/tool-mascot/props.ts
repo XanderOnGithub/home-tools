@@ -11,8 +11,9 @@
 //   bubble  a light speech bubble with an ink outline
 //   roof    ink, with a rounded ink stroke so the corners aren't sharp
 //   dot     ink; the typing dots (animated in ToolMascot)
+//   line    an ink stroke, no fill (the lock's shackle, the plug's cord)
 
-export type PropPaint = 'ink' | 'skin' | 'pad' | 'bubble' | 'roof' | 'dot'
+export type PropPaint = 'ink' | 'skin' | 'pad' | 'bubble' | 'roof' | 'dot' | 'line'
 
 export type PropPart =
   | { tag: 'rect'; paint: PropPaint; x: number; y: number; width: number; height: number; rx: number }
@@ -50,6 +51,23 @@ export const PROPS: Record<string, PropPart[]> = {
   tools: [
     { tag: 'rect', paint: 'ink', x: 61, y: 1, width: 7, height: 14, rx: 1.5 },
     { tag: 'path', paint: 'roof', d: 'M50 -1L77 20H23z' },
+  ],
+
+  // Not tools: the server-side apps in deploy/ get the Home Tools mascot
+  // with their own prop, for their ZimaOS tiles (deploy/icons).
+  // HTTPS (Caddy): a padlock held in front.
+  https: [
+    { tag: 'path', paint: 'line', d: 'M40 72v-6a10 10 0 0 1 20 0v6' },
+    { tag: 'rect', paint: 'ink', x: 33, y: 70, width: 34, height: 26, rx: 5 },
+    { tag: 'circle', paint: 'skin', cx: 50, cy: 80.5, r: 3.4 },
+    { tag: 'rect', paint: 'skin', x: 48.3, y: 82, width: 3.4, height: 8, rx: 1.7 },
+  ],
+  // Proxy (the Docker socket proxy): a plug, because it guards a socket.
+  proxy: [
+    { tag: 'rect', paint: 'ink', x: 40, y: 58, width: 5, height: 12, rx: 2 },
+    { tag: 'rect', paint: 'ink', x: 55, y: 58, width: 5, height: 12, rx: 2 },
+    { tag: 'rect', paint: 'ink', x: 34, y: 68, width: 32, height: 20, rx: 6 },
+    { tag: 'path', paint: 'line', d: 'M50 88v6q0 6 8 6h14' },
   ],
 }
 

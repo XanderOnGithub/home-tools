@@ -2,7 +2,10 @@
 // @home-tools/ui, decisions #46 and #62): each tool's mascot (blob, eyes and
 // prop, the same drawing as ToolMascot in the header's tool switcher and on
 // the Home Tools page), so tab, home screen and app all match.
-//   deploy/icons/https.png: the Home Tools mascot (Caddy's ZimaOS tile)
+//   deploy/icons/: the ZimaOS app tiles, each a PNG and an SVG:
+//     home-tools  the Home Tools mascot (the app itself)
+//     https       the same mascot holding a padlock (Caddy)
+//     proxy       the same mascot holding a plug (the Docker socket proxy)
 //
 //   pnpm --filter @home-tools/fitness favicon
 //
@@ -35,6 +38,8 @@ const BOX: Record<string, string> = {
   games: '2 2 96 96',
   discord: '0 -18 112 112',
   tools: '-4 -6 108 108',
+  https: '2 2 98 98',
+  proxy: '2 2 100 100',
 }
 const box = (tool: Tool) => BOX[tool.id] ?? '0 0 100 100'
 
@@ -80,6 +85,16 @@ for (const tool of [...TOOLS, HOME]) {
   console.log(`wrote ${tool.id}/public/favicon.svg, apple-touch-icon.png`)
 }
 
+// The server-side apps' ZimaOS tiles: the Home Tools mascot with each
+// app's own prop (PROPS in tool-mascot/props.ts).
 mkdirSync(deployIcons, { recursive: true })
-squareIcon(HOME, join(deployIcons, 'https.png'))
-console.log('wrote deploy/icons/https.png')
+const tiles: [string, Tool][] = [
+  ['home-tools', HOME],
+  ['https', { ...HOME, id: 'https' }],
+  ['proxy', { ...HOME, id: 'proxy' }],
+]
+for (const [file, tool] of tiles) {
+  squareIcon(tool, join(deployIcons, `${file}.png`))
+  tabIcon(tool, join(deployIcons, `${file}.svg`))
+  console.log(`wrote deploy/icons/${file}.png, ${file}.svg`)
+}

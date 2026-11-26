@@ -34,6 +34,6 @@ services:
 x-casaos:
   title:
     custom: Home Tools Docker access
-  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/deploy/icons/https.png
+  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/deploy/icons/proxy.png
   main: docker-proxy
   index: /

@@ -42,6 +42,10 @@ export function mascotParts(tool: Tool, theme: 'auto' | 'light' = 'auto'): strin
         return theme === 'auto'
           ? 'class="bubble" stroke-width="2.5" stroke-linejoin="round"'
           : `fill="${BUBBLE_LIGHT}" stroke="${PROP_LIGHT}" stroke-width="2.5" stroke-linejoin="round"`
+      case 'line':
+        return theme === 'auto'
+          ? 'class="ink-stroke" fill="none" stroke-width="5" stroke-linecap="round"'
+          : `fill="none" stroke="${PROP_LIGHT}" stroke-width="5" stroke-linecap="round"`
       case 'roof':
         return theme === 'auto'
           ? 'class="ink ink-stroke" stroke-width="4" stroke-linejoin="round"'

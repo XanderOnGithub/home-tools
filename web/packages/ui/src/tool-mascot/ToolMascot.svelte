@@ -63,6 +63,13 @@
     stroke-linejoin: round;
   }
 
+  .line {
+    fill: none;
+    stroke: var(--color-mascot-prop);
+    stroke-width: 5;
+    stroke-linecap: round;
+  }
+
   .skin {
     fill: var(--color-avatar);
   }
