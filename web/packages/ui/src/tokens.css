@@ -71,6 +71,9 @@
   --color-on-overlay: #ffffff;
   --color-on-overlay-muted: rgb(255 255 255 / 0.45);
   --color-avatar-eye: #18181b; /* the blob's eyes are character, not chrome */
+  /* What a tool's mascot holds (dumbbell, controller, roof): dark like the
+   * eyes on a light page, light on a dark one, where dark would vanish. */
+  --color-mascot-prop: light-dark(#18181b, #e4e4e7);
 }
 
 /* ---- Accents (one per profile color) ----
@@ -184,6 +187,7 @@
   --radius-sm: 0.25rem; /* 4: badges, small chips */
   --radius-md: 0.5rem; /* 8: buttons, inputs, list rows */
   --radius-lg: 0.75rem; /* 12: cards, dialogs, menus */
+  --radius-xl: 1.25rem; /* 20: big showcase cards (the tools home page) */
   --radius-full: 9999px; /* tags, toggles, avatars only; never buttons */
 
   --touch-target: 2.75rem; /* 44px: minimum size of anything tappable */
