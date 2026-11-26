@@ -81,7 +81,7 @@
  * accent          filled buttons, selected states
  * accent-hover    hover on filled
  * accent-pressed  :active on filled
- * accent-edge     the solid edge under filled buttons (decision #63)
+ * accent-edge     the solid edge under filled buttons (decision #64)
  * on-accent       text/icons on any of the three above
  * accent-text     accent-colored text and links on surfaces
  * accent-subtle   tinted backgrounds (selected rows, chips)
@@ -215,7 +215,7 @@
   --shadow-lg: 0 1px 3px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3)),
     0 16px 40px -8px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.6)); /* dialogs */
 
-  /* Depth (decision #63): a solid edge under things, no blur, like the
+  /* Depth (decision #64): a solid edge under things, no blur, like the
    * cards on the Home Tools page. Pressable things have a thick edge and
    * sink into it when pressed; static cards a thin one. */
   --depth-button: 3px; /* filled and secondary buttons */

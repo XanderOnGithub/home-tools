@@ -54,6 +54,17 @@ data {
   font-variant-numeric: tabular-nums;
 }
 
+/* A page's top-level stack: the PageHeader, then each block --page-gap
+ * apart (default 32px; a page with closely related blocks may set 16px or
+ * 24px). PageHeader and Section read --page-gap, so whatever the gap,
+ * title → content is always 32px and section → section 48px. */
+.page {
+  --page-gap: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+}
+
 /* Form controls inherit the page font instead of the browser default. */
 button,
 input,
@@ -129,7 +140,7 @@ textarea {
 /* Buttons. Shared by every screen: .btn + one variant. Links styled as
  * buttons (e.g. "New plan" navigates) use the same classes on <a>.
  * Filled and secondary buttons stand on a solid edge and sink into it
- * when pressed (decision #63); quiet and icon buttons shrink a little. */
+ * when pressed (decision #64); quiet and icon buttons shrink a little. */
 .btn {
   --btn-edge: transparent;
   display: inline-flex;
@@ -280,7 +291,7 @@ textarea {
 
 /* A card that is one big link or button: it stands on a thick edge and
  * sinks into it when pressed, like the tool cards on the Home Tools page
- * (decision #63). Card as="a" has it; add the class to your own. */
+ * (decision #64). Card as="a" has it; add the class to your own. */
 .pressable {
   --edge: var(--color-border);
   box-shadow: 0 var(--depth-link) 0 var(--edge);
@@ -303,7 +314,7 @@ textarea {
 }
 
 /* The grid of the Home Tools cover behind the top of a page, fading out
- * downward (decision #63). Put it on a positioned element; it sits under
+ * downward (decision #64). Put it on a positioned element; it sits under
  * that element's content. */
 .page-grid {
   position: relative;

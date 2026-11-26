@@ -1,4 +1,4 @@
-// What each tool's mascot holds (decision #62), as plain data, so the
+// What each tool's mascot holds (decision #63), as plain data, so the
 // Svelte mascot (ToolMascot) and the favicon script (static.ts) draw the
 // very same shapes. Coordinates are in the blob's 100×100 box; some props
 // stick out of it (Discord's bubble, the roof), which is why the mascot's

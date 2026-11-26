@@ -36,10 +36,16 @@
     const vs = points.map((p) => p.v)
     let lo = Math.min(...vs)
     let hi = Math.max(...vs)
-    if (lo === hi) [lo, hi] = [lo - Math.max(1, lo * 0.1), hi + Math.max(1, hi * 0.1)]
+    // One value (or all the same): a tight band around it, so one weigh-in
+    // reads 170–180 lb, not 140–200.
+    if (lo === hi) [lo, hi] = [lo - Math.max(1, Math.abs(lo) * 0.02), hi + Math.max(1, Math.abs(hi) * 0.02)]
     const raw = (hi - lo) / 3
     const mag = 10 ** Math.floor(Math.log10(raw))
-    const step = [1, 2, 2.5, 5, 10].map((m) => m * mag).find((s) => s >= raw)!
+    // Whole-number data keeps whole-number ticks: 2.5 only as 25, 250, … or below 1.
+    const step = [1, 2, 2.5, 5, 10]
+      .map((m) => m * mag)
+      .filter((s) => mag < 1 || Number.isInteger(s))
+      .find((s) => s >= raw)!
     const out: number[] = []
     for (let v = Math.floor(lo / step) * step; v <= hi + step * 0.001; v += step) out.push(v)
     if (out.at(-1)! < hi) out.push(out.at(-1)! + step)

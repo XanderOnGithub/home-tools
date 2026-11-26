@@ -26,7 +26,7 @@
   })
 </script>
 
-<div class="guide">
+<div class="page">
   <PageHeader title="How training works" description="Why the app suggests what it does, in five minutes." />
 
   <nav aria-label="On this page">
@@ -118,11 +118,8 @@
 </div>
 
 <style>
-  .guide {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    max-width: 42rem;
+  .page {
+    max-width: var(--content-narrow);
   }
 
   section {

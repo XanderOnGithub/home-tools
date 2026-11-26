@@ -2,7 +2,7 @@
   A generic loading layout for a page whose real shape is a list of rows
   ("list"), cards in a grid ("grid") or a form ("form"). Pages with a more
   specific shape draw their own from <Skeleton>s. In an app, its mascot
-  bobs above the shapes while it waits (decision #62).
+  bobs above the shapes while it waits (decision #63).
 -->
 <script lang="ts">
   import { ToolMascot } from '../../tool-mascot'

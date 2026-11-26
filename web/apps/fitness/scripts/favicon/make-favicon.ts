@@ -1,5 +1,5 @@
 // Generates every app's icons from the tool registry (TOOLS + HOME in
-// @home-tools/ui, decisions #46 and #62): each tool's mascot (blob, eyes and
+// @home-tools/ui, decisions #46 and #63): each tool's mascot (blob, eyes and
 // prop, the same drawing as ToolMascot in the header's tool switcher and on
 // the Home Tools page), so tab, home screen and app all match.
 //   deploy/icons/https.png: the Home Tools mascot (Caddy's ZimaOS tile)

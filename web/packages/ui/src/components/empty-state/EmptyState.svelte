@@ -1,7 +1,7 @@
 <!--
   What a list or page shows before there's anything in it: an icon, a
   short title, one line on what goes here, and the action that fills it.
-  In an app, the icon is the app's mascot (decision #62), so an empty
+  In an app, the icon is the app's mascot (decision #63), so an empty
   page still feels like that tool; `icon` is the fallback outside one.
   Centered in a dashed outline so it reads as "space for something", not
   as content.

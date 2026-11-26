@@ -77,7 +77,7 @@
     }
   }
 
-  /* Mascots (decision #62) in place of icons: a little bigger in the
+  /* Mascots (decision #63) in place of icons: a little bigger in the
    * trigger, where it stands for the whole app. Their props may stick out
    * of the box (overflow is visible), so they get a little room. */
   .mascot {

@@ -45,22 +45,23 @@
     new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
 </script>
 
-<div class="journey">
+<div class="page">
   {#if status === 'error'}
     <PageHeader title="Exercise" back={{ href: '/progress', label: 'Progress' }} />
     <LoadError what="this exercise" onretry={load} />
   {:else if status === 'ready' && exercise}
-    <header>
-      <h1 tabindex="-1">{exercise.name}</h1>
-      <p class="muted">
-        {history.length}
-        {history.length === 1 ? 'workout' : 'workouts'}{#if history.length > 0}&nbsp;· since
-          <time datetime={history.at(-1)!.started_at}>{when(history.at(-1)!.started_at)}</time>{/if}
-      </p>
-      {#if trend?.basis}
-        <p class="trend" class:up={isStronger(trend.change)}>{changeLabel(trend.change, trend.basis)}</p>
-      {/if}
-    </header>
+    <PageHeader title={exercise.name} back={{ href: '/progress', label: 'Progress' }}>
+      {#snippet meta()}
+        <p class="muted">
+          {history.length}
+          {history.length === 1 ? 'workout' : 'workouts'}{#if history.length > 0}&nbsp;· since
+            <time datetime={history.at(-1)!.started_at}>{when(history.at(-1)!.started_at)}</time>{/if}
+        </p>
+        {#if trend?.basis}
+          <p class="trend" class:up={isStronger(trend.change)}>{changeLabel(trend.change, trend.basis)}</p>
+        {/if}
+      {/snippet}
+    </PageHeader>
 
     {#if !j}
       <p class="muted">You haven't finished a workout with this exercise yet.</p>
@@ -113,25 +114,6 @@
 </div>
 
 <style>
-  .journey {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-  }
-
-  header {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-1);
-  }
-
-  h1 {
-    font-size: var(--text-title);
-    font-weight: var(--weight-bold);
-    line-height: var(--leading-tight);
-    overflow-wrap: anywhere;
-  }
-
   h2 {
     margin-bottom: var(--space-3);
   }
@@ -172,8 +154,9 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    background: var(--color-accent-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   dt {

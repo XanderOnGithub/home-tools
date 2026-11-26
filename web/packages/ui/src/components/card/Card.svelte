@@ -1,7 +1,7 @@
 <!--
   A bordered surface for a group of things: a list, a set of controls, a
   chart. One look everywhere (border, 12px corners, a thin solid edge
-  underneath: decision #63), so cards never compete. A link card stands on
+  underneath: decision #64), so cards never compete. A link card stands on
   a thicker edge and sinks into it when pressed, like the tool cards on
   the Home Tools page. `padding="none"` for lists whose rows bring their own
   padding (rows separated by dividers: use <ul class="card-list"> inside).

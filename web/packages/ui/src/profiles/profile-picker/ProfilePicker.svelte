@@ -90,7 +90,7 @@
     }
   }
 
-  // The app's mascot greets you above the question (decision #63).
+  // The app's mascot greets you above the question (decision #64).
   const tool = appTool()
 
   load()

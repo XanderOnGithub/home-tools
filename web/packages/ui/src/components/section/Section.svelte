@@ -45,8 +45,11 @@
     scroll-margin-top: calc(var(--header-height) + var(--space-4));
   }
 
-  .section + :global(.section) {
-    margin-top: var(--space-7);
+  /* A section starts 48px below whatever came before it (in a .page
+   * stack, the gap is part of that), except right under the PageHeader,
+   * which sets its own 32px. */
+  :global(:not(.page-header)) + .section {
+    margin-top: max(0rem, calc(var(--space-7) - var(--page-gap, 0rem)));
   }
 
   .head {

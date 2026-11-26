@@ -1,7 +1,7 @@
 <!--
   The bot at a glance (top of the overview): today's avatar and name,
-  whether it's connected, how many Discord servers it's in, its status
-  line right now, and the invite link.
+  whether it's connected (why not is the overview's banner), how many
+  Discord servers it's in, its status line right now, and the invite link.
 -->
 <script lang="ts">
   import { Badge } from '@home-tools/ui/components/badge'
@@ -29,7 +29,6 @@
         {#if bot.user}<span class="user">{bot.user}</span>{/if}
       {:else}
         <Badge tone="danger" dot>Offline</Badge>
-        <span class="user">{bot.error ?? 'Not connected'}</span>
       {/if}
     </div>
   </div>
@@ -39,10 +38,12 @@
       <dt>Servers</dt>
       <dd>{guilds}</dd>
     </div>
-    <div>
-      <dt>Status</dt>
-      <dd class="status">{bot.status || 'None'}</dd>
-    </div>
+    {#if bot.connected}
+      <div>
+        <dt>Status</dt>
+        <dd class="status">{bot.status || 'None'}</dd>
+      </div>
+    {/if}
   </dl>
 
   {#if bot.invite_url}

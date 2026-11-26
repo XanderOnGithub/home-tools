@@ -83,9 +83,7 @@
 
 <style>
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
+    --page-gap: var(--space-5);
   }
 
   h2 {

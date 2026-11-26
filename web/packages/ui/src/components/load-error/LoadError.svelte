@@ -2,7 +2,7 @@
   "Couldn't load …" with a Try again button: what every screen shows when
   its first fetch fails (usually the server is down or restarting).
   Extra actions (e.g. "Switch profile") go in as children. In an app, its
-  mascot sits above, leaning over (decision #62).
+  mascot sits above, leaning over (decision #63).
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte'

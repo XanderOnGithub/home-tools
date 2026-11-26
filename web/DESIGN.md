@@ -82,7 +82,7 @@ content (long names, 50 items).
   `--color-surface` with a 1px `--color-border`; `--color-surface-sunken`
   for wells (the log), skeletons and row hover. No tinted "hero" cards:
   the accent marks actions and selection, not areas.
-- **Depth (decision #63):** soft shadows only on things that float
+- **Depth (decision #64):** soft shadows only on things that float
   (menus, dialogs, toasts). Everything else stands on a **solid edge**
   (no blur), like the Home Tools cards: cards you read get a thin one
   (`box-shadow: var(--edge-card)`, built into `Card`); cards that are one
@@ -95,11 +95,13 @@ content (long names, 50 items).
   exception.
 - Blobs are **characters only**: a person's avatar, the Discord persona,
   and a tool's **mascot** (`ToolMascot`: its blob holding one prop;
-  decisions #62, #63). The mascot is the tool's icon everywhere: the
+  decisions #63, #64). The mascot is the tool's icon everywhere: the
   header's tool switcher, favicons and home-screen icons, the profile
   picker, and empty, loading and failed-load states (`EmptyState`,
   `PageSkeleton`, `LoadError` pick it from `setAppTool` in each app's
   `main.ts`). Days, states and decoration use plain shapes.
+- Stat tiles (a number over its label) are plain cards: the label says
+  what is counted in full ("Exercises logged"), the number stands alone.
 - Say less: a page or section gets at most one line of description, and
   only when the title doesn't say it. No greetings, no exclamation marks.
 
@@ -115,6 +117,12 @@ read as one product.
   leading eyebrow>` (`components/page-header`) starts every page: the
   `<h1>`, an optional back link ("‹ Plans"), one line of description,
   actions on the right. Never a hand-rolled `<h1>` or `.back`.
+- **Page stack:** wrap a page in `<div class="page">` (`app.css`): the
+  header, then each block `--page-gap` apart (default `--space-6`; set
+  `--space-4`/`--space-5` for closely related blocks). Title → content is
+  always 32px and section → section 48px whatever the gap, because
+  PageHeader and Section subtract it. Pages never set a margin on the
+  header or sections.
 - **Sections:** `<Section title description count actions>` for a titled
   part of a page; `<Card padding as href>` for a bordered group (a list,
   controls, a chart). Rows inside `<Card padding="none">` go in
@@ -135,6 +143,11 @@ read as one product.
   `toast.error(…)`, or with `{ action: { label: 'Undo', run } }`
   (`@home-tools/ui/toast`). Errors a person must fix in a form stay next
   to the field; failed page loads are `LoadError`.
+- **Page-wide problems:** `<Banner tone title actions>` (`components/banner`)
+  at the top of the page, said once: when the same thing is wrong for
+  every item ("Docker isn't connected", "The bot is offline"), the banner
+  says why and the items only show their badge, not the reason again.
+  Tones: info, warning, danger.
 - **Status:** `<Badge tone dot pulse>`: success = up/done, warning =
   in progress or needs a look, danger = failed, neutral = off.
 - **Switches:** `<ToggleSwitch checked label busy onchange>`.

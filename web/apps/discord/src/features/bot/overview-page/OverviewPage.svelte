@@ -2,10 +2,12 @@
   Home of the Discord tool (decision #60): the bot at a glance (who it is
   today, online or not, its servers and status), anyone waiting for
   access, every feature with what it's doing (each card opens its
-  settings under Features), and the slash commands that are live.
+  settings under Features), and the slash commands that are live. Wide
+  screens: the bot across the top, features and commands side by side.
 -->
 <script lang="ts">
   import { Badge } from '@home-tools/ui/components/badge'
+  import { Banner } from '@home-tools/ui/components/banner'
   import { Card } from '@home-tools/ui/components/card'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { PageHeader } from '@home-tools/ui/components/page-header'
@@ -29,6 +31,10 @@
   {:else if s.config && s.bot}
     {@const config = s.config}
     {@const bot = s.bot}
+    {#if !bot.connected}
+      <Banner tone="danger" title="The bot is offline">{bot.error ?? 'It isn\'t connected to Discord.'}</Banner>
+    {/if}
+
     <TodayCard {bot} />
 
     {#if requests > 0}
@@ -42,34 +48,40 @@
       </a>
     {/if}
 
-    <Section title="Features">
-      {#snippet actions()}<a class="btn btn-quiet btn-sm" href="/features">Manage</a>{/snippet}
-      <ul class="features">
-        {#each FEATURES as f (f.id)}
-          {@const on = f.on(config)}
-          <li>
-            <Card as="a" href="/features/{f.id}" padding="md">
-              <span class="feature">
-                <span class="icon" class:dim={on === false} aria-hidden="true">
-                  <svg viewBox="0 0 24 24"><path d={f.icon} /></svg>
-                </span>
-                <span class="text">
-                  <span class="name">{f.label}</span>
-                  <span class="summary">{f.summary(config, bot)}</span>
-                </span>
-                {#if on !== null}
-                  <Badge tone={on ? 'success' : 'neutral'}>{on ? 'On' : 'Off'}</Badge>
-                {/if}
-              </span>
-            </Card>
-          </li>
-        {/each}
-      </ul>
-    </Section>
-
-    <Section title="Commands">
-      <CommandsHelp features={config.features} />
-    </Section>
+    <div class="columns">
+      <div>
+        <Section title="Features">
+          {#snippet actions()}<a class="btn btn-quiet btn-sm" href="/features">Manage</a>{/snippet}
+          <ul class="features">
+            {#each FEATURES as f (f.id)}
+              {@const on = f.on(config)}
+              <li>
+                <Card as="a" href="/features/{f.id}" padding="md">
+                  <span class="feature">
+                    <span class="icon" class:dim={on === false} aria-hidden="true">
+                      <svg viewBox="0 0 24 24"><path d={f.icon} /></svg>
+                    </span>
+                    <span class="text">
+                      <span class="name">{f.label}</span>
+                      <span class="summary">{f.summary(config, bot)}</span>
+                    </span>
+                    {#if on !== null}
+                      <Badge tone={on ? 'success' : 'neutral'}>{on ? 'On' : 'Off'}</Badge>
+                    {/if}
+                  </span>
+                </Card>
+              </li>
+            {/each}
+          </ul>
+        </Section>
+      </div>
+      <div>
+        <Section title="Commands">
+          {#snippet actions()}<a class="btn btn-quiet btn-sm" href="/people">People</a>{/snippet}
+          <CommandsHelp features={config.features} />
+        </Section>
+      </div>
+    </div>
   {:else}
     <SettingsSkeleton sections={2} />
   {/if}
@@ -77,19 +89,21 @@
 
 <style>
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-    max-width: var(--content-medium);
+    --page-gap: var(--space-5);
   }
 
-  .page > :global(.page-header) {
-    margin-bottom: 0;
-  }
-
-  .page > :global(.section + .section),
-  .page > :global(.section) {
+  .columns {
+    display: grid;
+    gap: var(--space-7);
     margin-top: var(--space-4);
+  }
+
+  @media (min-width: 64rem) {
+    .columns {
+      grid-template-columns: 3fr 2fr;
+      align-items: start;
+      gap: var(--space-6);
+    }
   }
 
   .requests {

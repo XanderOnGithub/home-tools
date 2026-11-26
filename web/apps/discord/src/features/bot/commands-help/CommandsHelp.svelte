@@ -36,6 +36,11 @@
 </Card>
 
 <style>
+  /* Stacks by the list's own width, so it fits a side column too. */
+  ul {
+    container-type: inline-size;
+  }
+
   li {
     display: grid;
     grid-template-columns: 6.5rem 1fr auto;
@@ -45,7 +50,7 @@
     font-size: var(--text-sm);
   }
 
-  @media (max-width: 30rem) {
+  @container (max-width: 32rem) {
     li {
       grid-template-columns: 1fr auto;
       grid-template-areas: 'name badges' 'what what';
