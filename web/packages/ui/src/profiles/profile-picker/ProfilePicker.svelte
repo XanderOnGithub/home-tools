@@ -4,6 +4,8 @@
   import { blobPath } from '../blob'
   import { ProfileAvatar } from '../profile-avatar'
   import { ProfileDialog } from '../profile-dialog'
+  import { ToolMascot } from '../../tool-mascot'
+  import { appTool } from '../../tools'
   import { rememberedProfileId, rememberProfile } from '../remembered'
   import type { Profile } from '../types'
 
@@ -88,6 +90,9 @@
     }
   }
 
+  // The app's mascot greets you above the question (decision #64).
+  const tool = appTool()
+
   load()
 </script>
 
@@ -101,6 +106,12 @@
   listed underneath with Restore.
 -->
 <section class="profile-picker" aria-labelledby="profile-picker-title">
+  {#if tool && !(remembered && status === 'loading')}
+    <div class="brand" data-accent={tool.color}>
+      <span class="mascot"><ToolMascot {tool} bob /></span>
+      <span class="wordmark">{tool.name}</span>
+    </div>
+  {/if}
   <h1 id="profile-picker-title" class:hidden={remembered && status === 'loading'}>
     {managing ? 'Manage profiles' : title}
   </h1>
@@ -206,6 +217,44 @@
     min-height: 100dvh;
     padding: var(--space-5) var(--space-4);
     text-align: center;
+    position: relative;
+    isolation: isolate;
+  }
+
+  /* The cover's grid, fading out from the middle like the Home Tools hero. */
+  .profile-picker::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-position: center;
+    background-size: var(--grid-size) var(--grid-size);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, black 30%, transparent 100%);
+    pointer-events: none;
+  }
+
+  /* The app's mascot over its name in the cover's heavy capitals, so it
+   * reads as the tool's sign, not as one more profile. */
+  .brand {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--space-2);
+    margin-bottom: calc(-1 * var(--space-3));
+  }
+
+  .mascot {
+    width: 3.5rem;
+  }
+
+  .wordmark {
+    font-size: var(--text-sm);
+    font-weight: 900;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
   }
 
   h1 {

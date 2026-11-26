@@ -44,6 +44,7 @@
   /* Danger: errors and destructive actions only, never decoration */
   --color-danger: light-dark(#b91c1c, #f87171);
   --color-on-danger: light-dark(#ffffff, #450a0a);
+  --color-danger-edge: light-dark(#7f1d1d, #b91c1c); /* edge under danger buttons */
   --color-danger-text: light-dark(#b91c1c, #f87171);
   --color-danger-subtle: light-dark(#fef2f2, #2a1414);
 
@@ -80,6 +81,7 @@
  * accent          filled buttons, selected states
  * accent-hover    hover on filled
  * accent-pressed  :active on filled
+ * accent-edge     the solid edge under filled buttons (decision #64)
  * on-accent       text/icons on any of the three above
  * accent-text     accent-colored text and links on surfaces
  * accent-subtle   tinted backgrounds (selected rows, chips)
@@ -93,6 +95,7 @@
   --color-accent: light-dark(#15803d, #4ade80);
   --color-accent-hover: light-dark(#166534, #86efac);
   --color-accent-pressed: light-dark(#14532d, #22c55e);
+  --color-accent-edge: light-dark(#166534, #16a34a); /* the solid edge under filled buttons */
   --color-on-accent: light-dark(#ffffff, #052e16);
   --color-accent-text: light-dark(#15803d, #4ade80);
   --color-avatar: #4ade80; /* blob body, both themes: eyes ≥ 6.6:1 on it */
@@ -103,6 +106,7 @@
   --color-accent: light-dark(#1d4ed8, #60a5fa);
   --color-accent-hover: light-dark(#1e40af, #93c5fd);
   --color-accent-pressed: light-dark(#1e3a8a, #5299f8);
+  --color-accent-edge: light-dark(#1e40af, #2563eb); /* the solid edge under filled buttons */
   --color-on-accent: light-dark(#ffffff, #172554);
   --color-accent-text: light-dark(#1d4ed8, #60a5fa);
   --color-avatar: #60a5fa; /* blob body, both themes: eyes ≥ 6.6:1 on it */
@@ -113,6 +117,7 @@
   --color-accent: light-dark(#c2410c, #fb923c);
   --color-accent-hover: light-dark(#9a3412, #fdba74);
   --color-accent-pressed: light-dark(#7c2d12, #f97316);
+  --color-accent-edge: light-dark(#9a3412, #ea580c); /* the solid edge under filled buttons */
   --color-on-accent: light-dark(#ffffff, #431407);
   --color-accent-text: light-dark(#c2410c, #fb923c);
   --color-avatar: #fb923c; /* blob body, both themes: eyes ≥ 6.6:1 on it */
@@ -123,6 +128,7 @@
   --color-accent: light-dark(#7e22ce, #c084fc);
   --color-accent-hover: light-dark(#6b21a8, #d8b4fe);
   --color-accent-pressed: light-dark(#581c87, #b476fa);
+  --color-accent-edge: light-dark(#6b21a8, #9333ea); /* the solid edge under filled buttons */
   --color-on-accent: light-dark(#ffffff, #3b0764);
   --color-accent-text: light-dark(#7e22ce, #c084fc);
   --color-avatar: #c084fc; /* blob body, both themes: eyes ≥ 6.6:1 on it */
@@ -208,6 +214,19 @@
     0 6px 16px -4px light-dark(rgb(0 0 0 / 0.1), rgb(0 0 0 / 0.5)); /* menus, toasts */
   --shadow-lg: 0 1px 3px light-dark(rgb(0 0 0 / 0.05), rgb(0 0 0 / 0.3)),
     0 16px 40px -8px light-dark(rgb(0 0 0 / 0.18), rgb(0 0 0 / 0.6)); /* dialogs */
+
+  /* Depth (decision #64): a solid edge under things, no blur, like the
+   * cards on the Home Tools page. Pressable things have a thick edge and
+   * sink into it when pressed; static cards a thin one. */
+  --depth-button: 3px; /* filled and secondary buttons */
+  --depth-card: 2px; /* cards you read */
+  --depth-link: 4px; /* cards you tap (link cards, tool cards) */
+  --edge-card: 0 var(--depth-card) 0 var(--color-border);
+
+  /* The graph-paper grid of the Home Tools cover, faint, behind the top of
+   * every page and on mascot stages. */
+  --grid-line: color-mix(in oklab, var(--color-text) 7%, transparent);
+  --grid-size: var(--space-6);
 }
 
 /* ---- Focus and motion ---- */

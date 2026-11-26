@@ -1,5 +1,5 @@
 <!--
-  Top-left: the current tool's icon and name, opening a menu of every tool
+  Top-left: the current tool's mascot and name, opening a menu of every tool
   (TOOLS + the Home Tools page, decision #57). This is what makes four
   subdomains read as one product: the same switcher, in the same place,
   on every page. Links swap the host's first label (toolUrl), so the real
@@ -7,7 +7,7 @@
 -->
 <script lang="ts">
   import { placeUnder } from '../menu'
-  import { ToolIcon } from '../tool-icon'
+  import { ToolMascot } from '../tool-mascot'
   import { HOME, TOOLS, toolUrl, type Tool } from '../tools'
 
   let { tool }: { tool: Tool } = $props()
@@ -26,7 +26,7 @@
   popovertarget="tool-menu"
   aria-label="{tool.name}: switch tool"
 >
-  <ToolIcon {tool} size="sm" />
+  <span class="mascot lg"><ToolMascot {tool} /></span>
   <span class="name">{tool.name}</span>
   <svg class="caret" class:open viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10l5 5 5-5" /></svg>
 </button>
@@ -41,7 +41,7 @@
   <p class="menu-label">Tools</p>
   {#each TOOLS as t (t.id)}
     <a class="menu-item" href={href(t)} aria-current={t.id === tool.id ? 'page' : undefined}>
-      <ToolIcon tool={t} size="sm" />
+      <span class="mascot"><ToolMascot tool={t} /></span>
       {t.name}
       {#if t.id === tool.id}
         <svg class="check" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
@@ -50,7 +50,7 @@
   {/each}
   <hr class="menu-separator" />
   <a class="menu-item" href={href(HOME)}>
-    <ToolIcon tool={HOME} size="sm" />
+    <span class="mascot"><ToolMascot tool={HOME} /></span>
     All tools
   </a>
 </div>
@@ -77,8 +77,23 @@
     }
   }
 
+  /* Mascots (decision #63) in place of icons: a little bigger in the
+   * trigger, where it stands for the whole app. Their props may stick out
+   * of the box (overflow is visible), so they get a little room. */
+  .mascot {
+    flex: none;
+    width: 1.5rem;
+    height: 1.5rem;
+    margin-block: 0.125rem;
+  }
+
+  .mascot.lg {
+    width: 2rem;
+    height: 2rem;
+  }
+
   .name {
-    font-weight: var(--weight-semibold);
+    font-weight: var(--weight-bold);
     letter-spacing: var(--tracking-tight);
   }
 

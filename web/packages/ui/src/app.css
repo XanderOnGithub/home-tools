@@ -138,8 +138,11 @@ textarea {
 }
 
 /* Buttons. Shared by every screen: .btn + one variant. Links styled as
- * buttons (e.g. "New plan" navigates) use the same classes on <a>. */
+ * buttons (e.g. "New plan" navigates) use the same classes on <a>.
+ * Filled and secondary buttons stand on a solid edge and sink into it
+ * when pressed (decision #64); quiet and icon buttons shrink a little. */
 .btn {
+  --btn-edge: transparent;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -158,13 +161,28 @@ textarea {
     background var(--duration-fast) var(--ease-out),
     border-color var(--duration-fast) var(--ease-out),
     color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    translate var(--duration-fast) var(--ease-out),
     scale var(--duration-fast) var(--ease-out);
 }
 
-/* Every button answers a press at once: a slight shrink (the colors
- * below change too). --duration-fast is 0 with reduced motion. */
-.btn:active:not(:disabled) {
-  scale: 0.97;
+.btn-primary,
+.btn-secondary,
+.btn-danger {
+  box-shadow: 0 var(--depth-button) 0 var(--btn-edge);
+}
+
+.btn-primary:active:not(:disabled),
+.btn-secondary:active:not(:disabled),
+.btn-danger:active:not(:disabled) {
+  translate: 0 var(--depth-button);
+  box-shadow: 0 0 0 var(--btn-edge);
+}
+
+.btn-quiet:active:not(:disabled),
+.btn-icon:active:not(:disabled),
+.btn-text-danger:active:not(:disabled) {
+  scale: 0.96;
 }
 
 .btn:disabled {
@@ -178,6 +196,7 @@ textarea {
 
 /* Smaller button for dense rows (still a full touch target on phones). */
 .btn-sm {
+  --depth-button: 2px;
   padding: 0 var(--space-3);
 }
 
@@ -188,6 +207,7 @@ textarea {
 }
 
 .btn-primary {
+  --btn-edge: var(--color-accent-edge);
   background: var(--color-accent);
   color: var(--color-on-accent);
 }
@@ -196,19 +216,20 @@ textarea {
   background: var(--color-accent-pressed);
 }
 
-/* Disabled filled buttons go gray, not a washed-out accent. */
+/* Disabled filled buttons go gray and flat, not a washed-out accent. */
 .btn-primary:disabled,
 .btn-danger:disabled {
+  --btn-edge: var(--color-border);
   background: var(--color-surface-sunken);
   color: var(--color-text-muted);
   opacity: 1;
 }
 
 .btn-secondary {
+  --btn-edge: var(--color-border);
   border-color: var(--color-border);
   background: var(--color-surface);
   color: var(--color-text);
-  box-shadow: var(--shadow-sm);
 }
 
 .btn-secondary:active:not(:disabled),
@@ -221,8 +242,8 @@ textarea {
   color: var(--color-text-muted);
 }
 
-
 .btn-danger {
+  --btn-edge: var(--color-danger-edge);
   background: var(--color-danger);
   color: var(--color-on-danger);
 }
@@ -252,7 +273,8 @@ textarea {
   .btn-primary:hover:not(:disabled) {
     background: var(--color-accent-hover);
   }
-  .btn-secondary:hover {
+  .btn-secondary:hover:not(:disabled) {
+    --btn-edge: var(--color-border-strong);
     border-color: var(--color-border-strong);
   }
   .btn-quiet:hover,
@@ -265,6 +287,52 @@ textarea {
 .btn-icon:disabled {
   cursor: default;
   opacity: 0.35;
+}
+
+/* A card that is one big link or button: it stands on a thick edge and
+ * sinks into it when pressed, like the tool cards on the Home Tools page
+ * (decision #64). Card as="a" has it; add the class to your own. */
+.pressable {
+  --edge: var(--color-border);
+  box-shadow: 0 var(--depth-link) 0 var(--edge);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    translate var(--duration-fast) var(--ease-out);
+}
+
+@media (hover: hover) {
+  .pressable:hover {
+    --edge: var(--color-border-strong);
+    border-color: var(--color-border-strong);
+  }
+}
+
+.pressable:active {
+  translate: 0 calc(var(--depth-link) - 1px);
+  box-shadow: 0 1px 0 var(--edge);
+}
+
+/* The grid of the Home Tools cover behind the top of a page, fading out
+ * downward (decision #64). Put it on a positioned element; it sits under
+ * that element's content. */
+.page-grid {
+  position: relative;
+  isolation: isolate;
+}
+
+.page-grid::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: -1;
+  height: 22rem;
+  background-image: linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-position: center top;
+  background-size: var(--grid-size) var(--grid-size);
+  mask-image: linear-gradient(to bottom, black, transparent);
+  pointer-events: none;
 }
 
 /* Modal dialogs (<dialog> + showModal()). Shared look; each component sets

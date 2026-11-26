@@ -1,6 +1,9 @@
 import { mount } from 'svelte'
 import '@home-tools/ui/app.css'
+import { setAppTool } from '@home-tools/ui/tools'
 import App from './App.svelte'
+
+setAppTool('fitness')
 
 const app = mount(App, {
   target: document.getElementById('app')!,

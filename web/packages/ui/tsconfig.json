@@ -5,6 +5,7 @@
     "module": "esnext",
     "types": ["svelte"],
     "noEmit": true,
+    "allowImportingTsExtensions": true, // tool-mascot/static.ts runs in Node too (favicon script)
     "strict": true,
     "allowJs": true,
     "checkJs": true,
