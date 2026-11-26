@@ -12,7 +12,8 @@ export type FeatureInfo = {
   icon: string // SVG path, 24×24 box, stroked
   /** On/off for features with a switch; null for ones that are always on. */
   on: (c: Config) => boolean | null
-  /** One line for the overview card: what it's doing right now. */
+  /** One line for the overview card: what it's doing right now, or what it
+   *  would do when it's off (the card's Off badge says it's off). */
   summary: (c: Config, b: BotView) => string
 }
 
@@ -50,7 +51,7 @@ export const FEATURES: FeatureInfo[] = [
     on: (c) => c.features.poll.enabled,
     summary: (c, b) => {
       const p = c.features.poll
-      if (!p.enabled) return 'Off'
+      if (!p.enabled) return 'A poll every few days'
       const every = p.every_days === 1 ? 'Every day' : `Every ${p.every_days} days`
       return `${every} in ${channelName(b, p.channel_id)}`
     },
@@ -60,14 +61,14 @@ export const FEATURES: FeatureInfo[] = [
     label: 'Bot status',
     icon: 'M4 6h16 M4 12h10 M4 18h7', // lines of text
     on: (c) => c.features.status.enabled,
-    summary: (c, b) => (c.features.status.enabled ? (b.status ? `“${b.status}”` : 'A new line every hour') : 'Off'),
+    summary: (c, b) => (c.features.status.enabled ? (b.status ? `“${b.status}”` : 'A new line every hour') : 'New line hourly'),
   },
   {
     id: 'blob',
     label: 'Blob maker',
     icon: 'M12 3c4 0 8 3 8 8s-3 10-8 10-8-4-8-9 4-9 8-9z M9.5 11h.01 M14.5 11h.01', // a blob with eyes
     on: (c) => c.features.blob.enabled,
-    summary: (c) => (c.features.blob.enabled ? '/blob for anyone' : 'Off'),
+    summary: () => '/blob for anyone',
   },
 ]
 

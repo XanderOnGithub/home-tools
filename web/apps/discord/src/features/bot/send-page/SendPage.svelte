@@ -251,10 +251,6 @@
 </div>
 
 <style>
-  .page > :global(.page-header) {
-    margin-bottom: var(--space-5);
-  }
-
   /* Phones: form, then the preview. Wide screens: side by side, the
    * preview staying in view while the form scrolls. */
   .layout {

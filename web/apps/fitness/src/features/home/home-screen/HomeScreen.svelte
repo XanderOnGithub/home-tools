@@ -72,7 +72,7 @@
   )
 </script>
 
-<div class="home">
+<div class="page">
   <PageHeader title="Summary">
     {#snippet eyebrow()}<time datetime={isoDate(now)}>{date}</time>{/snippet}
   </PageHeader>
@@ -130,14 +130,8 @@
 </div>
 
 <style>
-  .home {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
-  }
-
-  .home > :global(.page-header) {
-    margin-bottom: var(--space-2);
+  .page {
+    --page-gap: var(--space-4);
   }
 
   /* Phones: one column, in reading order (the column wrappers step aside

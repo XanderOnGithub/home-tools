@@ -7,6 +7,7 @@
 -->
 <script lang="ts">
   import { Badge } from '@home-tools/ui/components/badge'
+  import { Banner } from '@home-tools/ui/components/banner'
   import { Card } from '@home-tools/ui/components/card'
   import { LoadError } from '@home-tools/ui/components/load-error'
   import { PageHeader } from '@home-tools/ui/components/page-header'
@@ -30,6 +31,10 @@
   {:else if s.config && s.bot}
     {@const config = s.config}
     {@const bot = s.bot}
+    {#if !bot.connected}
+      <Banner tone="danger" title="The bot is offline">{bot.error ?? 'It isn\'t connected to Discord.'}</Banner>
+    {/if}
+
     <TodayCard {bot} />
 
     {#if requests > 0}
@@ -84,13 +89,7 @@
 
 <style>
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
-  }
-
-  .page > :global(.page-header) {
-    margin-bottom: 0;
+    --page-gap: var(--space-5);
   }
 
   .columns {

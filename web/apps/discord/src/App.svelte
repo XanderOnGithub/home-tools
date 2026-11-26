@@ -15,6 +15,7 @@
   import { OverviewPage } from '@/features/bot/overview-page'
   import { PeoplePage } from '@/features/bot/people-page'
   import { SendPage } from '@/features/bot/send-page'
+  import { NotFound } from '@/features/shell/not-found'
 
   const LINKS = [
     // A chat bubble with a smile: the bot.
@@ -71,8 +72,7 @@
     {:else if router.path === '/people'}
       <PeoplePage />
     {:else}
-      <h1 tabindex="-1">Not found</h1>
-      <p>There's no page here. <a href="/">The bot</a></p>
+      <NotFound />
     {/if}
   </AppShell>
 {/if}

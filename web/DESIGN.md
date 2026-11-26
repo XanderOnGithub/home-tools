@@ -87,6 +87,8 @@ content (long names, 50 items).
 - Blobs are **avatars only** (a person's profile, the Discord persona).
   Tools have glyph icons on colored tiles (`ToolIcon`); days, states and
   decoration use plain shapes.
+- Stat tiles (a number over its label) are plain cards: the label says
+  what is counted in full ("Exercises logged"), the number stands alone.
 - Say less: a page or section gets at most one line of description, and
   only when the title doesn't say it. No greetings, no exclamation marks.
 
@@ -102,6 +104,12 @@ read as one product.
   leading eyebrow>` (`components/page-header`) starts every page: the
   `<h1>`, an optional back link ("‹ Plans"), one line of description,
   actions on the right. Never a hand-rolled `<h1>` or `.back`.
+- **Page stack:** wrap a page in `<div class="page">` (`app.css`): the
+  header, then each block `--page-gap` apart (default `--space-6`; set
+  `--space-4`/`--space-5` for closely related blocks). Title → content is
+  always 32px and section → section 48px whatever the gap, because
+  PageHeader and Section subtract it. Pages never set a margin on the
+  header or sections.
 - **Sections:** `<Section title description count actions>` for a titled
   part of a page; `<Card padding as href>` for a bordered group (a list,
   controls, a chart). Rows inside `<Card padding="none">` go in
@@ -121,6 +129,11 @@ read as one product.
   `toast.error(…)`, or with `{ action: { label: 'Undo', run } }`
   (`@home-tools/ui/toast`). Errors a person must fix in a form stay next
   to the field; failed page loads are `LoadError`.
+- **Page-wide problems:** `<Banner tone title actions>` (`components/banner`)
+  at the top of the page, said once: when the same thing is wrong for
+  every item ("Docker isn't connected", "The bot is offline"), the banner
+  says why and the items only show their badge, not the reason again.
+  Tones: info, warning, danger.
 - **Status:** `<Badge tone dot pulse>`: success = up/done, warning =
   in progress or needs a look, danger = failed, neutral = off.
 - **Switches:** `<ToggleSwitch checked label busy onchange>`.

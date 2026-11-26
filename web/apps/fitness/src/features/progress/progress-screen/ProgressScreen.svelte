@@ -62,7 +62,7 @@
   const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
 </script>
 
-<div class="progress">
+<div class="page">
   <PageHeader title="Progress" />
 
   {#if status === 'error'}
@@ -70,16 +70,16 @@
   {:else if status === 'ready'}
     <dl class="stats">
       <div>
-        <dt>This month</dt>
-        <dd>{month} <span class="unit">{month === 1 ? 'workout' : 'workouts'}</span></dd>
+        <dt>Workouts this month</dt>
+        <dd>{month}</dd>
       </div>
       <div>
-        <dt>Streak</dt>
-        <dd>{streak} <span class="unit">{streak === 1 ? 'week' : 'weeks'}</span></dd>
+        <dt>Weeks in a row</dt>
+        <dd>{streak}</dd>
       </div>
       <div>
-        <dt>Exercises</dt>
-        <dd>{log.length} <span class="unit">logged</span></dd>
+        <dt>Exercises logged</dt>
+        <dd>{log.length}</dd>
       </div>
     </dl>
 
@@ -145,12 +145,6 @@
 </div>
 
 <style>
-  .progress {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-  }
-
   h2 {
     margin-bottom: var(--space-3);
   }
@@ -175,8 +169,9 @@
     flex-direction: column-reverse; /* number on top, label under it; dt stays first in the markup */
     gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    background: var(--color-accent-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   dt {
@@ -189,11 +184,7 @@
     margin: 0;
     font-size: var(--text-xl);
     font-weight: var(--weight-bold);
-  }
-
-  .unit {
-    font-size: var(--text-sm);
-    font-weight: var(--weight-medium);
+    font-variant-numeric: tabular-nums;
   }
 
   .list {
