@@ -43,6 +43,6 @@ services:
 x-casaos:
   title:
     custom: Home Tools
-  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/web/apps/fitness/public/apple-touch-icon.png
+  icon: https://raw.githubusercontent.com/XanderOnGithub/home-tools/main/deploy/icons/zimaos-home-tools.png
   main: home-tools
   index: /
