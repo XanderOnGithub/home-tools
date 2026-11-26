@@ -87,6 +87,8 @@ content (long names, 50 items).
 - Blobs are **avatars only** (a person's profile, the Discord persona).
   Tools have glyph icons on colored tiles (`ToolIcon`); days, states and
   decoration use plain shapes.
+- Stat tiles (a number over its label) are plain cards: the label says
+  what is counted in full ("Exercises logged"), the number stands alone.
 - Say less: a page or section gets at most one line of description, and
   only when the title doesn't say it. No greetings, no exclamation marks.
 
@@ -127,6 +129,11 @@ read as one product.
   `toast.error(…)`, or with `{ action: { label: 'Undo', run } }`
   (`@home-tools/ui/toast`). Errors a person must fix in a form stay next
   to the field; failed page loads are `LoadError`.
+- **Page-wide problems:** `<Banner tone title actions>` (`components/banner`)
+  at the top of the page, said once: when the same thing is wrong for
+  every item ("Docker isn't connected", "The bot is offline"), the banner
+  says why and the items only show their badge, not the reason again.
+  Tones: info, warning, danger.
 - **Status:** `<Badge tone dot pulse>`: success = up/done, warning =
   in progress or needs a look, danger = failed, neutral = off.
 - **Switches:** `<ToggleSwitch checked label busy onchange>`.
