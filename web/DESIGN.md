@@ -84,8 +84,10 @@ content (long names, 50 items).
   the accent marks actions and selection, not areas.
 - Shadows only on things that float (menus, dialogs, toasts) and on a
   hovered link-card. Cards at rest are flat.
-- Blobs are **avatars only** (a person's profile, the Discord persona).
-  Tools have glyph icons on colored tiles (`ToolIcon`); days, states and
+- Blobs are **characters only**: a person's avatar, the Discord persona,
+  and a tool's **mascot** (`ToolMascot`: its blob holding one prop, on
+  the tools home page; decision #62, proposed). Elsewhere tools still
+  have glyph icons on colored tiles (`ToolIcon`); days, states and
   decoration use plain shapes.
 - Say less: a page or section gets at most one line of description, and
   only when the title doesn't say it. No greetings, no exclamation marks.
