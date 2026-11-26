@@ -1,7 +1,9 @@
 <!--
-  Home: today's date and "Summary" (no greeting: decision #57), then the
-  weekly weight check-in (only when due), today's plan, this week, and
-  the body's muscle map (#49).
+  Home: today's date and "Summary" (no greeting: decision #57). Wide
+  screens: a main column (today's plan, the weekly weight check-in when
+  due, recent workouts, the guide) beside this week and the body's
+  muscle map (#49). Phones: one column, the week and body right after
+  the check-in.
 -->
 <script lang="ts">
   import { LoadError } from '@home-tools/ui/components/load-error'
@@ -10,6 +12,7 @@
   import { BodyCard } from '@/features/body/body-card'
   import { getWeights, type FitnessProfile, type WeightEntry } from '@/features/fitness-profile'
   import { ThisWeek } from '@/features/home/this-week'
+  import { RecentWorkouts } from '@/features/home/recent-workouts'
   import { UpNext } from '@/features/home/up-next'
   import { WeightCheckIn } from '@/features/home/weight-check-in'
   import { Card } from '@home-tools/ui/components/card'
@@ -79,7 +82,10 @@
   {:else if status === 'loading'}
     <SkeletonGroup label="your week">
       <div class="grid">
-        <Skeleton height="22rem" radius="lg" />
+        <div class="main">
+          <Skeleton height="18rem" radius="lg" />
+          <Skeleton height="12rem" radius="lg" />
+        </div>
         <div class="side">
           <Skeleton height="8rem" radius="lg" />
           <Skeleton height="18rem" radius="lg" />
@@ -87,26 +93,37 @@
       </div>
     </SkeletonGroup>
   {:else}
-    {#if checkInDue}
-      <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
-    {/if}
     <div class="grid">
-      <UpNext {profile} {fitness} sessions={thisWeek} {plans} {recovery} active={inProgress(sessions)}
-        ondiscarded={(id) => (sessions = sessions.filter((s) => s.id !== id))}
-      />
-      <div class="side">
-        <Card padding="lg"><ThisWeek {profile} {fitness} sessions={thisWeek} {plans} /></Card>
-        <Card padding="lg"><BodyCard {recovery} {strength} /></Card>
-        <Card as="a" href="/guide" padding="md">
-          <span class="guide">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z M4 21V5 M8 7h7 M8 11h5" /></svg>
-            <span class="guide-text">
-              <strong>How training works</strong>
-              <span class="guide-hint">Effort, reps, rest and progress, in five minutes</span>
+      <div class="main">
+        <div class="today">
+          <UpNext {profile} {fitness} sessions={thisWeek} {plans} {recovery} active={inProgress(sessions)}
+            ondiscarded={(id) => (sessions = sessions.filter((s) => s.id !== id))}
+          />
+        </div>
+        {#if checkInDue}
+          <div class="weight">
+            <WeightCheckIn {profile} bind:fitness {weights} onsaved={(w) => (weights = [...weights, w])} />
+          </div>
+        {/if}
+        {#if sessions.some((s) => s.ended_at)}
+          <div class="recent"><Card padding="lg"><RecentWorkouts {sessions} {plans} /></Card></div>
+        {/if}
+        <div class="guide-link">
+          <Card as="a" href="/guide" padding="md">
+            <span class="guide">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z M4 21V5 M8 7h7 M8 11h5" /></svg>
+              <span class="guide-text">
+                <strong>How training works</strong>
+                <span class="guide-hint">Effort, reps, rest and progress, in five minutes</span>
+              </span>
+              <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
             </span>
-            <svg class="chevron" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
-          </span>
-        </Card>
+          </Card>
+        </div>
+      </div>
+      <div class="side">
+        <div class="week"><Card padding="lg"><ThisWeek {profile} {fitness} sessions={thisWeek} {plans} /></Card></div>
+        <div class="body"><Card padding="lg"><BodyCard {recovery} {strength} /></Card></div>
       </div>
     </div>
   {/if}
@@ -123,25 +140,59 @@
     margin-bottom: var(--space-2);
   }
 
-  /* Phones: one column. Wide screens: Today (the main thing) wider, the
-   * week and body beside it. */
+  /* Phones: one column, in reading order (the column wrappers step aside
+   * so their cards can be ordered): today, check-in, week, body, then the
+   * rest. Wide screens: Today's column (the main thing) wider, the week
+   * and body beside it. */
   .grid {
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: var(--space-4);
-    align-items: start;
+  }
+
+  .main,
+  .side {
+    display: contents;
+  }
+
+  .today {
+    order: 1;
+  }
+
+  .weight {
+    order: 2;
+  }
+
+  .week {
+    order: 3;
+  }
+
+  .body {
+    order: 4;
+  }
+
+  .recent {
+    order: 5;
+  }
+
+  .guide-link {
+    order: 6;
   }
 
   @media (min-width: 56rem) {
     .grid {
+      display: grid;
       grid-template-columns: 3fr 2fr;
+      align-items: start;
       gap: var(--space-5);
     }
-  }
 
-  .side {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-4);
+    .main,
+    .side {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-4);
+    }
   }
 
   .guide {
