@@ -172,8 +172,9 @@
     flex-direction: column;
     gap: var(--space-1);
     padding: var(--space-3) var(--space-4);
-    border-radius: var(--radius-md);
-    background: var(--color-accent-subtle);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-surface);
   }
 
   dt {
