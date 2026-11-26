@@ -2,7 +2,9 @@
   The top of every page (decision #57): an optional back link, the page's
   <h1> (focused on navigation by AppShell, so tabindex -1), a one-line
   description, and actions on the right (wrapping under on phones). One
-  header, so every page in every tool starts the same way.
+  header, so every page in every tool starts the same way. It owns the
+  space under it (32px to the content, also inside a .page stack); pages
+  never add their own.
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte'
@@ -52,7 +54,9 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-3);
-    margin-bottom: var(--space-6);
+    /* Title → content is 32px on every page: inside a .page stack the
+     * stack's gap already supplies part of it. */
+    margin-bottom: calc(var(--space-6) - var(--page-gap, 0rem));
   }
 
   .back {

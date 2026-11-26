@@ -13,6 +13,7 @@
   import { router } from '@home-tools/ui/router'
   import { ServerList } from '@/features/servers/server-list'
   import { ServerPage } from '@/features/servers/server-page'
+  import { NotFound } from '@/features/shell/not-found'
 
   const LINKS = [
     // A rack server: two stacked units with status lights.
@@ -51,8 +52,7 @@
         <ServerPage id={decodeURIComponent(serverId)} />
       {/key}
     {:else}
-      <h1 tabindex="-1">Not found</h1>
-      <p>There's no page here. <a href="/">All servers</a></p>
+      <NotFound />
     {/if}
   </AppShell>
 {/if}

@@ -62,7 +62,7 @@
   const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`
 </script>
 
-<div class="progress">
+<div class="page">
   <PageHeader title="Progress" />
 
   {#if status === 'error'}
@@ -145,12 +145,6 @@
 </div>
 
 <style>
-  .progress {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-  }
-
   h2 {
     margin-bottom: var(--space-3);
   }

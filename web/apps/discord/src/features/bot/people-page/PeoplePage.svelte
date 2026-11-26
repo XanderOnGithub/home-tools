@@ -295,18 +295,8 @@
 
 <style>
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-5);
+    --page-gap: var(--space-5);
     max-width: var(--content-medium);
-  }
-
-  .page > :global(.page-header) {
-    margin-bottom: 0;
-  }
-
-  .page > :global(.section) {
-    margin-top: var(--space-3);
   }
 
   p {
