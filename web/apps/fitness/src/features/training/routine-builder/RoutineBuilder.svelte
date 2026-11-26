@@ -220,8 +220,11 @@
   .option {
     display: grid;
     grid-template-columns: auto 1fr;
-    gap: 0 var(--space-2);
+    /* Top-aligned: when a neighbour's hint wraps, the grid row stretches
+     * this card too, and centered content would push its radio down. */
+    align-content: start;
     align-items: center;
+    gap: 0 var(--space-2);
     min-height: var(--touch-target);
     padding: var(--space-3);
     border: 1px solid var(--color-border-strong);
