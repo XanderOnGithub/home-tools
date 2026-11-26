@@ -240,50 +240,55 @@
                     </span>
                   {/if}
                 </span>
-                <label class="sets">
-                  <input type="text" inputmode="numeric" maxlength="2" placeholder="–" bind:value={item.sets} />
-                  <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
-                </label>
-                {#if ex?.category !== 'cardio'}
-                  <!-- Cardio is one effort: no rest between sets. -->
-                  <label class="sets rest">
-                    <input
-                      type="text"
-                      inputmode="numeric"
-                      maxlength="4"
-                      placeholder={String(DEFAULT_REST_SEC)}
-                      bind:value={item.rest}
-                    />
-                    <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
+                <!-- Sets, rest and the row's buttons wrap as one line on phones. -->
+                <span class="controls">
+                  <label class="sets">
+                    <input type="text" inputmode="numeric" maxlength="2" placeholder="–" bind:value={item.sets} />
+                    <span>sets<span class="visually-hidden"> for {ex?.name}</span></span>
                   </label>
-                {/if}
-                <span class="tools">
-                  <button
-                    type="button"
-                    class="btn btn-icon up"
-                    aria-label="Move {ex?.name} up"
-                    disabled={i === 0}
-                    onclick={() => move(i, -1)}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6" /></svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-icon down"
-                    aria-label="Move {ex?.name} down"
-                    disabled={i === items.length - 1}
-                    onclick={() => move(i, 1)}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-icon"
-                    aria-label="Remove {ex?.name}"
-                    onclick={() => items.splice(i, 1)}
-                  >
-                    <svg viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18" /></svg>
-                  </button>
+                  {#if ex?.category !== 'cardio'}
+                    <!-- Cardio is one effort: no rest between sets. -->
+                    <label class="sets rest">
+                      <input
+                        type="text"
+                        inputmode="numeric"
+                        maxlength="4"
+                        placeholder={String(DEFAULT_REST_SEC)}
+                        bind:value={item.rest}
+                      />
+                      <span>s rest<span class="visually-hidden"> between sets of {ex?.name}</span></span>
+                    </label>
+                  {:else}
+                    <span class="sets rest rest-gap" aria-hidden="true"><input tabindex="-1" disabled /><span>s rest</span></span>
+                  {/if}
+                  <span class="tools">
+                    <button
+                      type="button"
+                      class="btn btn-icon up"
+                      aria-label="Move {ex?.name} up"
+                      disabled={i === 0}
+                      onclick={() => move(i, -1)}
+                    >
+                      <svg viewBox="0 0 24 24"><path d="M6 15l6-6 6 6" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-icon down"
+                      aria-label="Move {ex?.name} down"
+                      disabled={i === items.length - 1}
+                      onclick={() => move(i, 1)}
+                    >
+                      <svg viewBox="0 0 24 24"><path d="M6 9l6 6 6-6" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      class="btn btn-icon"
+                      aria-label="Remove {ex?.name}"
+                      onclick={() => items.splice(i, 1)}
+                    >
+                      <svg viewBox="0 0 24 24"><path d="M6 6l12 12 M18 6L6 18" /></svg>
+                    </button>
+                  </span>
                 </span>
               </li>
             {/each}
@@ -439,6 +444,7 @@
     border-radius: var(--radius-lg);
     background: var(--color-surface);
     list-style: none;
+    container: plan-items / inline-size;
   }
 
   .item {
@@ -479,12 +485,37 @@
     font-weight: var(--weight-semibold);
   }
 
+  .controls {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: var(--space-3);
+  }
+
+  /* Phones: the controls get a full line of their own under the name,
+   * instead of "sets" squeezing in beside the name and "rest" dropping
+   * to a line of its own. */
+  @container plan-items (max-width: 32rem) {
+    .controls {
+      flex: 1 1 100%;
+    }
+  }
+
+  /* Cardio rows keep the rest column's space, so sets line up down the list. */
+  .rest-gap {
+    visibility: hidden;
+  }
+
   .sets {
     display: flex;
     align-items: center;
     gap: var(--space-1);
     color: var(--color-text-muted);
     font-size: var(--text-sm);
+  }
+
+  .sets > span {
+    white-space: nowrap;
   }
 
   .sets input {
