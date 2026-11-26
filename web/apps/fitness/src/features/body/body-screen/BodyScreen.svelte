@@ -100,7 +100,7 @@
   }
 </script>
 
-<div class="body-page">
+<div class="page">
   <PageHeader
     title="Your body"
     description="Estimated from your last week of workouts. A guide, not a rule: how you feel counts too."
@@ -171,12 +171,6 @@
 </div>
 
 <style>
-  .body-page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-  }
-
   .intro {
     display: flex;
     flex-direction: column;

@@ -185,10 +185,7 @@
 
 <style>
   .page {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-6);
-    max-width: 48rem;
+    max-width: var(--content-medium);
   }
 
   p {

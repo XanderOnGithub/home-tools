@@ -54,6 +54,17 @@ data {
   font-variant-numeric: tabular-nums;
 }
 
+/* A page's top-level stack: the PageHeader, then each block --page-gap
+ * apart (default 32px; a page with closely related blocks may set 16px or
+ * 24px). PageHeader and Section read --page-gap, so whatever the gap,
+ * title → content is always 32px and section → section 48px. */
+.page {
+  --page-gap: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--page-gap);
+}
+
 /* Form controls inherit the page font instead of the browser default. */
 button,
 input,

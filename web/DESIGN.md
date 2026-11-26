@@ -102,6 +102,12 @@ read as one product.
   leading eyebrow>` (`components/page-header`) starts every page: the
   `<h1>`, an optional back link ("‹ Plans"), one line of description,
   actions on the right. Never a hand-rolled `<h1>` or `.back`.
+- **Page stack:** wrap a page in `<div class="page">` (`app.css`): the
+  header, then each block `--page-gap` apart (default `--space-6`; set
+  `--space-4`/`--space-5` for closely related blocks). Title → content is
+  always 32px and section → section 48px whatever the gap, because
+  PageHeader and Section subtract it. Pages never set a margin on the
+  header or sections.
 - **Sections:** `<Section title description count actions>` for a titled
   part of a page; `<Card padding as href>` for a bordered group (a list,
   controls, a chart). Rows inside `<Card padding="none">` go in
