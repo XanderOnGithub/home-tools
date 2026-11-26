@@ -84,8 +84,10 @@ content (long names, 50 items).
   the accent marks actions and selection, not areas.
 - Shadows only on things that float (menus, dialogs, toasts) and on a
   hovered link-card. Cards at rest are flat.
-- Blobs are **avatars only** (a person's profile, the Discord persona).
-  Tools have glyph icons on colored tiles (`ToolIcon`); days, states and
+- Blobs are **characters only**: a person's avatar, the Discord persona,
+  and a tool's **mascot** (`ToolMascot`: its blob holding one prop, on
+  the tools home page; decision #63, proposed). Elsewhere tools still
+  have glyph icons on colored tiles (`ToolIcon`); days, states and
   decoration use plain shapes.
 - Stat tiles (a number over its label) are plain cards: the label says
   what is counted in full ("Exercises logged"), the number stands alone.
